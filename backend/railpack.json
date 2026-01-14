@@ -1,0 +1,15 @@
+{
+  "$schema": "https://railpack.dev/schema.json",
+  "build": {
+    "command": "npm run build"
+  },
+  "deploy": {
+    "command": "npm run start:prod"
+  },
+  "variables": {
+    "DATABASE_TYPE": {
+      "default": "sqlite",
+      "required": false
+    }
+  }
+}

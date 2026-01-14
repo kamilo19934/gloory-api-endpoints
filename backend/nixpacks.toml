@@ -1,3 +1,7 @@
+[variables]
+# Default values for build phase - will be overridden by Railway at runtime
+DATABASE_TYPE = "sqlite"
+
 [phases.setup]
 nixPkgs = ["nodejs-22_x"]
 
