@@ -3,7 +3,7 @@
 DATABASE_TYPE = "postgres"
 
 [phases.setup]
-nixPkgs = ["nodejs-22_x"]
+nixPkgs = ["nodejs_22"]
 
 [phases.install]
 cmds = ["npm ci"]
