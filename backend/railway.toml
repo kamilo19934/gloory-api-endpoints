@@ -10,4 +10,4 @@ restartPolicyMaxRetries = 10
 
 # Environment variables with defaults for build phase
 [build.env]
-DATABASE_TYPE = "sqlite"
+DATABASE_TYPE = "postgres"

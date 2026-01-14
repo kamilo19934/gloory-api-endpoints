@@ -18,7 +18,7 @@ import { AppointmentConfirmationsModule } from './appointment-confirmations/appo
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const databaseType = configService.get('DATABASE_TYPE', 'sqlite');
+        const databaseType = configService.get('DATABASE_TYPE', 'postgres');
         const isPostgres = databaseType === 'postgres';
 
         if (isPostgres) {

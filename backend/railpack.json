@@ -8,7 +8,7 @@
   },
   "variables": {
     "DATABASE_TYPE": {
-      "default": "sqlite",
+      "default": "postgres",
       "required": false
     }
   }
