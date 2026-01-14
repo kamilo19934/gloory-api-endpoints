@@ -32,6 +32,7 @@
     "class-validator": "^0.14.0",
     "moment": "^2.30.1",
     "moment-timezone": "^0.5.48",
+    "pg": "^8.11.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "sqlite3": "^5.1.6",

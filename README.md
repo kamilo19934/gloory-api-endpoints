@@ -254,6 +254,15 @@ npm run test
 
 ## 📦 Deployment
 
+### Desplegar en Vercel
+
+Para desplegar el frontend en Vercel y el backend en Railway/Render:
+
+- **Guía Rápida**: [CONFIGURACION_VERCEL.md](CONFIGURACION_VERCEL.md) ⚡
+- **Guía Completa**: [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md) 📚
+
+### Deployment General
+
 Ver [INSTALL.md](INSTALL.md) para instrucciones detalladas de deployment en producción.
 
 ## 🤝 Contribuir
