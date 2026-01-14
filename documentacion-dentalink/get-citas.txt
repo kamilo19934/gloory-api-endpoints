@@ -1,0 +1,115 @@
+GET /citas
+Muestra el listado de todas las citas de la clínica.
+
+Ejemplo de solicitud:
+
+const url = 'https://api.dentalink.healthatom.com/api/v1/citas/';
+
+const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+        'Authorization': `Token ${token}`
+    }
+});
+
+const data = await response.json();
+console.log(data);
+Ejemplo de respuesta:
+
+{
+    "data": [
+        {
+            "id": 4,
+            "id_paciente": 1,
+            "nombre_paciente": "Juan Lopez",
+            "nombre_social_paciente": "Juancho",
+            "id_estado": 1,
+            "estado_cita": "Anulado",
+            "estado_anulacion": 1,
+            "estado_confirmacion": 0,
+            "id_tratamiento": 6,
+            "nombre_tratamiento": "Exodoncia",
+            "tratamiento_sin_asignar": 0,
+            "fecha": "2016-06-24",
+            "hora_inicio": "09:15:00",
+            "hora_fin": "09:30:00",
+            "duracion": 15,
+            "id_dentista": 3,
+            "nombre_dentista": "Fernanda Risopatrón",
+            "id_sucursal": 1,
+            "nombre_sucursal": "NORTE",
+            "motivo_atencion": "Tratamiento Od. General",
+            "id_sillon": 1,
+            "nombre_sillon": "Sillón 1",
+            "id_lugar_atencion": 1,
+            "nombre_lugar_atencion": "Piso 1",
+            "comentarios": "",
+            "fecha_actualizacion": "2016-06-28 17:09:01",
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/citas/4",
+                    "method": "GET"
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "id_paciente": 1,
+            "nombre_paciente": "Juan Lopez",
+            "nombre_social_paciente": "Juancho",
+            "id_estado": 7,
+            "estado_cita": "No confirmado",
+            "estado_anulacion": 0,
+            "estado_confirmacion": 0,
+            "id_tratamiento": 6,
+            "nombre_tratamiento": "Exodoncia",
+            "tratamiento_sin_asignar": 0,
+            "fecha": "2016-06-23",
+            "hora_inicio": "08:00:00",
+            "hora_fin": "08:15:00",
+            "duracion": 15,
+            "id_dentista": 3,
+            "nombre_dentista": "Fernanda Risopatrón",
+            "id_sucursal": 2,
+            "nombre_sucursal": "SUR",
+            "motivo_atencion": "Tratamiento Od. General",
+            "id_sillon": 1,
+            "nombre_sillon": "Sillón 1",
+            "id_lugar_atencion": 2,
+            "nombre_lugar_atencion": "Piso 2",
+            "comentarios": "",
+            "fecha_actualizacion": "2016-06-25 13:24:02",
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/citas/5",
+                    "method": "GET"
+                }
+            ]
+        }
+    ]
+}
+HTTP/Request
+URI
+GET api/v1/citas
+
+Parametros búsqueda (opcional)
+q={"columna1":{"operador1":"valor1"},"columna2":{"operador2":"valor2"},...,"columnaN":{"operadorN":"valorN"}}
+
+Columna	Tipo	Descripción
+id	Integer	Buscar citas por ID
+fecha	Date	Buscar citas por fecha
+id_dentista	Integer	Buscar citas por dentista (id)
+id_estado	Integer	Buscar citas por estado (id)
+estado	String	Buscar citas por estado (nombre)
+fecha_actualizacion	Datetime	Fecha y hora de la última actualización de estado formato AAAA-MM-DD H:I:S
+with_comments	Bool	Flag para agrupar todos los comentarios asociados en una cita
+Parametros orden (opcional)
+sort=columna1:[asc|desc],columna2:[asc|desc],...,columnaN:[asc|desc]
+
+El endpoint se puede ordenar de manera ascendente o descendente con las siguientes columnas:
+
+id
+fecha
+hora

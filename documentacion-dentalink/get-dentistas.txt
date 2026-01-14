@@ -1,0 +1,134 @@
+GET /dentistas
+Muestra el listado de todos los dentistas de la clínica.
+
+Ejemplo de solicitud:
+
+// Se define la variable token que contiene el access_token
+// obtenido en el proceso de autenticación.
+const response = await fetch('https://api.dentalink.healthatom.com/api/v1/dentistas', {
+    method: 'GET',
+    headers: {
+        'Authorization': `Token ${token}`
+    }
+});
+
+const result = await response.json();
+console.log(result);
+Ejemplo de respuesta:
+
+{
+    "data": [
+        {
+            "id": 1,
+            "rut": "1-9",
+            "nombre": "Api",
+            "apellidos": "Test",
+            "celular": "12345678",
+            "telefono": "2123456789",
+            "ciudad": "Santiago",
+            "comuna": "Santiago",
+            "direccion": "Badajoz 45",
+            "email": "ejemplo@test.com",
+            "id_especialidad": 3,
+            "especialidad": "Endodoncia",
+            "agenda_online": 1,
+            "intervalo": 30,
+            "habilitado": 1,
+            "contratos_sucursal": [1, 3, 4],
+            "horarios_sucursal": [3, 4],
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/dentistas/1",
+                    "method": "GET"
+                },
+                {
+                    "rel": "citas",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/dentistas/1/citas",
+                    "method": "GET"
+                },
+                {
+                    "rel": "contratos",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/dentistas/1/contratos",
+                    "method": "GET"
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "rut": "2-7",
+            "nombre": "Andrés",
+            "apellidos": "Fletcher",
+            "celular": "12345678",
+            "telefono": "2123456789",
+            "ciudad": "Santiago",
+            "comuna": "Las Condes",
+            "direccion": "Rosario Norte 555, Of. 2102",
+            "email": "andres@test.com",
+            "id_especialidad": 1,
+            "especialidad": "General",
+            "agenda_online": 1,
+            "intervalo": 5,
+            "habilitado": 0,
+            "contratos_sucursal": [],
+            "horarios_sucursal": [],
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/dentistas/2",
+                    "method": "GET"
+                },
+                {
+                    "rel": "citas",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/dentistas/2/citas",
+                    "method": "GET"
+                },
+                {
+                    "rel": "contratos",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/dentistas/2/contratos",
+                    "method": "GET"
+                }
+            ]
+        }
+    ]
+}
+HTTP/Request
+URI
+GET api/v1/dentistas
+
+Parametros búsqueda (opcional)
+q={"columna1":{"operador1":"valor1"},"columna2":{"operador2":"valor2"},...,"columnaN":{"operadorN":"valorN"}}
+
+Columna	Tipo	Descripción
+rut	String	Buscar dentistas por RUT
+email	String	Buscar dentistas por email
+nombre	String	Buscar dentistas por nombre
+apellidos	String	Buscar dentistas por apellidos
+id_especialidad	Integer	Buscar dentistas por especialidad (id)
+especialidad	String	Buscar dentistas por especialidad (nombre)
+habilitado	Bool	Filtrar según dentistas habilitados (1) o deshabilitados (0)
+Parametros orden (opcional)
+sort=columna1:[asc|desc],columna2:[asc|desc],...,columnaN:[asc|desc]
+
+El endpoint se puede ordenar de manera ascendente o descendente con las siguientes columnas:
+
+id
+HTTP/Response
+Atributos	Tipo de dato	Descripción
+id	Integer	ID del dentista
+rut	String	Rut del dentista
+nombre	String	Nombre del dentista
+apellidos	String	Apellidos del dentista
+celular	String	Nº de teléfono celular del dentista
+telefono	String	Nº de teléfono del dentista
+ciudad	String	Ciudad del dentista
+comuna	String	Comuna del dentista
+direccion	String	Dirección del dentista
+email	String	email del dentista
+id_especialidad	Integer	ID especialidad del dentista
+especialidad	String	Especialidad del dentista
+agenda_online	Bool	Indica si tiene (1) o no (0) agenda online
+intervalo	Integer	Indica el intervalo de citas del dentista expresado en minutos
+habilitado	Bool	Indica si el dentista está (1) o no (0) habilitado
+contratos_sucursal	Array/Integer	Arreglo de IDs de las sucursales donde el dentista posee contrato habilitado
+horarios_sucursal	Array/Integer	Arreglo de IDs de las sucursales donde el dentista posee un horario configurado

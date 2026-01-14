@@ -1,0 +1,119 @@
+Create appointment
+POST
+https://services.leadconnectorhq.com/calendars/events/appointments
+Create appointment
+
+Requirements
+Scope(s)
+calendars/events.write
+Auth Method(s)
+OAuth Access Token
+Private Integration Token
+Token Type(s)
+Sub-Account Token
+Request
+Header Parameters
+Version
+string
+required
+Possible values: [2021-04-15]
+
+API Version
+
+application/json
+Bodyrequired
+title
+string
+Title
+
+Example:Test Event
+meetingLocationType
+string
+Meeting location type.
+
+If address is provided in the request body, the meetingLocationType defaults to custom.
+Possible values: [custom, zoom, gmeet, phone, address, ms_teams, google]
+
+Example:custom
+meetingLocationId
+string
+The unique identifier for the meeting location.
+
+This value can be found in calendar.locationConfigurationsor calendar.teamMembers[].locationConfigurations
+Default value: default
+Example:custom_0
+overrideLocationConfig
+boolean
+Flag to override location config
+
+false - If only meetingLocationId is provided
+true - If only meetingLocationType is provided
+Example:true
+appointmentStatus
+string
+Possible values: [new, confirmed, cancelled, showed, noshow, invalid]
+
+Example:confirmed
+assignedUserId
+string
+Assigned User Id
+
+Example:0007BWpSzSwfiuSl0tR2
+description
+string
+Appointment Description
+
+Example:Booking a call to discuss the project
+address
+string
+Appointment Address
+
+Example:Zoom
+ignoreDateRange
+boolean
+If set to true, the minimum scheduling notice and date range would be ignored
+
+Example:false
+toNotify
+boolean
+If set to false, the automations will not run
+
+Example:false
+ignoreFreeSlotValidation
+boolean
+If true the time slot validation would be avoided for any appointment creation (even the ignoreDateRange)
+
+Example:true
+rrule
+string
+RRULE as per the iCalendar (RFC 5545) specification for recurring events. DTSTART is not required, instance ids are calculated on the basis of startTime of the event. The rrule only be applied if ignoreFreeSlotValidation is true.
+
+calendarId
+string
+required
+Calendar Id
+
+Example:CVokAlI8fgw4WYWoCtQz
+locationId
+string
+required
+Location Id
+
+Example:C2QujeCh8ZnC7al2InWR
+contactId
+string
+required
+Contact Id
+
+Example:0007BWpSzSwfiuSl0tR2
+startTime
+string
+required
+Start Time
+
+Example:2021-06-23T03:30:00+05:30
+endTime
+string
+End Time
+
+Example:2021-06-23T04:30:00+05:30

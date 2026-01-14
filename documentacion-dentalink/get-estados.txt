@@ -1,0 +1,97 @@
+ /citas/estados
+Muestra el listado de todos los estados de cita.
+
+Ejemplo de solicitud:
+
+const url = 'https://api.dentalink.healthatom.com/api/v1/citas/estados';
+
+const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+        'Authorization': `Token ${token}`
+    }
+});
+
+const data = await response.json();
+console.log(data);
+Ejemplo de respuesta:
+
+{
+    "data": [
+        {
+            "id": 3,
+            "nombre": "Confirmado por teléfono",
+            "color": "#87bce4",
+            "reservado": 1,
+            "anulacion": 0,
+            "uso_interno": 0,
+            "habilitado": 1,
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/citas/estados/3",
+                    "method": "GET"
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "nombre": "Atendido",
+            "color": "#e8e8e8",
+            "reservado": 1,
+            "anulacion": 0,
+            "uso_interno": 0,
+            "habilitado": 1,
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/citas/estados/2",
+                    "method": "GET"
+                }
+            ]
+        },
+        {
+            "id": 1,
+            "nombre": "Anulado",
+            "color": "#f5b6a1",
+            "reservado": 1,
+            "anulacion": 1,
+            "uso_interno": 0,
+            "habilitado": 1,
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/citas/estados/1",
+                    "method": "GET"
+                }
+            ]
+        }
+    ]
+}
+HTTP/Request
+URI
+GET api/v1/citas/estados
+
+Parametros búsqueda (opcional)
+q={"columna1":{"operador1":"valor1"},"columna2":{"operador2":"valor2"},...,"columnaN":{"operadorN":"valorN"}}
+
+Columna	Tipo	Descripción
+nombre	String	Buscar estados de cita por nombre
+reservado	Bool	Buscar estados de cita por tipo reservado (1)
+anulacion	Bool	Buscar estados de cita por tipo anulación (1)
+uso_interno	Bool	Buscar estados de cita por tipo interno (1)
+habilitado	Bool	Filtrar según estados habilitados (1) o deshabilitados (0)
+Parametros orden (opcional)
+sort=columna1:[asc|desc],columna2:[asc|desc],...,columnaN:[asc|desc]
+
+El endpoint se puede ordenar de manera ascendente o descendente con las siguientes columnas:
+
+id
+HTTP/Response
+Atributos	Tipo de dato	Descripción
+id	Integer	ID del estado de cita
+nombre	String	Nombre del estado de cita
+reservado	Bool	Indica si el estado corresponde a un estado reservado del software (1) o no (0). Los estados reservados son aquellos que vienen creados por defecto en el software.
+anulacion	Bool	Indica si el estado corresponde a anulación de cita (1) o no (0)
+uso_interno	Bool	Indica si el estado corresponde a un estado de uso interno del software (1) o no (0). Los estados de tipo uso interno son aquellos de uso exclusivo del software y no es posible seleccionarlos manualmente.
+habilitado	Bool	Indica si el estado se encuentra habilitado (1) o no (0)

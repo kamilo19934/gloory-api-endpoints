@@ -1,0 +1,107 @@
+Create Contact
+POST
+https://services.leadconnectorhq.com/contacts/
+Please find the list of acceptable values for the country field here
+
+Requirements
+Scope(s)
+contacts.write
+Auth Method(s)
+OAuth Access Token
+Private Integration Token
+Token Type(s)
+Sub-Account Token
+Request
+Header Parameters
+Version
+string
+required
+Possible values: [2021-07-28]
+
+API Version
+
+application/json
+Bodyrequired
+firstName
+string
+nullable
+Example:Rosan
+lastName
+string
+nullable
+Example:Deo
+name
+string
+nullable
+Example:Rosan Deo
+email
+string
+nullable
+Example:rosan@deos.com
+locationId
+string
+required
+Example:ve9EPM428h8vShlRW1KT
+gender
+string
+Example:male
+phone
+string
+nullable
+Example:+1 888-888-8888
+address1
+string
+nullable
+Example:3535 1st St N
+city
+string
+nullable
+Example:Dolomite
+state
+string
+nullable
+Example:AL
+postalCode
+string
+Example:35061
+website
+string
+nullable
+Example:https://www.tesla.com
+timezone
+string
+nullable
+Example:America/Chihuahua
+dnd
+boolean
+Example:true
+dndSettings
+object
+inboundDndSettings
+object
+tags
+string[]
+Example:["nisi sint commodo amet","consequat"]
+customFields
+object[]
+source
+string
+Example:public api
+dateOfBirth
+object
+nullable
+The birth date of the contact. Supported formats: YYYY/MM/DD, MM/DD/YYYY, YYYY-MM-DD, MM-DD-YYYY, YYYY.MM.DD, MM.DD.YYYY, YYYY_MM_DD, MM_DD_YYYY
+
+Example:1990-09-25
+country
+string
+Example:US
+companyName
+string
+nullable
+Example:DGS VolMAX
+assignedTo
+string
+User's Id
+
+Example:y0BeYjuRIlDwsDcOHOJo

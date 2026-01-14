@@ -1,0 +1,64 @@
+Create Custom Field
+POST
+https://services.leadconnectorhq.com/locations/:locationId/customFields
+Create Custom Field
+
+Requirements
+Scope(s)
+locations/customFields.write
+Auth Method(s)
+OAuth Access Token
+Private Integration Token
+Token Type(s)
+Sub-Account Token
+Request
+Header Parameters
+Version
+string
+required
+Possible values: [2021-07-28]
+
+API Version
+
+Path Parameters
+locationId
+string
+required
+Location Id
+
+Example: ve9EPM428h8vShlRW1KT
+application/json
+Bodyrequired
+name
+string
+required
+Example:Custom Field
+dataType
+string
+required
+Example:TEXT
+placeholder
+string
+Example:Placeholder Text
+acceptedFormat
+string[]
+Example:[".pdf",".docx",".jpeg"]
+isMultipleFile
+boolean
+Example:false
+maxNumberOfFiles
+number
+Example:2
+textBoxListOptions
+object[]
+position
+number
+Default value: 0
+Example:0
+model
+string
+Model of the custom field you want to create
+
+Possible values: [contact, opportunity]
+
+Example:opportunity

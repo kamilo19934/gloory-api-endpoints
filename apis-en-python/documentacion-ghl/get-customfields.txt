@@ -1,0 +1,37 @@
+Get Custom Fields
+GET
+https://services.leadconnectorhq.com/locations/:locationId/customFields
+Get Custom Fields
+
+Requirements
+Scope(s)
+locations/customFields.readonly
+Auth Method(s)
+OAuth Access Token
+Private Integration Token
+Token Type(s)
+Sub-Account Token
+Request
+Header Parameters
+Version
+string
+required
+Possible values: [2021-07-28]
+
+API Version
+
+Path Parameters
+locationId
+string
+required
+Location Id
+
+Example: ve9EPM428h8vShlRW1KT
+Query Parameters
+model
+string
+Possible values: [contact, opportunity, all]
+
+Model of the custom field you want to retrieve
+
+Example: opportunity

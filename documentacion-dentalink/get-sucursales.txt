@@ -1,0 +1,77 @@
+GET /sucursales
+Muestra la información todos las sucursales de la clínica.
+
+Ejemplo de solicitud:
+
+const response = await fetch("https://api.dentalink.healthatom.com/api/v1/sucursales/", {
+    method: "GET",
+    headers: {
+        "Authorization": `Token ${token}`
+    }
+});
+
+const data = await response.json();
+console.log(data);
+Ejemplo de respuesta:
+
+{
+    "data": [
+        {
+            "id": 1,
+            "nombre": "NORTE",
+            "telefono": "1234567",
+            "ciudad": "Santiago",
+            "comuna": "Las Condes",
+            "direccion": "Orinoco 90.",
+            "habilitada": 1,
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/sucursales/1",
+                    "method": "GET"
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "nombre": "SUR",
+            "telefono": "34567890",
+            "ciudad": "SANTIAGO",
+            "comuna": "LAS CONDES",
+            "direccion": "Las Camelias 257",
+            "habilitada": 1,
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/sucursales/2",
+                    "method": "GET"
+                }
+            ]
+        }
+    ]
+}
+HTTP/Request
+URI
+GET api/v1/sucursales
+
+Parametros búsqueda (opcional)
+q={"columna1":{"operador1":"valor1"},"columna2":{"operador2":"valor2"},...,"columnaN":{"operadorN":"valorN"}}
+
+Columna	Tipo	Descripción
+nombre	String	Buscar sucursales por nombre
+habilitada	Bool	Filtrar según sucursales habilitadas (1) o deshabilitadas (0)
+Parametros orden (opcional)
+sort=columna1:[asc|desc],columna2:[asc|desc],...,columnaN:[asc|desc]
+
+El endpoint se puede ordenar de manera ascendente o descendente con las siguientes columnas:
+
+id
+HTTP/Response
+Atributos	Tipo de dato	Descripción
+id	Integer	ID de la sucursal
+nombre	String	Nombre de la sucursal
+telefono	String	Nº de teléfono de la sucursal
+ciudad	String	Ciudad de la sucursal
+comuna	String	Comuna (o distrito) de la sucursal
+direccion	String	Dirección de la sucursal
+habilitada	Bool	Indica si está habilitada (1) o no (0) la sucursal

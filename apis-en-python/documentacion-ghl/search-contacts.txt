@@ -1,0 +1,1098 @@
+The Contacts Search API enables users to search for contacts within your CRM system based on specified criteria. It offers extensive filtering, sorting, and pagination options to refine search results according to specific needs.
+
+
+
+Endpoint: POST /contacts/search 
+
+
+
+🔸 Request Body
+Parameter
+
+Type
+
+Required
+
+Description
+
+Example
+
+locationId 
+
+string
+
+Yes
+
+Location ID in which the search needs to be performed.
+
+5DP41231LkQsiKESj6rh
+
+page 
+
+number
+
+No
+
+The page number of results to retrieve. Used for standard pagination.
+
+1 
+
+ 
+
+ 
+
+ 
+
+⚠️ Note : When using searchAfter  parameter, page  should not be provided.
+
+ 
+
+pageLimit 
+
+number
+
+Yes
+
+The number of results to limit per page.
+
+20 
+
+searchAfter 
+
+array
+
+No
+
+Used for cursor-based pagination. This value is returned in the response of each document and defines where to start the next page from.
+
+[10, "ABC"] 
+
+ 
+
+ 
+
+ 
+
+⚠️ Note : Required for retrieving results beyond 10,000 records.
+
+ 
+
+filters 
+
+array
+
+No
+
+ 
+
+ 
+
+|---- group     
+
+ 
+
+ 
+
+Logical group operator for the filters. Must be either AND or OR.
+
+ 
+
+|---- filters 
+
+ 
+
+ 
+
+Array of filters or nested filter groups to be grouped together.
+
+ 
+
+|---- field       
+
+ 
+
+ 
+
+Name of the field to filter by.
+
+ 
+
+      |---- operator 
+
+ 
+
+ 
+
+Operator to apply for filtering.
+
+ 
+
+|---- value       
+
+ 
+
+ 
+
+Value for the filter.
+
+ 
+
+ 
+
+ 
+
+ 
+
+⚠️ Note : By default every filter in the filters  array is considered in AND logical group
+
+ 
+
+sort 
+
+array
+
+No
+
+Array of sorting criteria to apply for ordering search results.
+
+ 
+
+|---- field         
+
+ 
+
+ 
+
+Name of the field to sort by.
+
+ 
+
+|---- direction 
+
+ 
+
+ 
+
+Sorting direction (asc for ascending, desc for descending).
+
+ 
+
+query 
+
+string
+
+No
+
+The string you want to search for within your contacts. The results will depend on the searchable fields you’ve configured. 
+
+
+
+⚠️ Note: 
+
+Max query limit is 75 characters
+query runs filters / tests against the fields defined as searchable in the Custom Fields Settings tab. These searchable fields are customizable.
+
+For more information on how searchable fields work for contacts, please refer to this guide: 
+ GohighlevelSearching an Object Record
+  
+
+ 
+
+
+
+
+
+Pagination Limitations
+The API has the following pagination limitations:
+
+
+
+Standard Pagination (page & pageLimit)
+
+Can fetch a maximum of 10,000 records in total
+Use page  and pageLimit  parameters
+
+
+Note: 
+
+The API with Standard Pagination supports retrieving up to 10,000 records in total, with a maximum of 500 records per request. To access all records, use the page and pageLimit parameters to paginate through results. 
+
+For example, page=20 and pageLimit=500 will provide you the last set of result set using pagination API.
+
+
+
+
+
+Cursor-based Pagination (searchAfter & pageLimit)
+
+Required for accessing more than 10,000 records
+Use the searchAfter parameter returned in each response to fetch the next set of results
+Do not include the page  parameter when using searchAfter 
+This allows for efficient pagination through large result sets
+
+
+
+
+Sample Request Body
+{
+  "locationId": "5DP41231LkQsiKESj6rh",
+  "page": 1,
+  "pageLimit": 20,
+  "searchAfter": ["bs5qhs78vqhs", "2FP41231LkQsiKESj6eg"],
+  "filters": [
+    {
+       "field": "dnd",
+       "operator": "eq",
+       "value": true
+    },
+
+    {
+      "group": "OR",
+      "filters": [
+        {
+          "field": "firstNameLowerCase",
+          "operator": "eq",
+          "value": "alex"
+        },
+        {
+          "field": "lastNameLowerCase",
+          "operator": "eq",
+          "value": "peter"
+        }
+      ]
+    },
+    
+  ],
+  "sort": [
+    {
+      "field": "firstNameLowerCase",
+      "direction": "desc"
+    }
+  ],
+ "query":"tom"
+}
+
+Filters
+
+
+The Search Contacts API supports a variety of filters that allow users to refine their search results based on specific criteria. Filters can be applied individually or grouped together using logical operators (AND, OR) to create complex search queries each comprising three essential components:
+
+Field: Indicates the attribute or property of contacts by which the filter is applied. For example, contactName refers to the name of the contact.
+Operator: Specifies the operation to be performed on the field to filter contacts. Operators define the type of comparison or matching to be executed.
+Value: Represents the specific value against which the field is compared using the specified operator. This value varies based on the filter criteria and can be a string, number, or other data type relevant to the field being filtered.
+
+
+Sample Filter Payload
+{
+  "filters": [
+    {
+      "group": "AND",
+      "filters": [
+        {
+          "field": "firstNameLowerCase",
+          "operator": "contains",
+          "value": "John"
+        },
+        {
+          "field": "email",
+          "operator": "exists"
+        }
+      ]
+    },
+    {
+      "group": "OR",
+      "filters": [
+        {
+          "field": "city",
+          "operator": "eq",
+          "value": "New York"
+        },
+        {
+          "field": "state",
+          "operator": "eq",
+          "value": "California"
+        }
+      ]
+    }
+  ]
+}
+
+
+Supported Filter Operators
+Operator
+
+Definition
+
+Value Type
+
+Example
+
+Character
+ Limit
+
+
+
+eq
+
+Equals
+
+Number, String, Boolean
+
+
+
+75
+
+not_eq
+
+Not Equals
+
+Number, String, Boolean
+
+
+
+75
+
+contains
+
+Contains
+
+String (The contains operator does not support special characters.)
+
+
+
+75
+
+not_contains
+
+Not Contains
+
+String(The not_contains operator does not support special characters.)
+
+
+
+75
+
+exists
+
+Exists (has a value)
+
+Undefined 
+
+(Do not pass any value, just field and operator are enough)
+
+
+
+None
+
+not_exists
+
+Does not exist (no value)
+
+Undefined 
+
+(Do not pass any value, just field and operator are enough)
+
+
+
+None
+
+range
+
+Range
+
+
+
+
+
+
+
+
+
+
+
+75
+
+
+Supported Filter Fields
+Display Name
+
+Field Name
+
+Supported Operators
+
+Example
+
+Contact Information
+
+Contact Id
+
+id
+
+
+
+eq
+not_eq
+
+
+
+Contact Name
+
+contactName
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Address
+
+address
+
+eq
+
+not_eq
+
+contains
+
+not_contains
+
+exists
+
+not_exists
+
+
+
+Assigned
+
+assignedTo
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Business Name
+
+businessName
+
+eq
+
+not_eq
+
+contains
+
+not_contains
+
+exists
+
+not_exists
+
+
+
+City
+
+city
+
+eq
+
+not_eq
+
+contains
+
+not_contains
+
+exists
+
+not_exists
+
+
+
+Country
+
+country
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Company Name
+
+companyName
+
+eq
+
+not_eq
+
+contains
+
+not_contains
+
+exists
+
+not_exists
+
+
+
+Created At
+
+dateAdded
+
+range
+exists
+not_exists
+
+
+
+Updated At
+
+dateUpdated
+
+range
+exists
+not_exists
+
+
+
+DND
+
+dnd
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Email
+
+email
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+contains and not_contains are not yet supported
+
+
+
+Followers
+
+followers
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+First Name Lower Case
+
+firstNameLowerCase
+
+eq
+
+not_eq
+
+contains
+
+not_contains
+
+exists
+
+not_exists
+
+
+
+First Name (Without Lower Case)
+
+Coming soon!
+
+Coming soon!
+
+Coming soon!
+
+Last Name Lower Case
+
+lastNameLowerCase
+
+eq
+
+not_eq
+
+contains
+
+not_contains
+
+exists
+
+not_exists
+
+
+
+Last Name (Without Lower Case)
+
+Coming soon!
+
+Coming soon!
+
+Coming soon!
+
+Is Valid Whatsapp
+
+isValidWhatsapp
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Last Email Clicked Date
+
+lastEmailClickedDate
+
+range
+
+exists
+
+not_exists
+
+
+
+Last Email Opened Date
+
+lastEmailOpenedDate
+
+range
+
+exists
+
+not_exists
+
+
+
+Phone 
+
+(Do pass in the correct country code)
+
+Eg: +91701000000
+
+phone
+
+eq
+
+not_eq
+
+contains
+
+not_contains
+
+exists
+
+not_exists
+
+
+
+Postal Zip Code
+
+postalCode
+
+eq
+
+not_eq
+
+contains
+
+not_contains
+
+exists
+
+not_exists
+
+
+
+Source
+
+source
+
+eq
+
+not_eq
+
+contains
+
+not_contains
+
+exists
+
+not_exists
+
+
+
+State
+
+state
+
+eq
+
+not_eq
+
+contains
+
+not_contains
+
+exists
+
+not_exists
+
+
+
+Tags
+
+tags
+
+eq
+
+not_eq
+
+contains
+
+not_contains
+
+exists
+
+not_exists
+
+
+
+
+Timezone
+
+Eg: Pacific/Honolulu
+
+timezone
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Contact Type
+
+type
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Is Valid Email
+
+(Applicable only if Email Validation is enabled for the location)
+
+validEmail
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Website
+
+website
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+contains and not_contains are not yet supported
+
+
+
+Date of Birth
+
+dateOfBirth
+
+range
+exists
+not_exists
+
+
+
+Contact Activity
+
+Last Appointment - Confirmed/Open
+
+lastAppointment
+
+range
+
+exists
+
+not_exist
+
+
+
+Workflow (Active)
+
+activeWorkflows
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Workflow (Finished)
+
+finishedWorkflows
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Opportunity Information
+
+Pipeline
+
+field - opportunities 
+
+sub field - pipelineId
+
+field - nested
+
+
+
+sub field -
+
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Pipeline Stage
+
+field - opportunities 
+sub field - pipelineStageId
+
+field - nested
+
+sub field -
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Pipeline Status
+
+field - opportunities 
+sub field - status
+
+field - nested
+
+sub field -
+eq
+
+not_eq
+
+exists
+
+not_exists
+
+
+
+Opportunities Combination Filters
+
+You can combine 2 or more sub-fields under opportunities nested filters
+
+
+
+
+
+Custom Fields
+
+TEXT Type Field
+LARGE_TEXT Type Field
+SINGLE_OPTIONS Type Field
+RADIO Type Field
+PHONE Type Field
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+customFields.{{ custom_field_id }} 
+
+Eg: customFields.OBj007JIEmLP0IEHdV1l
+
+ 
+
+eq
+not_eq
+contains
+not_contains
+exists
+not_exists
+
+
+
+
+CHECKBOX Type Field
+MULTIPLE_OPTIONS Type Field
+eq
+not_eq
+exists
+not_exists
+
+
+
+
+NUMERICAL Type Field
+MONETORY Type Field
+range
+
+exists
+not_exists
+
+eq
+not_eq
+
+
+
+
+DATE Type Field
+range
+exists
+not_exists
+
+
+
+TEXTBOX_LIST Type Field
+customFields.{{ custom_field_id }}.{{ optionoption_id }} 
+Eg: customFields.OBj007JIEmLP0IEHdV1l.c1b70ec9-664f-400f-a3fc-6f7912c5e310
+
+
+eq
+not_eq
+contains
+not_contains
+
+exists
+not_exists
+
+
+
