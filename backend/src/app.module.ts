@@ -23,12 +23,17 @@ import { AppointmentConfirmationsModule } from './appointment-confirmations/appo
 
         if (isPostgres) {
           // PostgreSQL configuration
+          // DB_SYNC=true permite crear tablas en producción (usar solo la primera vez)
+          const shouldSync = configService.get('DB_SYNC') === 'true' || configService.get('NODE_ENV') !== 'production';
+          
           const config: any = {
             type: 'postgres',
             entities: [__dirname + '/**/*.entity{.ts,.js}'],
-            synchronize: configService.get('NODE_ENV') !== 'production',
+            synchronize: shouldSync,
             logging: configService.get('NODE_ENV') === 'development',
           };
+          
+          console.log(`📦 PostgreSQL - Synchronize: ${shouldSync}`);
 
           // Si hay DATABASE_URL, usarla (Railway/Render)
           const databaseUrl = configService.get('DATABASE_URL');
