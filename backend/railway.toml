@@ -1,7 +1,6 @@
 [build]
 builder = "nixpacks"
-# Skip secrets during build - they are only needed at runtime
-buildCommand = "npm ci && npm run build"
+buildCommand = "npm run build"
 
 [deploy]
 startCommand = "npm run start:prod"
