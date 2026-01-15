@@ -509,7 +509,7 @@ export class DentalinkService {
       fecha: params.fecha,
       hora_inicio: params.hora_inicio,
       duracion,
-      comentario: params.comentario || 'Cita agendada por Sistema',
+      comentario: params.comentario || 'Agendado por IA',
     };
 
     this.logger.log(`📤 Payload enviado a Dentalink: ${JSON.stringify(payloadCita)}`);

@@ -579,7 +579,7 @@ export class HealthAtomService {
               fecha: params.date,
               hora_inicio: params.startTime,
               duracion: duracion,
-              comentario: params.comment || 'Cita agendada por Sistema',
+              comentario: params.comment || 'Agendado por IA',
             }
           : {
               id_profesional: params.professionalId,
@@ -590,7 +590,7 @@ export class HealthAtomService {
               fecha: params.date,
               hora_inicio: params.startTime,
               duracion: duracion,
-              comentario: params.comment || 'Cita agendada por Sistema',
+              comentario: params.comment || 'Agendado por IA',
               videoconsulta: 0,
             };
 
