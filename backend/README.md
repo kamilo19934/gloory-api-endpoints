@@ -82,7 +82,10 @@ PORT=3001
 NODE_ENV=development
 DATABASE_PATH=./database.sqlite
 CORS_ORIGIN=http://localhost:3000
-DENTALINK_BASE_URL=https://api.dentalink.com/v1
+# Las URLs de Dentalink y MediLink ya están configuradas correctamente en el código
+# Solo sobrescribe si necesitas usar URLs personalizadas:
+# DENTALINK_BASE_URL=https://api.dentalink.healthatom.com/api/v1/
+# MEDILINK_BASE_URL=https://api.medilink2.healthatom.com/api/v5/
 ```
 
 ## Agregar Nuevos Endpoints

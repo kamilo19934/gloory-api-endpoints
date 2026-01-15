@@ -1,0 +1,66 @@
+GET /horariosdisponibles
+Muestra todos los bloques de horario disponibles de dentistas de una sucursal de la clínica.
+
+Ejemplo de solicitud:
+
+const url = "https://api.dentalink.healthatom.com/api/v1/horariosdisponibles/";
+
+const response = await fetch(url, {
+    method: "GET",
+    headers: {
+        "Authorization": `Token ${token}`,
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        "ids_dentista": [8, 13, 24],
+        "id_sucursal": 62,
+        "fecha_inicio": "2022-03-17",
+        "fecha_fin": "2022-03-18"
+    })
+});
+
+const data = await response.json();
+console.log(data);
+Ejemplo de respuesta:
+
+{
+    "data": {
+        "8": {
+            "2022-03-17": [
+                {
+                    "hora_inicio": "06:00:00",
+                    "hora_fin": "06:30:00",
+                    "intervalo": 30
+                },
+                {
+                    "hora_inicio": "06:30:00",
+                    "hora_fin": "07:00:00",
+                    "intervalo": 30
+                },
+                {
+                    "hora_inicio": "17:30:00",
+                    "hora_fin": "18:00:00",
+                    "intervalo": 30
+                }
+            ],
+            "2022-03-18": []
+        }
+    }
+}
+HTTP/Request
+URI
+GET api/v1/horariosdisponibles
+
+Parametros búsqueda (obligatorio)
+Este endpoint requiere que se especifique un arreglo de IDs Dentista, un ID Sucursal, fecha de inicio y fecha fin.
+El máximo de ids dentista que soporta es 100 y el plazo máx entre fecha de inicio y fecha fin es de 2 semanas.
+
+Columna	Tipo	Descripción
+ids_dentista	Array/Integer	Buscar horarios de dentistas.
+id_sucursal	Integer	Buscar horarios en sucursal.
+fecha_inicio	String	Fecha de inicio de las disponibilidades (yyyy-mm-dd)
+fecha_fin	String	Fecha fin de las disponibilidades (yyyy-mm-dd)
+HTTP/Response
+Se retorna un objeto JSON de índices que corresponde al id dentista, este índice contiene los bloques de disponibilidad en arreglos cuyo índices es la fecha desde la fecha de inicio hasta la fecha fin con los atributos hora_inicio, hora_fin e intervalo en minutos.
+
+Si un dentista no tiene horario su id no vendrá como índice en la respuesta que retorna el endpoint.

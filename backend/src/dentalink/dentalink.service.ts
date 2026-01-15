@@ -32,7 +32,26 @@ export class DentalinkService {
     const client = await this.clientsService.findOne(clientId);
     const apiKey = client.apiKey;
     const timezone = client.timezone;
-    const baseURL = process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/';
+    
+    // Detectar tipo de integración
+    const dentalinkIntegration = client.getIntegration('dentalink');
+    const medilinkIntegration = client.getIntegration('medilink');
+    const dualIntegration = client.getIntegration('dentalink_medilink');
+    
+    let baseURL = process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/';
+    let apiType = 'dentalink'; // default
+    
+    if (medilinkIntegration) {
+      baseURL = 'https://api.medilink2.healthatom.com/api/v5/';
+      apiType = 'medilink';
+      this.logger.log('🔵 Usando API Medilink');
+    } else if (dualIntegration) {
+      // Intentar Dentalink primero, luego Medilink
+      apiType = 'dual';
+      this.logger.log('🔵 Modo dual: intentará Dentalink y Medilink');
+    } else {
+      this.logger.log('🔵 Usando API Dentalink');
+    }
 
     // Validaciones
     if (!params.ids_profesionales || params.ids_profesionales.length === 0) {
@@ -99,43 +118,111 @@ export class DentalinkService {
         `🔄 Intento ${intentoActual} de ${intentosMaximos}: Buscando del ${fechaInicio.format('YYYY-MM-DD')} al ${fechaFin.format('YYYY-MM-DD')}`,
       );
 
-      // Preparar body JSON
-      const bodyData = {
-        ids_dentista: params.ids_profesionales,
-        id_sucursal: params.id_sucursal,
-        fecha_inicio: fechaInicio.format('YYYY-MM-DD'),
-        fecha_fin: fechaFin.format('YYYY-MM-DD'),
-      };
+      // Preparar body JSON según el tipo de API
+      let bodyData: any;
+      if (apiType === 'medilink') {
+        bodyData = {
+          ids_profesional: params.ids_profesionales,
+          id_sucursal: params.id_sucursal,
+          fecha_inicio: fechaInicio.format('YYYY-MM-DD'),
+          fecha_fin: fechaFin.format('YYYY-MM-DD'),
+        };
+      } else {
+        bodyData = {
+          ids_dentista: params.ids_profesionales,
+          id_sucursal: params.id_sucursal,
+          fecha_inicio: fechaInicio.format('YYYY-MM-DD'),
+          fecha_fin: fechaFin.format('YYYY-MM-DD'),
+        };
+      }
 
       this.logger.log(`📋 Body JSON enviado: ${JSON.stringify(bodyData)}`);
 
-      // Intentar con diferentes URLs
-      const urlsToTry = [`${baseURL}horariosdisponibles/`, `${baseURL}horariosdisponibles`];
       let response = null;
       let urlUsado = null;
+      let apiUsada = null;
 
-      for (const url of urlsToTry) {
-        try {
-          this.logger.log(`🌐 Intentando URL: ${url}`);
-          response = await axios.get(url, { headers, data: bodyData });
-          this.logger.log(`📊 Status Code: ${response.status}`);
+      // Si es modo dual, intentar ambas APIs
+      const apisToTry = apiType === 'dual' 
+        ? [
+            { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/', paramKey: 'ids_dentista' },
+            { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/', paramKey: 'ids_profesional' }
+          ]
+        : [{ type: apiType, baseUrl: baseURL, paramKey: apiType === 'medilink' ? 'ids_profesional' : 'ids_dentista' }];
 
-          if (response.status !== 404) {
-            urlUsado = url;
-            break;
+      for (const api of apisToTry) {
+        const urlsToTry = [`${api.baseUrl}horariosdisponibles/`, `${api.baseUrl}horariosdisponibles`];
+        
+        // Preparar datos según el tipo de API
+        const requestData = {
+          ...bodyData,
+          [api.paramKey]: params.ids_profesionales,
+        };
+        delete requestData.ids_dentista;
+        delete requestData.ids_profesional;
+        requestData[api.paramKey] = params.ids_profesionales;
+
+        this.logger.log(`🔍 Intentando API ${api.type.toUpperCase()} con parámetro ${api.paramKey}`);
+
+        for (const url of urlsToTry) {
+          try {
+            this.logger.log(`🌐 Intentando URL: ${url}`);
+            
+            // Dentalink y MediLink usan GET pero de forma diferente:
+            // - Dentalink: GET con body (en campo 'data')
+            // - MediLink: GET con query parameters
+            if (api.type === 'dentalink') {
+              // Dentalink: GET con body en el campo 'data'
+              this.logger.log(`📋 Dentalink - Enviando body en GET: ${JSON.stringify(requestData)}`);
+              response = await axios.get(url, { 
+                headers,
+                data: requestData  // Body en GET para Dentalink
+              });
+            } else {
+              // MediLink: GET con query parameters
+              const queryParams = new URLSearchParams();
+              params.ids_profesionales.forEach((id: number) => 
+                queryParams.append('ids_profesional[]', id.toString())
+              );
+              queryParams.append('id_sucursal', params.id_sucursal.toString());
+              queryParams.append('fecha_inicio', requestData.fecha_inicio);
+              queryParams.append('fecha_fin', requestData.fecha_fin);
+              
+              this.logger.log(`📋 MediLink - Enviando query params: ${queryParams.toString()}`);
+              response = await axios.get(`${url}?${queryParams.toString()}`, { headers });
+            }
+            
+            this.logger.log(`📊 Status Code: ${response.status}`);
+
+            if (response.status === 200) {
+              urlUsado = url;
+              apiUsada = api.type;
+              this.logger.log(`✅ Éxito con ${api.type.toUpperCase()}`);
+              break;
+            }
+          } catch (error) {
+            const statusCode = error.response?.status;
+            const errorMsg = error.response?.data || error.message;
+            this.logger.warn(`⚠️ Error con ${url}: ${error.message} (Status: ${statusCode})`);
+            if (statusCode && errorMsg) {
+              this.logger.warn(`📄 Respuesta del servidor: ${JSON.stringify(errorMsg)}`);
+            }
           }
-        } catch (error) {
-          if (error.response?.status !== 404) {
-            this.logger.error(`❌ Error al conectar con ${url}: ${error.message}`);
-          }
+        }
+
+        if (response && response.status === 200) {
+          break; // Salir del loop de APIs si ya encontramos una exitosa
         }
       }
 
-      if (!response || response.status === 404) {
-        throw new HttpException('Endpoint horariosdisponibles no encontrado', HttpStatus.NOT_FOUND);
+      if (!response || response.status !== 200) {
+        throw new HttpException(
+          `No se pudo conectar con ninguna API disponible. Verifica las credenciales y configuración del cliente.`,
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
       }
 
-      this.logger.log(`✅ URL exitosa: ${urlUsado}`);
+      this.logger.log(`✅ API exitosa: ${apiUsada?.toUpperCase()} - URL: ${urlUsado}`);
 
       if (response.status === 200) {
         const dataResponse = response.data;
