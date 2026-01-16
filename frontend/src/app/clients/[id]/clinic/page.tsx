@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
@@ -37,13 +37,7 @@ export default function ClinicConfigPage() {
   const [branchProfessionals, setBranchProfessionals] = useState<{ [key: number]: Professional[] }>({});
   const [loadingBranch, setLoadingBranch] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (clientId) {
-      loadData();
-    }
-  }, [clientId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       // Cargar todo incluyendo desactivados para el panel admin
@@ -63,7 +57,13 @@ export default function ClinicConfigPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
+
+  useEffect(() => {
+    if (clientId) {
+      loadData();
+    }
+  }, [clientId, loadData]);
 
   const handleSync = async () => {
     try {

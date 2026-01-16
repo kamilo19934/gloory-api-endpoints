@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
@@ -124,7 +124,7 @@ export default function AppointmentConfirmationsPage() {
     if (clientId) {
       loadData();
     }
-  }, [clientId]);
+  }, [clientId, loadData]);
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -144,7 +144,7 @@ export default function AppointmentConfirmationsPage() {
     };
   }, [isDropdownOpen]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [clientData, configsData, pendingData, statesData] = await Promise.all([
@@ -163,7 +163,7 @@ export default function AppointmentConfirmationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
 
   const handleCreateConfig = async () => {
     if (!formData.name || !formData.ghlCalendarId) {
@@ -480,7 +480,7 @@ export default function AppointmentConfirmationsPage() {
                 Estado de Confirmación de Citas
               </h2>
               <p className="text-sm text-gray-600">
-                Configura el estado que se aplicará al usar el endpoint "Confirmar Cita"
+                Configura el estado que se aplicará al usar el endpoint &quot;Confirmar Cita&quot;
               </p>
             </div>
             <button
@@ -591,7 +591,7 @@ export default function AppointmentConfirmationsPage() {
                 <div className="flex items-center space-x-2 py-2">
                   <FiAlertCircle className="text-amber-500" />
                   <span className="text-sm text-amber-700">
-                    No configurado - El endpoint "Confirmar Cita" no estará disponible
+                    No configurado - El endpoint &quot;Confirmar Cita&quot; no estará disponible
                   </span>
                 </div>
               )}
