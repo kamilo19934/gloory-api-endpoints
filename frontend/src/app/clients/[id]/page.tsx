@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
@@ -19,13 +19,7 @@ export default function ClientDetailPage() {
   const [testing, setTesting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    if (clientId) {
-      loadClientData();
-    }
-  }, [clientId]);
-
-  const loadClientData = async () => {
+  const loadClientData = useCallback(async () => {
     try {
       setLoading(true);
       const [clientData, endpointsData] = await Promise.all([
@@ -40,7 +34,13 @@ export default function ClientDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
+
+  useEffect(() => {
+    if (clientId) {
+      loadClientData();
+    }
+  }, [clientId, loadClientData]);
 
   const handleTestConnection = async () => {
     try {

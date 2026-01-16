@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
@@ -24,13 +24,7 @@ export default function EditClientPage() {
     isActive: true,
   });
 
-  useEffect(() => {
-    if (clientId) {
-      loadClient();
-    }
-  }, [clientId]);
-
-  const loadClient = async () => {
+  const loadClient = useCallback(async () => {
     try {
       setLoading(true);
       const client = await clientsApi.getById(clientId);
@@ -48,7 +42,13 @@ export default function EditClientPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
+
+  useEffect(() => {
+    if (clientId) {
+      loadClient();
+    }
+  }, [clientId, loadClient]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,7 +182,7 @@ export default function EditClientPage() {
                 min="1"
               />
               <p className="text-xs text-gray-500 mt-1">
-                ID del estado que se usará para confirmar citas (requerido para usar el endpoint "Confirmar Cita"). 
+                ID del estado que se usará para confirmar citas (requerido para usar el endpoint &quot;Confirmar Cita&quot;). 
                 Ejemplo: 7 = Confirmado, 8 = Confirmado por Bookys. Puedes crear un estado personalizado en Dentalink/MediLink.
               </p>
             </div>

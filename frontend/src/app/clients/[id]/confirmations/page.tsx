@@ -603,9 +603,9 @@ export default function AppointmentConfirmationsPage() {
               <div className="flex items-start">
                 <FiCheckCircle className="text-green-600 mt-0.5 mr-2 flex-shrink-0" />
                 <p className="text-sm text-green-800">
-                  <strong>Listo para usar:</strong> El endpoint "Confirmar Cita" está configurado correctamente. 
-                  Cuando lo uses, las citas cambiarán automáticamente al estado "{appointmentStates.find(s => s.id === client.confirmationStateId)?.nombre}" 
-                  y se agregará el comentario "Confirmado por Bookys".
+                  <strong>Listo para usar:</strong> El endpoint &quot;Confirmar Cita&quot; está configurado correctamente. 
+                  Cuando lo uses, las citas cambiarán automáticamente al estado &quot;{appointmentStates.find(s => s.id === client.confirmationStateId)?.nombre}&quot; 
+                  y se agregará el comentario &quot;Confirmado por Bookys&quot;.
                 </p>
               </div>
             </div>
