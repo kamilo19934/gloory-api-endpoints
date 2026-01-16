@@ -120,6 +120,27 @@ export default function AppointmentConfirmationsPage() {
     order: 1,
   });
 
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [clientData, configsData, pendingData, statesData] = await Promise.all([
+        clientsApi.getById(clientId),
+        appointmentConfirmationsApi.getConfigs(clientId),
+        appointmentConfirmationsApi.getPending(clientId),
+        appointmentConfirmationsApi.getAppointmentStates(clientId),
+      ]);
+      setClient(clientData);
+      setConfigs(configsData);
+      setPending(pendingData);
+      setAppointmentStates(statesData);
+    } catch (error) {
+      toast.error('Error al cargar los datos');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId]);
+
   useEffect(() => {
     if (clientId) {
       loadData();
@@ -143,27 +164,6 @@ export default function AppointmentConfirmationsPage() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isDropdownOpen]);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [clientData, configsData, pendingData, statesData] = await Promise.all([
-        clientsApi.getById(clientId),
-        appointmentConfirmationsApi.getConfigs(clientId),
-        appointmentConfirmationsApi.getPending(clientId),
-        appointmentConfirmationsApi.getAppointmentStates(clientId),
-      ]);
-      setClient(clientData);
-      setConfigs(configsData);
-      setPending(pendingData);
-      setAppointmentStates(statesData);
-    } catch (error) {
-      toast.error('Error al cargar los datos');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  }, [clientId]);
 
   const handleCreateConfig = async () => {
     if (!formData.name || !formData.ghlCalendarId) {
