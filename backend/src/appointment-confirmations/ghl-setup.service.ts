@@ -53,6 +53,12 @@ export class GHLSetupService {
       model: 'contact',
     },
     {
+      name: 'rut',
+      dataType: 'TEXT',
+      placeholder: 'RUT del paciente',
+      model: 'contact',
+    },
+    {
       name: 'for_confirmation',
       dataType: 'TEXT',
       placeholder: 'Marcado para confirmación (true/false)',

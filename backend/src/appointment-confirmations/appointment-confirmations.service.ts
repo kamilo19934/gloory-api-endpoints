@@ -325,6 +325,7 @@ export class AppointmentConfirmationsService {
                     id_paciente: apt.id_paciente,
                     nombre_paciente: apt.nombre_paciente,
                     nombre_social_paciente: apt.nombre_social_paciente,
+                    rut_paciente: apt.rut_paciente,
                     email_paciente: apt.email_paciente,
                     telefono_paciente: apt.telefono_paciente,
                     id_tratamiento: apt.id_tratamiento,
@@ -581,6 +582,7 @@ export class AppointmentConfirmationsService {
         { key: 'nombre_dentista', field_value: appointmentData.nombre_dentista },
         { key: 'id_sucursal', field_value: String(appointmentData.id_sucursal) },
         { key: 'nombre_sucursal', field_value: appointmentData.nombre_sucursal },
+        { key: 'rut', field_value: appointmentData.rut_paciente || '' },
         { key: 'for_confirmation', field_value: 'true' },
       ],
     };
@@ -645,35 +647,140 @@ export class AppointmentConfirmationsService {
   }
 
   /**
-   * Obtiene los estados de cita disponibles en Dentalink
+   * Obtiene los estados de cita disponibles en Dentalink/MediLink
    */
   async getAppointmentStates(clientId: string): Promise<any[]> {
     const client = await this.clientsService.findOne(clientId);
-    const baseURL = process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/';
+    
+    // Determinar qué API usar
+    const hasDentalinkMedilink = client.integrations?.some(
+      (i) => i.integrationType === 'dentalink_medilink' && i.isEnabled,
+    );
+
+    const apiType = hasDentalinkMedilink ? 'dual' : 'dentalink';
     
     const headers = {
       Authorization: `Token ${client.apiKey}`,
       'Content-Type': 'application/json',
     };
 
-    try {
-      this.logger.log('🔍 Obteniendo estados de cita de Dentalink');
-      
-      const response = await axios.get(`${baseURL}citas/estados`, { headers });
-      
-      if (response.status === 200) {
-        const states = response.data?.data || [];
-        this.logger.log(`✅ Obtenidos ${states.length} estados de cita`);
+    const apisToTry = apiType === 'dual'
+      ? [
+          { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' },
+          { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' }
+        ]
+      : [{ type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' }];
+
+    const allStates: any[] = [];
+    const seenIds = new Set<number>();
+
+    for (const api of apisToTry) {
+      try {
+        this.logger.log(`🔍 Obteniendo estados de cita de ${api.type.toUpperCase()}`);
         
-        // Filtrar solo estados habilitados y no de uso interno
-        return states.filter((state: any) => state.habilitado === 1 && state.uso_interno === 0);
+        const response = await axios.get(`${api.baseUrl}citas/estados`, { headers });
+        
+        if (response.status === 200) {
+          const states = response.data?.data || [];
+          this.logger.log(`✅ Obtenidos ${states.length} estados de ${api.type.toUpperCase()}`);
+          
+          // Agregar estados únicos (por ID) que estén habilitados
+          for (const state of states) {
+            if (state.habilitado === 1 && !seenIds.has(state.id)) {
+              seenIds.add(state.id);
+              allStates.push(state);
+            }
+          }
+        }
+      } catch (error) {
+        this.logger.warn(`⚠️ Error obteniendo estados de ${api.type}: ${error.message}`);
       }
-      
-      return [];
-    } catch (error) {
-      this.logger.error(`❌ Error obteniendo estados de cita: ${error.message}`);
-      throw error;
     }
+
+    if (allStates.length === 0) {
+      this.logger.error('❌ No se pudieron obtener estados de ninguna API');
+      throw new Error('No se pudieron obtener los estados de cita');
+    }
+
+    this.logger.log(`✅ Total de estados únicos: ${allStates.length}`);
+    return allStates;
+  }
+
+  /**
+   * Crea un estado de cita personalizado "Confirmado por Bookys"
+   */
+  async createBookysConfirmationState(clientId: string): Promise<any> {
+    const client = await this.clientsService.findOne(clientId);
+    
+    // Determinar qué API usar
+    const hasDentalinkMedilink = client.integrations?.some(
+      (i) => i.integrationType === 'dentalink_medilink' && i.isEnabled,
+    );
+
+    const apiType = hasDentalinkMedilink ? 'dual' : 'dentalink';
+    
+    const headers = {
+      Authorization: `Token ${client.apiKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    const stateData = {
+      nombre: 'Confirmado por Bookys',
+      color: '#10B981', // Verde (Tailwind green-500)
+      anulacion: 0,
+    };
+
+    const apisToTry = apiType === 'dual'
+      ? [
+          { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' },
+          { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' }
+        ]
+      : [{ type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' }];
+
+    // Primero verificar si ya existe
+    const existingStates = await this.getAppointmentStates(clientId);
+    const existingBookysState = existingStates.find(
+      (s: any) => s.nombre.toLowerCase().includes('confirmado por bookys')
+    );
+
+    if (existingBookysState) {
+      this.logger.log(`✅ El estado "Confirmado por Bookys" ya existe con ID ${existingBookysState.id}`);
+      return {
+        alreadyExists: true,
+        state: existingBookysState,
+        message: 'El estado "Confirmado por Bookys" ya existe',
+      };
+    }
+
+    // Intentar crear en la primera API disponible
+    for (const api of apisToTry) {
+      try {
+        this.logger.log(`🔄 Creando estado "Confirmado por Bookys" en ${api.type.toUpperCase()}`);
+        
+        const response = await axios.post(`${api.baseUrl}citas/estados`, stateData, { headers });
+        
+        if (response.status === 201 || response.status === 200) {
+          const newState = response.data?.data;
+          this.logger.log(`✅ Estado creado exitosamente en ${api.type.toUpperCase()} con ID ${newState.id}`);
+          
+          return {
+            alreadyExists: false,
+            state: newState,
+            message: `Estado "Confirmado por Bookys" creado exitosamente en ${api.type}`,
+            apiUsed: api.type,
+          };
+        }
+      } catch (error) {
+        this.logger.error(`❌ Error creando estado en ${api.type}: ${error.message}`);
+        
+        // Si es el último intento, lanzar error
+        if (api === apisToTry[apisToTry.length - 1]) {
+          throw new Error(`No se pudo crear el estado en ninguna API: ${error.message}`);
+        }
+      }
+    }
+
+    throw new Error('No se pudo crear el estado "Confirmado por Bookys"');
   }
 
   /**

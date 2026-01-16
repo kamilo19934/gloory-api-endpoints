@@ -17,6 +17,7 @@ import { SearchUserDto } from './dto/search-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ScheduleAppointmentDto } from './dto/schedule-appointment.dto';
 import { CancelAppointmentDto } from './dto/cancel-appointment.dto';
+import { ConfirmAppointmentDto } from './dto/confirm-appointment.dto';
 import { GetTreatmentsDto } from './dto/get-treatments.dto';
 
 @Controller('clients/:clientId')
@@ -96,6 +97,15 @@ export class DentalinkController {
     @Body() scheduleAppointmentDto: ScheduleAppointmentDto,
   ) {
     return await this.dentalinkService.scheduleAppointment(clientId, scheduleAppointmentDto);
+  }
+
+  @Post('appointments/confirm')
+  @HttpCode(HttpStatus.OK)
+  async confirmAppointment(
+    @Param('clientId') clientId: string,
+    @Body() confirmAppointmentDto: ConfirmAppointmentDto,
+  ) {
+    return await this.dentalinkService.confirmAppointment(clientId, confirmAppointmentDto);
   }
 
   @Post('appointments/cancel')

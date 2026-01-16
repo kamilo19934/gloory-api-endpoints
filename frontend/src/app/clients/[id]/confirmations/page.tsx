@@ -264,7 +264,7 @@ export default function AppointmentConfirmationsPage() {
   };
 
   const handleSetupGHL = async () => {
-    if (!confirm('¿Configurar custom fields en GoHighLevel? Esto creará los 7 custom fields necesarios si no existen.')) {
+    if (!confirm('¿Configurar custom fields en GoHighLevel? Esto creará los 8 custom fields necesarios si no existen.')) {
       return;
     }
 
@@ -445,7 +445,7 @@ export default function AppointmentConfirmationsPage() {
                       Configuración de GoHighLevel
                     </p>
                     <p className="text-sm text-purple-800">
-                      Asegúrate de que los 7 custom fields necesarios estén configurados en GHL antes de usar las confirmaciones.
+                      Asegúrate de que los 8 custom fields necesarios estén configurados en GHL antes de usar las confirmaciones.
                     </p>
                   </div>
                 </div>
@@ -467,6 +467,146 @@ export default function AppointmentConfirmationsPage() {
                     Configurar
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Estado de Confirmación para endpoint "Confirmar Cita" */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-gray-900 mb-1">
+                Estado de Confirmación de Citas
+              </h2>
+              <p className="text-sm text-gray-600">
+                Configura el estado que se aplicará al usar el endpoint "Confirmar Cita"
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  const result = await appointmentConfirmationsApi.createBookysConfirmationState(clientId);
+                  
+                  if (result.alreadyExists) {
+                    toast.success(`El estado ya existe (ID: ${result.state.id})`);
+                  } else {
+                    toast.success(`Estado "${result.state.nombre}" creado exitosamente (ID: ${result.state.id})`);
+                  }
+                  
+                  // Recargar datos para mostrar el nuevo estado
+                  await loadData();
+                  
+                  // Seleccionar automáticamente el estado creado
+                  await clientsApi.update(clientId, { confirmationStateId: result.state.id });
+                  await loadData();
+                  
+                } catch (error: any) {
+                  toast.error(error.response?.data?.message || 'Error al crear el estado');
+                  console.error(error);
+                }
+              }}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              title="Crea automáticamente el estado 'Confirmado por Bookys'"
+            >
+              <FiPlus className="mr-2" />
+              Crear Estado Bookys
+            </button>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
+            <div className="flex items-start">
+              <FiAlertCircle className="text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
+              <p className="text-sm text-amber-800">
+                Este estado se usa cuando confirmas una cita a través del endpoint <code className="bg-amber-100 px-1.5 py-0.5 rounded">POST /appointments/confirm</code>. 
+                Si no lo configuras, el endpoint no estará disponible.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estado de Confirmación
+              </label>
+              <select
+                value={client.confirmationStateId || ''}
+                onChange={async (e) => {
+                  const value = e.target.value ? parseInt(e.target.value) : undefined;
+                  try {
+                    await clientsApi.update(clientId, { confirmationStateId: value });
+                    toast.success('Estado de confirmación actualizado');
+                    await loadData();
+                  } catch (error: any) {
+                    toast.error(error.response?.data?.message || 'Error al actualizar');
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Sin configurar</option>
+                {appointmentStates.map((state) => {
+                  const colors = getImprovedColors(state.color);
+                  return (
+                    <option key={state.id} value={state.id}>
+                      {state.nombre} (ID: {state.id})
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Selecciona el estado que se aplicará al confirmar citas
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estado Actual
+              </label>
+              {client.confirmationStateId ? (
+                (() => {
+                  const currentState = appointmentStates.find(s => s.id === client.confirmationStateId);
+                  if (currentState) {
+                    const colors = getImprovedColors(currentState.color);
+                    return (
+                      <div className="flex items-center space-x-3">
+                        <span
+                          className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium"
+                          style={{ backgroundColor: colors.bg, color: colors.text }}
+                        >
+                          {currentState.nombre}
+                        </span>
+                        <span className="text-sm text-gray-600">
+                          (ID: {currentState.id})
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="text-sm text-gray-500 py-2">
+                      Estado no encontrado
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="flex items-center space-x-2 py-2">
+                  <FiAlertCircle className="text-amber-500" />
+                  <span className="text-sm text-amber-700">
+                    No configurado - El endpoint "Confirmar Cita" no estará disponible
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {client.confirmationStateId && (
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+              <div className="flex items-start">
+                <FiCheckCircle className="text-green-600 mt-0.5 mr-2 flex-shrink-0" />
+                <p className="text-sm text-green-800">
+                  <strong>Listo para usar:</strong> El endpoint "Confirmar Cita" está configurado correctamente. 
+                  Cuando lo uses, las citas cambiarán automáticamente al estado "{appointmentStates.find(s => s.id === client.confirmationStateId)?.nombre}" 
+                  y se agregará el comentario "Confirmado por Bookys".
+                </p>
               </div>
             </div>
           )}

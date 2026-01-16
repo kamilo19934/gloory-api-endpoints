@@ -130,6 +130,7 @@ export class ClientsService {
     if (updateClientDto.ghlAccessToken !== undefined) client.ghlAccessToken = updateClientDto.ghlAccessToken;
     if (updateClientDto.ghlCalendarId !== undefined) client.ghlCalendarId = updateClientDto.ghlCalendarId;
     if (updateClientDto.ghlLocationId !== undefined) client.ghlLocationId = updateClientDto.ghlLocationId;
+    if (updateClientDto.confirmationStateId !== undefined) client.confirmationStateId = updateClientDto.confirmationStateId;
 
     await this.clientsRepository.save(client);
 

@@ -1,11 +1,12 @@
 'use client';
 
-import { EndpointDefinition, EndpointArgument } from '@/lib/api';
-import { FiCopy, FiCheck, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { EndpointDefinition, EndpointArgument, Client } from '@/lib/api';
+import { FiCopy, FiCheck, FiChevronDown, FiChevronUp, FiAlertTriangle } from 'react-icons/fi';
 import { useState } from 'react';
 
 interface EndpointCardProps {
   endpoint: EndpointDefinition;
+  client?: Client;
 }
 
 const methodColors: Record<string, string> = {
@@ -57,7 +58,7 @@ function ArgumentRow({ arg }: { arg: EndpointArgument }) {
   );
 }
 
-export default function EndpointCard({ endpoint }: EndpointCardProps) {
+export default function EndpointCard({ endpoint, client }: EndpointCardProps) {
   const [copied, setCopied] = useState(false);
   const [showArguments, setShowArguments] = useState(false);
 
@@ -68,6 +69,12 @@ export default function EndpointCard({ endpoint }: EndpointCardProps) {
   };
 
   const hasArguments = endpoint.arguments && endpoint.arguments.length > 0;
+  
+  // Verificar si requiere configuración y no está configurado
+  const requiresConfigWarning = endpoint.requiresConfig && 
+    endpoint.configField && 
+    client && 
+    !client[endpoint.configField as keyof Client];
 
   return (
     <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
@@ -84,8 +91,22 @@ export default function EndpointCard({ endpoint }: EndpointCardProps) {
             <h3 className="text-lg font-semibold text-gray-900">
               {endpoint.name}
             </h3>
+            {requiresConfigWarning && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-md" title="Este endpoint requiere configuración adicional">
+                <FiAlertTriangle className="w-4 h-4 text-amber-600" />
+                <span className="text-xs font-medium text-amber-700">Requiere configuración</span>
+              </div>
+            )}
           </div>
         </div>
+
+        {requiresConfigWarning && (
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
+            <p className="text-sm text-amber-800">
+              ⚠️ Este endpoint requiere que configures el <strong>Estado de Confirmación</strong> en la configuración del cliente antes de poder usarlo.
+            </p>
+          </div>
+        )}
 
         <p className="text-sm text-gray-600 mb-4">{endpoint.description}</p>
 

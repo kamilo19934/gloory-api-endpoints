@@ -1,0 +1,58 @@
+POST /citas/estados
+Permite crear un estado de cita.
+
+Ejemplo de solicitud:
+
+const url = 'https://api.dentalink.healthatom.com/api/v1/citas/estados/';
+
+const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+        'Authorization': `Token ${token}`
+    },
+    body: JSON.stringify({
+        nombre: 'Confirmado',
+        color: '#ba7958',
+        anulacion: 0
+    })
+});
+
+const data = await response.json();
+console.log(data);
+Ejemplo de respuesta:
+
+{
+    "data": {
+        "id": 28,
+        "nombre": "Confirmado",
+        "color": "#ba7958",
+        "reservado": 0,
+        "anulacion": 0,
+        "uso_interno": 0,
+        "habilitado": 1,
+        "links": [
+            {
+                "rel": "self",
+                "href": "https://api.dentalink.healthatom.com/api/v1/citas/estados/28",
+                "method": "GET"
+            }
+        ]
+    }
+}
+HTTP/Request
+URI
+POST api/v1/citas/estados
+
+Body
+Parámetro	Tipo de dato	Descripción
+nombre	String	Nombre del estado
+color	String	(Opcional) Código hexadecimal del color asociado al estado
+anulacion	Bool	Indica si el estado es de anulación de citas (1) o no (0)
+HTTP/Response
+Atributos	Tipo de dato	Descripción
+id	Integer	ID del estado de cita
+nombre	String	Nombre del estado de cita
+reservado	Bool	Indica si el estado corresponde a un estado reservado del software (1) o no (0). Los estados reservados son aquellos que vienen creados por defecto en el software.
+anulacion	Bool	Indica si el estado corresponde a anulación de cita (1) o no (0)
+uso_interno	Bool	Indica si el estado corresponde a un estado de uso interno del software (1) o no (0). Los estados de tipo uso interno son aquellos de uso exclusivo del software y no es posible seleccionarlos manualmente.
+habilitado	Bool	Indica si el estado se encuentra habilitado (1) o no (0)

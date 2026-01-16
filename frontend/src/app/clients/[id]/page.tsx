@@ -210,7 +210,7 @@ export default function ClientDetailPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {endpoints.map((endpoint) => (
-            <EndpointCard key={endpoint.id} endpoint={endpoint} />
+            <EndpointCard key={endpoint.id} endpoint={endpoint} client={client || undefined} />
           ))}
         </div>
       </main>

@@ -1,0 +1,95 @@
+PUT /citas/{id_cita}
+Permite modificar el estado, duración y comentario de una cita.
+
+Cambiar estados a través de la API no gatilla el envio de encuestas.
+Cambiar el estado de una cita no validada de agenda online, la valida.
+Ejemplo de solicitud:
+
+const id_cita = 4;
+const url = `https://api.dentalink.healthatom.com/api/v1/citas/${id_cita}`;
+
+const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+        'Authorization': `Token ${token}`
+    },
+    body: JSON.stringify({
+        id_estado: 7,
+        duracion: 15,
+        comentarios: 'Este es un comentario'
+    })
+});
+
+const data = await response.json();
+console.log(data);
+Ejemplo de respuesta:
+
+{
+    "data": {
+        "id": 4,
+        "id_paciente": 1,
+        "nombre_paciente": "Juan Lopez",
+        "nombre_social_paciente": "Juancho",
+        "id_estado":7,
+        "estado_cita": "No confirmado",
+        "estado_anulacion": 0,
+        "estado_confirmacion": 0,
+        "id_tratamiento": 6,
+        "nombre_tratamiento": "Nombre de un tratamiento",
+        "tratamiento_sin_asignar": 0,
+        "fecha": "2016-06-24",
+        "hora_inicio": "09:15:00",
+        "hora_fin": "09:30:00",
+        "duracion": 15,
+        "id_dentista": 3,
+        "nombre_dentista": "Fernanda Risopatrón",
+        "id_sucursal": 1,
+        "nombre_sucursal": "NORTE",
+        "id_sillon": 1,
+        "comentarios": "Este es un comentario",
+        "fecha_actualizacion": "2016-06-27 10:09:01",
+        "links": [
+            {
+                "rel": "self",
+                "href": "https://api.dentalink.healthatom.com/api/v1/citas/4",
+                "method": "GET"
+            }
+        ]
+    }
+}
+HTTP/Request
+URI
+PUT api/v1/citas/{id_cita}
+
+Body
+Parámetro	Tipo de dato	Descripción
+duracion	Integer	Duración en minutos, debe ser compatible con el intervalo de atención del profesional
+id_estado	Integer	ID del estado de la cita
+comentarios	String	Comentario de la cita
+flag_notificar_anulacion	Integer	En el caso de que se anule la cita, puede enviar un correo al paciente notificando de la anulación
+HTTP/Response
+Atributos	Tipo de dato	Descripción
+id	Integer	ID de la cita
+id_paciente	Integer	ID del paciente
+nombre_paciente	String	Nombre del paciente
+nombre_social_paciente	String	Nombre social del paciente
+id_estado	Integer	ID del estado de la cita
+estado_cita	String	Estado de la cita
+estado_anulacion	Bool	Indica si el estado corresponde a anulación (1) o no (0)
+estado_confirmacion	Bool	Indica si el estado corresponde a confirmación (1) o no (0)
+id_tratamiento	Integer	ID del tratamiento
+nombre_tratamiento	String	Nombre del plan de tratamiento
+tratamiento_sin_asignar	Bool	Indica si tiene tratamiento asignado o no (*)
+fecha	String	Fecha de la cita
+hora_inicio	String	Hora de inicio de la cita
+hora_fin	String	Hora de término de la cita
+duracion	Integer	Duración de la cita, en minutos
+id_dentista	Integer	ID del dentista que realiza la cita
+nombre_dentista	String	Nombre del dentista que realiza la cita
+id_sucursal	Integer	ID de la sucursal
+nombre_sucursal	String	Nombre de la sucursal donde se realiza la cita
+id_sillon	Integer	ID del sillón
+comentarios	String	Comentarios asociados a la cita
+fecha_actualizacion	Datetime	Fecha y hora de la última actualización de estado formato AAAA-MM-DD H:I:S
+(*): Para generar citas sin asociar un plan de tratamiento, debes dirigirte a las configuraciones especiales de tu clínica.
+

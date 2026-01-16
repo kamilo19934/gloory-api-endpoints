@@ -138,11 +138,19 @@ export class AppointmentConfirmationsController {
   // ============================================
 
   /**
-   * Obtiene los estados de cita disponibles en Dentalink
+   * Obtiene los estados de cita disponibles en Dentalink/MediLink
    */
   @Get('appointment-states')
   async getAppointmentStates(@Param('clientId') clientId: string) {
     return await this.confirmationsService.getAppointmentStates(clientId);
+  }
+
+  /**
+   * Crea un estado de cita personalizado "Confirmado por Bookys"
+   */
+  @Post('appointment-states/create-bookys')
+  async createBookysState(@Param('clientId') clientId: string) {
+    return await this.confirmationsService.createBookysConfirmationState(clientId);
   }
 
   // ============================================

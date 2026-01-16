@@ -57,6 +57,13 @@ export class Client {
   @Column({ nullable: true })
   ghlLocationId: string; // Legacy: GHL location
 
+  /**
+   * Estado de cita para confirmaciones (ej: 7 para "Confirmado")
+   * Si no está configurado, no se puede usar el endpoint de confirmar cita
+   */
+  @Column({ type: 'int', nullable: true })
+  confirmationStateId: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

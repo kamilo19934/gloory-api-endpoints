@@ -589,6 +589,108 @@ export class DentalinkService {
   }
 
   /**
+   * Confirma una cita usando el estado configurado en el cliente
+   */
+  async confirmAppointment(clientId: string, params: { id_cita: number }): Promise<any> {
+    this.logger.log(`✅ Confirmando cita - ID Cita: ${params.id_cita}`);
+
+    const client = await this.clientsService.findOne(clientId);
+
+    // Verificar que el cliente tenga configurado el estado de confirmación
+    if (!client.confirmationStateId) {
+      throw new HttpException(
+        'El cliente no tiene configurado un estado para confirmación de citas. Configure el estado en la configuración del cliente.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Determinar qué API usar basándose en las integraciones del cliente
+    const hasDentalinkMedilink = client.integrations?.some(
+      (i) => i.integrationType === 'dentalink_medilink' && i.isEnabled,
+    );
+
+    const apiType = hasDentalinkMedilink ? 'dual' : 'dentalink';
+    const apiKey = client.apiKey;
+    
+    const headers = {
+      Authorization: `Token ${apiKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    // Si es modo dual, intentar ambas APIs
+    const apisToTry = apiType === 'dual'
+      ? [
+          { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/', commentKey: 'comentarios' },
+          { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/', commentKey: 'comentario' }
+        ]
+      : [{ type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/', commentKey: 'comentarios' }];
+
+    for (const api of apisToTry) {
+      try {
+        const urlCita = `${api.baseUrl}citas/${params.id_cita}`;
+        
+        this.logger.log(`🔍 Intentando confirmar en ${api.type.toUpperCase()}: ${urlCita}`);
+
+        // Verificar que la cita existe
+        const respGet = await axios.get(urlCita, { headers });
+        if (respGet.status !== 200) {
+          continue; // Intentar con la siguiente API
+        }
+
+        const citaData = respGet.data?.data || {};
+        this.logger.log(`📋 Cita encontrada en ${api.type.toUpperCase()}: Paciente ${citaData.nombre_paciente}, Fecha ${citaData.fecha}`);
+
+        // Preparar payload de confirmación
+        const payloadConfirmar: any = {
+          id_estado: client.confirmationStateId,
+        };
+        
+        // Agregar comentario según el tipo de API
+        payloadConfirmar[api.commentKey] = `Confirmado por Bookys el ${new Date().toLocaleString('es-CL', { timeZone: client.timezone || 'America/Santiago' })}`;
+
+        this.logger.log(`📤 Payload de confirmación: ${JSON.stringify(payloadConfirmar)}`);
+
+        // Confirmar cita
+        const respConfirm = await axios.put(urlCita, payloadConfirmar, { headers });
+
+        if (respConfirm.status === 200) {
+          this.logger.log(`✅ Cita ${params.id_cita} confirmada exitosamente en ${api.type.toUpperCase()}`);
+          return {
+            mensaje: 'Cita confirmada exitosamente',
+            id_cita: params.id_cita,
+            fecha: citaData.fecha,
+            hora_inicio: citaData.hora_inicio,
+            id_estado: client.confirmationStateId,
+            paciente: citaData.nombre_paciente,
+            api_utilizada: api.type,
+          };
+        }
+      } catch (error) {
+        this.logger.warn(`⚠️ Error confirmando cita en ${api.type}: ${error.message}`);
+        
+        if (error.response?.status === 404) {
+          // Cita no encontrada en esta API, intentar con la siguiente
+          continue;
+        }
+        
+        // Si es el último intento o un error diferente a 404, lanzar excepción
+        if (api === apisToTry[apisToTry.length - 1]) {
+          throw new HttpException(
+            `Error al confirmar cita: ${error.response?.data?.message || error.message}`,
+            error.response?.status || HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+    }
+
+    // Si llegamos aquí, la cita no se encontró en ninguna API
+    throw new HttpException(
+      `No se encontró la cita ${params.id_cita} en ninguna de las APIs disponibles`,
+      HttpStatus.NOT_FOUND,
+    );
+  }
+
+  /**
    * Cancela una cita por ID o por RUT (cancela la próxima futura)
    */
   async cancelAppointment(clientId: string, params: CancelAppointmentDto): Promise<any> {

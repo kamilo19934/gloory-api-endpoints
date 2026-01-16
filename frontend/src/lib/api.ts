@@ -77,6 +77,7 @@ export interface Client {
   ghlAccessToken?: string;
   ghlCalendarId?: string;
   ghlLocationId?: string;
+  confirmationStateId?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -99,6 +100,8 @@ export interface EndpointDefinition {
   category: string;
   clientUrl?: string;
   arguments?: EndpointArgument[];
+  requiresConfig?: boolean;
+  configField?: string;
 }
 
 export interface IntegrationConfigDto {
@@ -118,6 +121,7 @@ export interface CreateClientDto {
   ghlAccessToken?: string;
   ghlCalendarId?: string;
   ghlLocationId?: string;
+  confirmationStateId?: number;
 }
 
 export interface UpdateClientDto {
@@ -132,6 +136,7 @@ export interface UpdateClientDto {
   ghlAccessToken?: string;
   ghlCalendarId?: string;
   ghlLocationId?: string;
+  confirmationStateId?: number;
 }
 
 export interface AddIntegrationDto {
@@ -502,6 +507,7 @@ export interface PendingConfirmation {
     id_paciente: number;
     nombre_paciente: string;
     nombre_social_paciente?: string;
+    rut_paciente?: string;
     email_paciente?: string;
     telefono_paciente?: string;
     id_tratamiento: number;
@@ -619,6 +625,17 @@ export const appointmentConfirmationsApi = {
   // Estados de cita
   getAppointmentStates: async (clientId: string): Promise<AppointmentState[]> => {
     const response = await api.get(`/clients/${clientId}/appointment-confirmations/appointment-states`);
+    return response.data;
+  },
+
+  // Crear estado de confirmación personalizado
+  createBookysConfirmationState: async (clientId: string): Promise<{
+    alreadyExists: boolean;
+    state: AppointmentState;
+    message: string;
+    apiUsed?: string;
+  }> => {
+    const response = await api.post(`/clients/${clientId}/appointment-confirmations/appointment-states/create-bookys`);
     return response.data;
   },
 };

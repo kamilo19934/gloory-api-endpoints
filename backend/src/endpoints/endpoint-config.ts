@@ -15,6 +15,8 @@ export interface EndpointDefinition {
   dentalinkPath: string;
   category: string;
   arguments: EndpointArgument[];
+  requiresConfig?: boolean; // Indica si requiere configuración previa
+  configField?: string; // Campo de configuración requerido
 }
 
 export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
@@ -229,6 +231,33 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
         description: 'ID de usuario de GHL (opcional, para sincronización)',
         required: false,
         example: 'abc123xyz',
+      },
+      {
+        name: 'comentario',
+        type: 'string',
+        description: 'Comentario o notas adicionales sobre la cita. Si no se proporciona, se usa "Agendado por IA"',
+        required: false,
+        example: 'Paciente solicita limpieza dental',
+      },
+    ],
+  },
+  {
+    id: 'confirm-appointment',
+    name: 'Confirmar Cita',
+    description: 'Confirma una cita cambiándola al estado configurado para confirmación. Requiere que el cliente tenga configurado el campo "Estado de Confirmación" en su configuración.',
+    method: 'POST',
+    path: '/appointments/confirm',
+    dentalinkPath: '/citas/:id',
+    category: 'appointments',
+    requiresConfig: true,
+    configField: 'confirmationStateId',
+    arguments: [
+      {
+        name: 'id_cita',
+        type: 'number',
+        description: 'ID de la cita a confirmar',
+        required: true,
+        example: 12345,
       },
     ],
   },

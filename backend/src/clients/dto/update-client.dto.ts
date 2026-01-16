@@ -2,6 +2,7 @@ import {
   IsString,
   IsOptional,
   IsBoolean,
+  IsInt,
   Matches,
   ValidateIf,
   IsArray,
@@ -65,4 +66,8 @@ export class UpdateClientDto {
   @IsString()
   @IsOptional()
   ghlLocationId?: string;
+
+  @IsInt()
+  @IsOptional()
+  confirmationStateId?: number;
 }

@@ -615,6 +615,67 @@ export class HealthAtomService {
   }
 
   /**
+   * Confirma cita por ID intentando en ambas APIs
+   */
+  async confirmAppointment(
+    appointmentId: number,
+    confirmationStateId: number,
+    config: HealthAtomConfig,
+  ): Promise<DualApiOperationResult<{ mensaje: string; cita: any }>> {
+    const errors: string[] = [];
+    const timezone = config.timezone || 'America/Santiago';
+    const fechaConfirmacion = new Date().toLocaleString('es-CL', { timeZone: timezone });
+
+    // Intentar en ambas APIs ya que no sabemos dónde está
+    for (const api of [HealthAtomApi.DENTALINK, HealthAtomApi.MEDILINK]) {
+      try {
+        const client = this.createClient(config.apiKey, api);
+        const endpoints = this.getEndpoints(api);
+
+        this.logger.log(`🔍 Buscando cita ${appointmentId} en ${api}`);
+
+        // Verificar si la cita existe
+        const getResponse = await client.get(`${endpoints.appointments}/${appointmentId}`);
+        if (getResponse.status !== 200) continue;
+
+        const citaData = getResponse.data?.data;
+        this.logger.log(`✅ Cita encontrada en ${api}`);
+
+        // Confirmar - usar campo de comentario correcto según API
+        const payload = api === HealthAtomApi.DENTALINK
+          ? { 
+              id_estado: confirmationStateId,
+              comentarios: `Confirmado por Bookys el ${fechaConfirmacion}`
+            }
+          : { 
+              id_estado: confirmationStateId,
+              comentario: `Confirmado por Bookys el ${fechaConfirmacion}`
+            };
+
+        const confirmResponse = await client.put(`${endpoints.appointments}/${appointmentId}`, payload);
+
+        if (confirmResponse.status === 200) {
+          this.logger.log(`✅ Cita confirmada en ${api}`);
+          return {
+            success: true,
+            data: { 
+              mensaje: `Cita ${appointmentId} confirmada exitosamente`,
+              cita: citaData 
+            },
+            apiUsed: api,
+          };
+        }
+      } catch (error: any) {
+        if (error.response?.status !== 404 && error.response?.status !== 400) {
+          errors.push(`${api}: ${error.response?.status || error.message}`);
+        }
+      }
+    }
+
+    return { success: false, error: `No se pudo confirmar la cita ${appointmentId}`, details: errors };
+  }
+
+  /**
    * Cancela cita por ID intentando en ambas APIs
    */
   async cancelAppointment(

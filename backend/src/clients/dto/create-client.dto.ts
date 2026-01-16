@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsBoolean,
+  IsInt,
   Matches,
   ValidateIf,
   IsArray,
@@ -79,4 +80,8 @@ export class CreateClientDto {
   @IsString()
   @IsOptional()
   ghlLocationId?: string;
+
+  @IsInt()
+  @IsOptional()
+  confirmationStateId?: number;
 }

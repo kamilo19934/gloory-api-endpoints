@@ -56,6 +56,7 @@ export class PendingConfirmation {
     id_paciente: number;
     nombre_paciente: string;
     nombre_social_paciente?: string;
+    rut_paciente?: string;
     email_paciente?: string;
     telefono_paciente?: string;
     id_tratamiento: number;

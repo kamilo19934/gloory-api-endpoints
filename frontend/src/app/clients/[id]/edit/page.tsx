@@ -20,6 +20,7 @@ export default function EditClientPage() {
     description: '',
     apiKey: '',
     timezone: 'America/Santiago',
+    confirmationStateId: undefined as number | undefined,
     isActive: true,
   });
 
@@ -38,6 +39,7 @@ export default function EditClientPage() {
         description: client.description || '',
         apiKey: client.apiKey || '',
         timezone: client.timezone || 'America/Santiago',
+        confirmationStateId: client.confirmationStateId,
         isActive: client.isActive,
       });
     } catch (error) {
@@ -164,6 +166,25 @@ export default function EditClientPage() {
                 <option value="America/Mexico_City">America/Mexico_City (México)</option>
                 <option value="America/Sao_Paulo">America/Sao_Paulo (Brasil)</option>
               </select>
+            </div>
+
+            <div>
+              <label htmlFor="confirmationStateId" className="block text-sm font-medium text-gray-700 mb-2">
+                Estado de Confirmación (ID)
+              </label>
+              <input
+                type="number"
+                id="confirmationStateId"
+                value={formData.confirmationStateId || ''}
+                onChange={(e) => setFormData({ ...formData, confirmationStateId: e.target.value ? parseInt(e.target.value) : undefined })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Ej: 7 para Confirmado"
+                min="1"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                ID del estado que se usará para confirmar citas (requerido para usar el endpoint "Confirmar Cita"). 
+                Ejemplo: 7 = Confirmado, 8 = Confirmado por Bookys. Puedes crear un estado personalizado en Dentalink/MediLink.
+              </p>
             </div>
 
             <div className="flex items-center">
