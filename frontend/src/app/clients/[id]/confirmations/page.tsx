@@ -445,7 +445,7 @@ export default function AppointmentConfirmationsPage() {
                       Configuración de GoHighLevel
                     </p>
                     <p className="text-sm text-purple-800">
-                      Asegúrate de que los 8 custom fields necesarios estén configurados en GHL antes de usar las confirmaciones.
+                      Asegúrate de que los 10 custom fields necesarios estén configurados en GHL antes de usar las confirmaciones.
                     </p>
                   </div>
                 </div>
@@ -604,8 +604,7 @@ export default function AppointmentConfirmationsPage() {
                 <FiCheckCircle className="text-green-600 mt-0.5 mr-2 flex-shrink-0" />
                 <p className="text-sm text-green-800">
                   <strong>Listo para usar:</strong> El endpoint &quot;Confirmar Cita&quot; está configurado correctamente. 
-                  Cuando lo uses, las citas cambiarán automáticamente al estado &quot;{appointmentStates.find(s => s.id === client.confirmationStateId)?.nombre}&quot; 
-                  y se agregará el comentario &quot;Confirmado por Bookys&quot;.
+                  Cuando lo uses, las citas cambiarán automáticamente al estado &quot;{appointmentStates.find(s => s.id === client.confirmationStateId)?.nombre}&quot;.
                 </p>
               </div>
             </div>
@@ -1034,7 +1033,7 @@ export default function AppointmentConfirmationsPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="text-sm font-mono text-gray-900">
-                          #{item.appointmentData.id_paciente}
+                          #{item.dentalinkAppointmentId}
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">

@@ -41,6 +41,18 @@ export class GHLSetupService {
       model: 'contact',
     },
     {
+      name: 'nombre_paciente',
+      dataType: 'TEXT',
+      placeholder: 'Nombre del paciente',
+      model: 'contact',
+    },
+    {
+      name: 'id_paciente',
+      dataType: 'TEXT',
+      placeholder: 'ID del paciente en Dentalink',
+      model: 'contact',
+    },
+    {
       name: 'id_sucursal',
       dataType: 'TEXT',
       placeholder: 'ID de la sucursal',

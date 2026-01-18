@@ -1,0 +1,268 @@
+GET /pacientes
+Muestra el listado de todos los pacientes de la clínica.
+
+Ejemplo de solicitud:
+
+// Se define la variable token que contiene el access_token
+// obtenido en el proceso de autenticación.
+const url = "https://api.dentalink.healthatom.com/api/v1/pacientes";
+const response = await fetch(url, {
+    method: "GET",
+    headers: {
+        "Authorization": `Token ${token}`
+    }
+});
+const data = await response.json();
+console.log(data);
+Ejemplo de respuesta:
+
+{
+    "data": [
+        {
+            "id": 1,
+            "rut": "1-9",
+            "tipo_documento":0,
+            "nombre": "Guillermo",
+            "nombre_social": "Camila",
+            "apellidos": "Morales",
+            "fecha_nacimiento": "1985-01-01",
+            "fecha_afiliacion" : "2018-02-02",
+            "telefono": "212345678",
+            "celular": "12345678",
+            "ciudad": "Santiago",
+            "comuna": "Vitacura",
+            "direccion": "",
+            "email": "guillermo@test.com",
+            "sexo": "M",
+            "id_genero": 1,
+            "numero_ficha": "234567",
+            "observaciones":"",
+            "tiene_cargas": 1,
+            "es_carga": 0,
+            "fecha_deshabilitacion": "",
+            "id_usuario_deshabilitacion": "",
+            "habilitado": 0,
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1",
+                    "method": "GET"
+                },
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/apoderados",
+                    "method": "GET"
+                },
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/archivos",
+                    "method": "GET"
+                },
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/cargas",
+                    "method": "GET"
+                },
+                {
+                    "rel": "citas",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/citas",
+                    "method": "GET"
+                },
+                {
+                    "rel": "convenios",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/convenios",
+                    "method": "GET"
+                },
+                {
+                    "rel": "devoluciones",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/devoluciones",
+                    "method": "GET"
+                },
+                {
+                    "rel": "evoluciones",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/evoluciones",
+                    "method": "GET"
+                },
+                {
+                    "rel": "pagos",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/pagos",
+                    "method": "GET"
+                },
+                {
+                    "rel": "tratamientos",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/tratamientos",
+                    "method": "GET"
+                },
+                {
+                    "rel": "adicionales",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/adicionales",
+                    "method": "GET"
+                },
+                {
+                    "rel": "tareas",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/tareas",
+                    "method": "GET"
+                },
+                {
+                    "rel": "recetas",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/recetas",
+                    "method": "GET"
+                },
+                {
+                    "rel": "notificacionesGes",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/1/notificacionesGes",
+                    "method": "GET"
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "rut": "2-7",
+            "tipo_documento":0,
+            "nombre": "Daniel",
+            "nombre_social": "",
+            "apellidos": "Rojas",
+            "fecha_nacimiento": "0000-00-00",
+            "fecha_afiliacion" : "2018-02-02",
+            "telefono": "123456789",
+            "celular": "4387483",
+            "ciudad": "Santiago",
+            "comuna": "Santiago",
+            "direccion": "",
+            "email": "daniel@test.com",
+            "sexo": "M",
+            "id_genero": 1,
+            "numero_ficha": "7654",
+            "observaciones":"",
+            "tiene_cargas": 0,
+            "es_carga": 1,
+            "fecha_deshabilitacion": "",
+            "id_usuario_deshabilitacion": "",
+            "habilitado": 1,
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2",
+                    "method": "GET"
+                },
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/apoderados",
+                    "method": "GET"
+                },
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/archivos",
+                    "method": "GET"
+                },
+                {
+                    "rel": "self",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/cargas",
+                    "method": "GET"
+                },
+                {
+                    "rel": "citas",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/citas",
+                    "method": "GET"
+                },
+                {
+                    "rel": "convenios",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/convenios",
+                    "method": "GET"
+                },
+                {
+                    "rel": "devoluciones",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/devoluciones",
+                    "method": "GET"
+                },
+                {
+                    "rel": "evoluciones",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/evoluciones",
+                    "method": "GET"
+                },
+                {
+                    "rel": "pagos",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/pagos",
+                    "method": "GET"
+                },
+                {
+                    "rel": "tratamientos",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/tratamientos",
+                    "method": "GET"
+                },
+                {
+                    "rel": "adicionales",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/adicionales",
+                    "method": "GET"
+                },
+                {
+                    "rel": "tareas",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/tareas",
+                    "method": "GET"
+                },
+                {
+                    "rel": "recetas",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/recetas",
+                    "method": "GET"
+                },
+                {
+                    "rel": "notificacionesGes",
+                    "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2/notificacionesGes",
+                    "method": "GET"
+                }
+            ]
+        }
+    ]
+}
+HTTP/Request
+URI
+GET api/v1/pacientes
+
+Parametros búsqueda (opcional)
+q={"columna1":{"operador1":"valor1"},"columna2":{"operador2":"valor2"},...,"columnaN":{"operadorN":"valorN"}}
+
+Columna	Tipo	Descripción
+rut	String	Buscar pacientes por RUT
+email	String	Buscar pacientes por email
+nombre	String	Buscar pacientes por nombre
+apellidos	String	Buscar pacientes por apellidos
+numero_ficha	String	Buscar pacientes por numero de ficha
+fecha_nacimiento	Date	Buscar pacientes por fecha de nacimiento
+fecha_afiliacion	Date	Buscar pacientes por fecha de afiliación
+sexo	String	Buscar pacientes por sexo
+habilitado	Bool	Filtrar según pacientes habilitados (1) o deshabilitados (0)
+celular	String	Buscar pacientes por celular
+telefono	String	Buscar pacientes por telefono
+Parametros orden (opcional)
+sort=columna1:[asc|desc],columna2:[asc|desc],...,columnaN:[asc|desc]
+
+El endpoint se puede ordenar de manera ascendente o descendente con las siguientes columnas:
+
+id
+fecha_afiliacion
+fecha_nacimiento
+HTTP/Response
+Atributos	Tipo de dato	Descripción
+id	Integer	ID del paciente
+rut	String	RUT/DNI/documento identidad del paciente
+tipo_documento	String	Indica si el documento de identidad es una cédula/DNI/RUT (0) o pasaporte (1)
+nombre	String	Nombre del paciente
+nombre_social	String	Nombre social del paciente
+apellidos	String	Apellidos del paciente
+fecha_nacimiento	Date	Fecha de nacimiento del paciente
+fecha_afiliacion	Date	Fecha de afiliación de creación del paciente en Dentalink
+telefono	String	Nº de teléfono del paciente
+celular	String	Nº de celular del paciente
+ciudad	String	Ciudad del paciente
+comuna	String	Comuna del paciente
+direccion	String	Dirección del paciente
+email	String	Email del paciente
+sexo	String	Sexo del paciente
+id_genero	Integer	Género con el que se identifica el paciente (1: Masculino, 2: Femenino, 3: Masculino Trans., 4: Femenino Trans., 5: Prefiero no decirlo)
+numero_ficha	String	Numero de ficha del paciente
+observaciones	String	Observaciones/comentarios del paciente
+tiene_cargas	Bool	Indica si tiene como carga otro paciente (1) o no (0)
+es_carga	Bool	Indica si es (1) o no (0) carga de otro paciente
+fecha_deshabilitacion	Date	Fecha en que se deshabilito el paciente
+id_usuario_deshabilitacion	Integer	ID usuario que deshabilito el paciente
+habilitado	Bool	Indica si el paciente está (1) o no (0) habilitado

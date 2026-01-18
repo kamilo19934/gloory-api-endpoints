@@ -18,6 +18,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { ScheduleAppointmentDto } from './dto/schedule-appointment.dto';
 import { CancelAppointmentDto } from './dto/cancel-appointment.dto';
 import { ConfirmAppointmentDto } from './dto/confirm-appointment.dto';
+import { GetFutureAppointmentsDto } from './dto/get-future-appointments.dto';
 import { GetTreatmentsDto } from './dto/get-treatments.dto';
 
 @Controller('clients/:clientId')
@@ -115,6 +116,15 @@ export class DentalinkController {
     @Body() cancelAppointmentDto: CancelAppointmentDto,
   ) {
     return await this.dentalinkService.cancelAppointment(clientId, cancelAppointmentDto);
+  }
+
+  @Post('appointments/future')
+  @HttpCode(HttpStatus.OK)
+  async getFutureAppointments(
+    @Param('clientId') clientId: string,
+    @Body() getFutureAppointmentsDto: GetFutureAppointmentsDto,
+  ) {
+    return await this.dentalinkService.getFutureAppointments(clientId, getFutureAppointmentsDto);
   }
 
   // Test connection endpoint

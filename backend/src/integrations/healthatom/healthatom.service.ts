@@ -623,8 +623,6 @@ export class HealthAtomService {
     config: HealthAtomConfig,
   ): Promise<DualApiOperationResult<{ mensaje: string; cita: any }>> {
     const errors: string[] = [];
-    const timezone = config.timezone || 'America/Santiago';
-    const fechaConfirmacion = new Date().toLocaleString('es-CL', { timeZone: timezone });
 
     // Intentar en ambas APIs ya que no sabemos dónde está
     for (const api of [HealthAtomApi.DENTALINK, HealthAtomApi.MEDILINK]) {
@@ -641,16 +639,10 @@ export class HealthAtomService {
         const citaData = getResponse.data?.data;
         this.logger.log(`✅ Cita encontrada en ${api}`);
 
-        // Confirmar - usar campo de comentario correcto según API
-        const payload = api === HealthAtomApi.DENTALINK
-          ? { 
-              id_estado: confirmationStateId,
-              comentarios: `Confirmado por Bookys el ${fechaConfirmacion}`
-            }
-          : { 
-              id_estado: confirmationStateId,
-              comentario: `Confirmado por Bookys el ${fechaConfirmacion}`
-            };
+        // Confirmar - solo cambiar el estado, sin comentarios
+        const payload = { 
+          id_estado: confirmationStateId
+        };
 
         const confirmResponse = await client.put(`${endpoints.appointments}/${appointmentId}`, payload);
 
@@ -736,5 +728,165 @@ export class HealthAtomService {
     } catch {
       return rut;
     }
+  }
+
+  /**
+   * Obtiene todas las citas futuras y activas de un paciente por RUT
+   */
+  async getFutureAppointments(
+    rut: string,
+    config: HealthAtomConfig,
+  ): Promise<DualApiOperationResult<{ mensaje: string; total_citas: number; citas: any[] }>> {
+    const formattedRut = this.formatRut(rut);
+    const timezone = config.timezone || 'America/Santiago';
+    const errors: string[] = [];
+
+    this.logger.log(`🔎 Buscando citas FUTURAS y ACTIVAS para RUT: ${formattedRut}`);
+
+    // Intentar en ambas APIs
+    for (const api of this.getApisToTry()) {
+      try {
+        const client = this.createClient(config.apiKey, api);
+        const endpoints = this.getEndpoints(api);
+
+        // 1. Buscar paciente por RUT
+        const filter = JSON.stringify({ rut: { eq: formattedRut } });
+        const patientResponse = await client.get(`${endpoints.patients}?q=${filter}`);
+
+        if (patientResponse.status !== 200) {
+          this.logger.warn(`⚠️ No se pudo buscar paciente en ${api}`);
+          continue;
+        }
+
+        const patients = patientResponse.data?.data || [];
+        if (patients.length === 0) {
+          this.logger.warn(`⚠️ Paciente con RUT ${formattedRut} no encontrado en ${api}`);
+          continue;
+        }
+
+        const patient = patients[0];
+        this.logger.log(`✅ Paciente encontrado en ${api}: ${patient.nombre} ${patient.apellidos} (ID: ${patient.id})`);
+
+        // 2. Obtener link de citas
+        const citasLink = patient.links?.find((l: any) => l.rel === 'citas')?.href;
+        if (!citasLink) {
+          this.logger.warn(`⚠️ No se encontró link de citas para el paciente en ${api}`);
+          continue;
+        }
+
+        // 3. Obtener todas las citas del paciente
+        const appointmentsResponse = await axios.get(citasLink, {
+          headers: {
+            Authorization: `Token ${config.apiKey}`,
+          },
+        });
+
+        if (appointmentsResponse.status !== 200) {
+          this.logger.warn(`⚠️ No se pudieron obtener citas en ${api}`);
+          continue;
+        }
+
+        const allAppointments = appointmentsResponse.data?.data || [];
+        
+        if (allAppointments.length === 0) {
+          return {
+            success: true,
+            data: {
+              mensaje: 'El paciente no tiene citas registradas',
+              total_citas: 0,
+              citas: [],
+            },
+            apiUsed: api,
+          };
+        }
+
+        // 4. Filtrar citas futuras y activas
+        const now = moment.tz(timezone);
+        const currentDate = now.format('YYYY-MM-DD');
+        const currentTime = now.format('HH:mm:ss');
+
+        const futureAppointments = allAppointments.filter((cita: any) => {
+          // Filtrar citas anuladas
+          if (cita.estado_anulacion !== 0) {
+            return false;
+          }
+
+          const appointmentDate = cita.fecha;
+          const appointmentTime = cita.hora_inicio;
+
+          // Cita es futura si:
+          // - La fecha es posterior a hoy, O
+          // - La fecha es hoy Y la hora es posterior a la actual
+          return (
+            appointmentDate > currentDate ||
+            (appointmentDate === currentDate && appointmentTime > currentTime)
+          );
+        });
+
+        // 5. Ordenar por fecha y hora (más próxima primero)
+        futureAppointments.sort((a: any, b: any) => {
+          const dateCompare = a.fecha.localeCompare(b.fecha);
+          if (dateCompare !== 0) return dateCompare;
+          return a.hora_inicio.localeCompare(b.hora_inicio);
+        });
+
+        // 6. Extraer datos del paciente (son los mismos para todas las citas)
+        const pacienteData = futureAppointments.length > 0
+          ? {
+              id_paciente: futureAppointments[0].id_paciente,
+              nombre_paciente: futureAppointments[0].nombre_paciente,
+            }
+          : null;
+
+        // 7. Mapear citas para devolver solo los campos necesarios (sin datos del paciente)
+        const mappedAppointments = futureAppointments.map((cita: any) => ({
+          id: cita.id,
+          id_estado: cita.id_estado,
+          estado_cita: cita.estado_cita,
+          nombre_tratamiento: cita.nombre_tratamiento,
+          id_dentista: cita.id_dentista,
+          nombre_dentista: cita.nombre_dentista,
+          id_sucursal: cita.id_sucursal,
+          fecha: cita.fecha,
+          hora_inicio: cita.hora_inicio,
+          hora_fin: cita.hora_fin,
+          duracion: cita.duracion,
+          comentarios: cita.comentarios,
+        }));
+
+        const mensaje = futureAppointments.length > 0
+          ? 'Citas futuras activas encontradas'
+          : 'No hay citas futuras activas';
+
+        this.logger.log(`✅ ${futureAppointments.length} citas futuras encontradas en ${api}`);
+
+        const responseData: any = {
+          mensaje,
+          total_citas: futureAppointments.length,
+          citas: mappedAppointments,
+        };
+
+        // Solo agregar paciente si hay citas
+        if (pacienteData) {
+          responseData.paciente = pacienteData;
+        }
+
+        return {
+          success: true,
+          data: responseData,
+          apiUsed: api,
+        };
+      } catch (error: any) {
+        const errorMsg = error.response?.data?.message || error.message;
+        this.logger.error(`❌ Error en ${api}: ${errorMsg}`);
+        errors.push(`${api}: ${errorMsg}`);
+      }
+    }
+
+    return {
+      success: false,
+      error: `No se pudieron obtener las citas para el RUT ${formattedRut}`,
+      details: errors,
+    };
   }
 }

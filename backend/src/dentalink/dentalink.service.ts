@@ -2,6 +2,7 @@ import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { ClientsService } from '../clients/clients.service';
 import { GHLService } from './ghl.service';
+import { HealthAtomService } from '../integrations/healthatom/healthatom.service';
 import { formatearRut } from '../utils/rut.util';
 import { formatearFechaEspanol, normalizarHora } from '../utils/date.util';
 import { obtenerHoraActual, filtrarHorariosFuturos, validarBloquesConsecutivos } from '../utils/timezone.util';
@@ -20,6 +21,7 @@ export class DentalinkService {
   constructor(
     private readonly clientsService: ClientsService,
     private readonly ghlService: GHLService,
+    private readonly healthAtomService: HealthAtomService,
   ) {}
 
   /**
@@ -638,15 +640,27 @@ export class DentalinkService {
         }
 
         const citaData = respGet.data?.data || {};
-        this.logger.log(`📋 Cita encontrada en ${api.type.toUpperCase()}: Paciente ${citaData.nombre_paciente}, Fecha ${citaData.fecha}`);
+        this.logger.log(`📋 Cita encontrada en ${api.type.toUpperCase()}: Paciente ${citaData.nombre_paciente}, Fecha ${citaData.fecha}, Estado actual: ${citaData.id_estado} (${citaData.estado_cita})`);
 
-        // Preparar payload de confirmación
+        // Validar que el estado de destino sea diferente al actual
+        if (citaData.id_estado === client.confirmationStateId) {
+          this.logger.log(`⚠️ La cita ya tiene el estado ${client.confirmationStateId}, retornando sin modificar`);
+          return {
+            mensaje: 'La cita ya está en el estado de confirmación especificado',
+            id_cita: params.id_cita,
+            fecha: citaData.fecha,
+            hora_inicio: citaData.hora_inicio,
+            id_estado: client.confirmationStateId,
+            paciente: citaData.nombre_paciente,
+            api_utilizada: api.type,
+            ya_confirmada: true,
+          };
+        }
+
+        // Preparar payload de confirmación - solo el estado, sin comentarios
         const payloadConfirmar: any = {
           id_estado: client.confirmationStateId,
         };
-        
-        // Agregar comentario según el tipo de API
-        payloadConfirmar[api.commentKey] = `Confirmado por Bookys el ${new Date().toLocaleString('es-CL', { timeZone: client.timezone || 'America/Santiago' })}`;
 
         this.logger.log(`📤 Payload de confirmación: ${JSON.stringify(payloadConfirmar)}`);
 
@@ -666,18 +680,32 @@ export class DentalinkService {
           };
         }
       } catch (error) {
+        const errorStatus = error.response?.status;
+        const errorData = error.response?.data;
+        
         this.logger.warn(`⚠️ Error confirmando cita en ${api.type}: ${error.message}`);
         
-        if (error.response?.status === 404) {
+        // Log detallado para error 400
+        if (errorStatus === 400) {
+          this.logger.error(`❌ Error 400 en ${api.type}:`);
+          this.logger.error(`   - Cita ID: ${params.id_cita}`);
+          this.logger.error(`   - Estado solicitado: ${client.confirmationStateId}`);
+          this.logger.error(`   - Respuesta del servidor: ${JSON.stringify(errorData)}`);
+        }
+        
+        if (errorStatus === 404) {
           // Cita no encontrada en esta API, intentar con la siguiente
           continue;
         }
         
-        // Si es el último intento o un error diferente a 404, lanzar excepción
+        // Si es el último intento o un error diferente a 404, lanzar excepción con más detalles
         if (api === apisToTry[apisToTry.length - 1]) {
+          const errorMessage = errorData?.message || errorData?.error || error.message;
+          const errorDetails = errorData ? ` | Detalles: ${JSON.stringify(errorData)}` : '';
+          
           throw new HttpException(
-            `Error al confirmar cita: ${error.response?.data?.message || error.message}`,
-            error.response?.status || HttpStatus.BAD_REQUEST,
+            `Error al confirmar cita en ${api.type}: ${errorMessage}${errorDetails}`,
+            errorStatus || HttpStatus.BAD_REQUEST,
           );
         }
       }
@@ -856,5 +884,30 @@ export class DentalinkService {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  /**
+   * Obtiene todas las citas futuras y activas de un paciente por RUT
+   */
+  async getFutureAppointments(clientId: string, params: { rut: string }): Promise<any> {
+    this.logger.log(`🔎 Obteniendo citas futuras para RUT: ${params.rut}`);
+
+    const client = await this.clientsService.findOne(clientId);
+
+    const result = await this.healthAtomService.getFutureAppointments(params.rut, {
+      apiKey: client.apiKey,
+      timezone: client.timezone,
+    });
+
+    if (!result.success) {
+      throw new HttpException(
+        result.error || 'Error al obtener citas futuras',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    this.logger.log(`✅ ${result.data.total_citas} citas futuras obtenidas para RUT ${params.rut}`);
+
+    return result.data;
   }
 }

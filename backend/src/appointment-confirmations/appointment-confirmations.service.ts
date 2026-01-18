@@ -51,6 +51,15 @@ export class AppointmentConfirmationsService {
         lastError = error;
         const statusCode = error.response?.status;
         
+        // Log detallado del error
+        if (error.response) {
+          this.logger.error(`🔴 Error de GHL (Status ${statusCode}):`);
+          this.logger.error(`   URL: ${error.config?.url}`);
+          this.logger.error(`   Method: ${error.config?.method?.toUpperCase()}`);
+          this.logger.error(`   Response Data: ${JSON.stringify(error.response.data, null, 2)}`);
+          this.logger.error(`   Response Headers: ${JSON.stringify(error.response.headers, null, 2)}`);
+        }
+        
         // Solo reintentar en caso de 429 (Rate Limit)
         if (statusCode === 429 && attempt < maxRetries - 1) {
           const waitTime = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
@@ -296,6 +305,9 @@ export class AppointmentConfirmationsService {
                 const patient = patientResp.data?.data || {};
                 apt.email_paciente = patient.email;
                 apt.telefono_paciente = patient.celular || patient.telefono;
+                apt.rut_paciente = patient.rut;
+                
+                this.logger.log(`📋 Datos del paciente ${apt.id_paciente}: RUT=${patient.rut}, Email=${patient.email}, Tel=${patient.celular || patient.telefono}`);
               }
 
               // Calcular cuándo enviar la confirmación
@@ -409,6 +421,7 @@ export class AppointmentConfirmationsService {
       // 2. Actualizar custom fields del contacto (incluye for_confirmation: true)
       await this.updateContactCustomFields(
         contactId,
+        confirmation.dentalinkAppointmentId,
         appointmentData,
         ghlHeaders,
       );
@@ -420,8 +433,13 @@ export class AppointmentConfirmationsService {
     } catch (error) {
       const errorMessage = error.message || String(error);
       const statusCode = error.response?.status;
+      const errorData = error.response?.data;
       
       this.logger.error(`❌ Error procesando confirmación ${confirmation.id}: ${errorMessage} (Status: ${statusCode})`);
+      
+      if (errorData) {
+        this.logger.error(`   Detalles del error de GHL: ${JSON.stringify(errorData, null, 2)}`);
+      }
       
       // Manejo especial para error 429 (Rate Limit)
       if (statusCode === 429) {
@@ -445,6 +463,15 @@ export class AppointmentConfirmationsService {
     }
 
     await this.pendingRepository.save(confirmation);
+  }
+
+  /**
+   * Normaliza un número de teléfono removiendo espacios y caracteres extra
+   */
+  private normalizePhone(phone: string): string {
+    if (!phone) return phone;
+    // Remover espacios, guiones, paréntesis, pero mantener el +
+    return phone.replace(/[\s\-\(\)]/g, '');
   }
 
   /**
@@ -494,7 +521,8 @@ export class AppointmentConfirmationsService {
     // 2. Buscar por teléfono
     if (appointmentData.telefono_paciente) {
       try {
-        this.logger.log(`🔍 Buscando contacto por teléfono: ${appointmentData.telefono_paciente}`);
+        const normalizedPhone = this.normalizePhone(appointmentData.telefono_paciente);
+        this.logger.log(`🔍 Buscando contacto por teléfono: ${appointmentData.telefono_paciente} (normalizado: ${normalizedPhone})`);
         
         const searchPayload = {
           locationId,
@@ -503,7 +531,7 @@ export class AppointmentConfirmationsService {
             {
               field: 'phone',
               operator: 'eq',
-              value: appointmentData.telefono_paciente,
+              value: normalizedPhone,
             },
           ],
         };
@@ -544,21 +572,32 @@ export class AppointmentConfirmationsService {
     }
 
     if (appointmentData.telefono_paciente) {
-      createPayload.phone = appointmentData.telefono_paciente;
+      createPayload.phone = this.normalizePhone(appointmentData.telefono_paciente);
     }
 
-    const createResp = await this.makeGHLRequest(() =>
-      axios.post(
-        'https://services.leadconnectorhq.com/contacts/',
-        createPayload,
-        { headers },
-      )
-    );
+    try {
+      const createResp = await this.makeGHLRequest(() =>
+        axios.post(
+          'https://services.leadconnectorhq.com/contacts/',
+          createPayload,
+          { headers },
+        )
+      );
 
-    if (createResp.status === 201 || createResp.status === 200) {
-      const contactId = createResp.data?.contact?.id;
-      this.logger.log(`✅ Contacto creado: ${contactId}`);
-      return contactId;
+      if (createResp.status === 201 || createResp.status === 200) {
+        const contactId = createResp.data?.contact?.id;
+        this.logger.log(`✅ Contacto creado: ${contactId}`);
+        return contactId;
+      }
+    } catch (error) {
+      // Si GHL dice que el contacto ya existe, usar ese contactId
+      if (error.response?.status === 400 && error.response?.data?.meta?.contactId) {
+        const existingContactId = error.response.data.meta.contactId;
+        const matchingField = error.response.data.meta.matchingField;
+        this.logger.log(`✅ Contacto ya existe (matching: ${matchingField}), usando contactId: ${existingContactId}`);
+        return existingContactId;
+      }
+      throw error;
     }
 
     throw new Error('No se pudo crear el contacto en GHL');
@@ -569,17 +608,21 @@ export class AppointmentConfirmationsService {
    */
   private async updateContactCustomFields(
     contactId: string,
+    dentalinkAppointmentId: number,
     appointmentData: any,
     headers: any,
   ): Promise<void> {
     this.logger.log(`📝 Actualizando custom fields del contacto ${contactId}`);
+    this.logger.log(`📋 Datos de Cita: id_cita=${dentalinkAppointmentId}, id_paciente=${appointmentData.id_paciente}, rut=${appointmentData.rut_paciente}`);
 
     const updatePayload = {
       customFields: [
-        { key: 'id_cita', field_value: String(appointmentData.id_paciente) },
+        { key: 'id_cita', field_value: String(dentalinkAppointmentId) },
         { key: 'hora_inicio', field_value: appointmentData.hora_inicio },
         { key: 'fecha', field_value: appointmentData.fecha },
         { key: 'nombre_dentista', field_value: appointmentData.nombre_dentista },
+        { key: 'nombre_paciente', field_value: appointmentData.nombre_paciente },
+        { key: 'id_paciente', field_value: String(appointmentData.id_paciente) },
         { key: 'id_sucursal', field_value: String(appointmentData.id_sucursal) },
         { key: 'nombre_sucursal', field_value: appointmentData.nombre_sucursal },
         { key: 'rut', field_value: appointmentData.rut_paciente || '' },
@@ -588,6 +631,10 @@ export class AppointmentConfirmationsService {
     };
 
     const updateUrl = `https://services.leadconnectorhq.com/contacts/${contactId}`;
+    
+    this.logger.log(`📤 Enviando a GHL:`);
+    this.logger.log(`   URL: ${updateUrl}`);
+    this.logger.log(`   Payload: ${JSON.stringify(updatePayload, null, 2)}`);
     
     try {
       const updateResp = await this.makeGHLRequest(() =>
@@ -598,8 +645,11 @@ export class AppointmentConfirmationsService {
         this.logger.log(`✅ Custom fields actualizados (incluyendo for_confirmation: true)`);
       }
     } catch (error) {
-      this.logger.warn(`⚠️ Error actualizando custom fields: ${error.message}`);
-      // No fallar el proceso completo si esto falla
+      this.logger.error(`❌ Error actualizando custom fields: ${error.message}`);
+      this.logger.error(`   Contact ID: ${contactId}`);
+      this.logger.error(`   Payload enviado: ${JSON.stringify(updatePayload, null, 2)}`);
+      // No fallar el proceso completo si esto falla, pero loguearlo bien
+      throw error;
     }
   }
 

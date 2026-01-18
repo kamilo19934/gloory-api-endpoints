@@ -218,8 +218,11 @@ export class AppointmentConfirmationsController {
         'hora_inicio',
         'fecha',
         'nombre_dentista',
+        'nombre_paciente',
+        'id_paciente',
         'id_sucursal',
         'nombre_sucursal',
+        'rut',
         'for_confirmation',
       ],
     };

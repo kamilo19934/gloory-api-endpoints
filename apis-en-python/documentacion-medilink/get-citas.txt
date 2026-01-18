@@ -1,0 +1,115 @@
+GET /citas
+Muestra el listado de todas las citas de la clínica.
+
+Ejemplo de solicitud:
+
+// Se define la variable token que contiene el access_token
+// obtenido en el proceso de autenticación.
+var settings = {
+    "url"       : "https://api.medilink2.healthatom.com/api/v5/citas",
+    "method"    : "GET",
+    "headers"   : {
+        "Authorization": "Token " + token
+    }
+}
+
+$.ajax(settings).done(function (response) {
+    console.log(response);
+});
+Ejemplo de respuesta:
+
+{
+    "data": [
+        {
+            "id": 4,
+            "id_paciente": 1,
+            "nombre_paciente": "Juan Lopez",
+            "id_estado": 1,
+            "estado_cita": "Anulado",
+            "id_atencion": 6,
+            "fecha": "2016-06-24",
+            "hora_inicio": "09:15:00",
+            "hora_fin": "09:30:00",
+            "duracion": 15,
+            "id_profesional": 3,
+            "nombre_profesional": "Fernanda Risopatrón",
+            "id_sucursal": 1,
+            "nombre_sucursal": "NORTE",
+            "id_sillon": 1,
+            "comentarios": "",
+            "fecha_actualizacion": "2016-06-27 10:09:01",
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.medilink2.healthatom.com/api/v5/citas/4",
+                    "method": "GET"
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "id_paciente": 1,
+            "nombre_paciente": "Juan Lopez",
+            "id_estado": 7,
+            "estado_cita": "No confirmado",
+            "id_atencion": 6,
+            "fecha": "2016-06-23",
+            "hora_inicio": "08:00:00",
+            "hora_fin": "08:15:00",
+            "duracion": 15,
+            "id_profesional": 3,
+            "nombre_profesional": "Fernanda Risopatrón",
+            "id_sucursal": 2,
+            "nombre_sucursal": "SUR",
+            "id_sillon": 1,
+            "comentarios": "",
+            "fecha_actualizacion": "2016-06-27 10:09:01",
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.medilink2.healthatom.com/api/v5/citas/5",
+                    "method": "GET"
+                }
+            ]
+        }
+    ]
+}
+HTTP/Request
+URI
+GET api/v5/citas
+
+Parametros búsqueda (opcional)
+q={"columna1":{"operador1":"valor1"},"columna2":{"operador2":"valor2"},...,"columnaN":{"operadorN":"valorN"}}
+
+Columna	Tipo	Descripción
+fecha	Date	Buscar citas por fecha
+id_estado	Integer	Buscar citas por estado (id)
+estado	String	Buscar citas por estado (nombre)
+fecha_actualizacion	Datetime	Fecha y hora de la última actualización de estado formato AAAA-MM-DD H:I:S
+Parametros orden (opcional)
+sort=columna1:[asc|desc],columna2:[asc|desc],...,columnaN:[asc|desc]
+
+El endpoint se puede ordenar de manera ascendente o descendente con las siguientes columnas:
+
+id
+fecha
+HTTP/Response
+Atributos	Tipo de dato	Descripción
+id	Integer	ID de la cita
+id_paciente	Integer	ID del paciente
+nombre_paciente	String	Nombre del paciente
+id_estado	Integer	ID del estado de la cita
+estado_cita	String	Estado de la cita
+id_atencion (*)	Integer	ID del tratamiento
+fecha	Date	Fecha de la cita
+hora_inicio	String	Hora de inicio de la cita
+hora_fin	String	Hora de término de la cita
+duracion	Integer	Duración de la cita, en minutos
+id_profesional	Integer	ID del profesional que realiza la cita
+nombre_profesional	String	Nombre del profesional que realiza la cita
+id_sucursal	Integer	ID de la sucursal
+nombre_sucursal	String	Nombre de la sucursal donde se realiza la cita
+id_sillon	Integer	ID del sillon
+comentarios	String	Comentarios asociados a la cita
+fecha_actualizacion	Datetime	Fecha y hora de la última actualización de estado formato AAAA-MM-DD H:I:S
+(*): En caso de atenciones de tipo "plan de tratamiento", id_atencion corresponde al identificador de la atención de cabecera (primera atención del plan de tratamiento)
