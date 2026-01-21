@@ -62,7 +62,14 @@ export class Client {
    * Si no está configurado, no se puede usar el endpoint de confirmar cita
    */
   @Column({ type: 'int', nullable: true })
-  confirmationStateId: number;
+  confirmationStateId: number | null;
+
+  /**
+   * Estado de cita para marcar como "contactado para confirmar"
+   * Este estado se aplica automáticamente después de enviar la confirmación al paciente
+   */
+  @Column({ type: 'int', nullable: true })
+  contactedStateId: number | null;
 
   @CreateDateColumn()
   createdAt: Date;

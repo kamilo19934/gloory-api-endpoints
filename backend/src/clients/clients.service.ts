@@ -130,7 +130,16 @@ export class ClientsService {
     if (updateClientDto.ghlAccessToken !== undefined) client.ghlAccessToken = updateClientDto.ghlAccessToken;
     if (updateClientDto.ghlCalendarId !== undefined) client.ghlCalendarId = updateClientDto.ghlCalendarId;
     if (updateClientDto.ghlLocationId !== undefined) client.ghlLocationId = updateClientDto.ghlLocationId;
-    if (updateClientDto.confirmationStateId !== undefined) client.confirmationStateId = updateClientDto.confirmationStateId;
+    
+    // Manejar confirmationStateId: permitir null para limpiar el campo
+    if (updateClientDto.confirmationStateId !== undefined) {
+      client.confirmationStateId = updateClientDto.confirmationStateId;
+    }
+    
+    // Manejar contactedStateId: permitir null para limpiar el campo
+    if (updateClientDto.contactedStateId !== undefined) {
+      client.contactedStateId = updateClientDto.contactedStateId;
+    }
 
     await this.clientsRepository.save(client);
 

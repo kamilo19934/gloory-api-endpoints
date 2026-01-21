@@ -489,20 +489,16 @@ export default function AppointmentConfirmationsPage() {
                   const result = await appointmentConfirmationsApi.createBookysConfirmationState(clientId);
                   
                   if (result.alreadyExists) {
-                    toast.success(`El estado ya existe (ID: ${result.state.id})`);
+                    toast.success(`Los estados de Bookys ya existen`);
                   } else {
-                    toast.success(`Estado "${result.state.nombre}" creado exitosamente (ID: ${result.state.id})`);
+                    toast.success(`Estados de Bookys creados exitosamente y configurados automáticamente`);
                   }
                   
-                  // Recargar datos para mostrar el nuevo estado
-                  await loadData();
-                  
-                  // Seleccionar automáticamente el estado creado
-                  await clientsApi.update(clientId, { confirmationStateId: result.state.id });
+                  // Recargar datos para mostrar los nuevos estados
                   await loadData();
                   
                 } catch (error: any) {
-                  toast.error(error.response?.data?.message || 'Error al crear el estado');
+                  toast.error(error.response?.data?.message || 'Error al crear los estados');
                   console.error(error);
                 }
               }}
@@ -532,7 +528,7 @@ export default function AppointmentConfirmationsPage() {
               <select
                 value={client.confirmationStateId || ''}
                 onChange={async (e) => {
-                  const value = e.target.value ? parseInt(e.target.value) : undefined;
+                  const value = e.target.value ? parseInt(e.target.value) : null;
                   try {
                     await clientsApi.update(clientId, { confirmationStateId: value });
                     toast.success('Estado de confirmación actualizado');
@@ -598,6 +594,90 @@ export default function AppointmentConfirmationsPage() {
             </div>
           </div>
 
+          {/* Estado de Contactado para Confirmar */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Estado de Contactado para Confirmar
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Este estado se aplicará automáticamente después de enviar la confirmación al paciente.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Estado de Contactado
+                </label>
+                <select
+                  value={client.contactedStateId || ''}
+                  onChange={async (e) => {
+                    const value = e.target.value ? parseInt(e.target.value) : null;
+                    try {
+                      await clientsApi.update(clientId, { contactedStateId: value });
+                      toast.success('Estado de contactado actualizado');
+                      await loadData();
+                    } catch (error: any) {
+                      toast.error(error.response?.data?.message || 'Error al actualizar');
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Sin configurar</option>
+                  {appointmentStates.map((state) => {
+                    const colors = getImprovedColors(state.color);
+                    return (
+                      <option key={state.id} value={state.id}>
+                        {state.nombre} (ID: {state.id})
+                      </option>
+                    );
+                  })}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Estado que se aplicará después de contactar al paciente
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Estado Actual
+                </label>
+                {client.contactedStateId ? (
+                  (() => {
+                    const currentState = appointmentStates.find(s => s.id === client.contactedStateId);
+                    if (currentState) {
+                      const colors = getImprovedColors(currentState.color);
+                      return (
+                        <div className="flex items-center space-x-3">
+                          <span
+                            className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium"
+                            style={{ backgroundColor: colors.bg, color: colors.text }}
+                          >
+                            {currentState.nombre}
+                          </span>
+                          <span className="text-sm text-gray-600">
+                            (ID: {currentState.id})
+                          </span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="text-sm text-gray-500 py-2">
+                        Estado no encontrado
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="flex items-center space-x-2 py-2">
+                    <FiAlertCircle className="text-gray-400" />
+                    <span className="text-sm text-gray-500">
+                      No configurado (opcional)
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {client.confirmationStateId && (
             <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
               <div className="flex items-start">
@@ -605,6 +685,11 @@ export default function AppointmentConfirmationsPage() {
                 <p className="text-sm text-green-800">
                   <strong>Listo para usar:</strong> El endpoint &quot;Confirmar Cita&quot; está configurado correctamente. 
                   Cuando lo uses, las citas cambiarán automáticamente al estado &quot;{appointmentStates.find(s => s.id === client.confirmationStateId)?.nombre}&quot;.
+                  {client.contactedStateId && (
+                    <>
+                      {' '}Después de enviar la confirmación, el estado se actualizará a &quot;{appointmentStates.find(s => s.id === client.contactedStateId)?.nombre}&quot;.
+                    </>
+                  )}
                 </p>
               </div>
             </div>

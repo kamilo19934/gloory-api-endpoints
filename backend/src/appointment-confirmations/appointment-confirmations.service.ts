@@ -178,6 +178,7 @@ export class AppointmentConfirmationsService {
 
   /**
    * Cron job que se ejecuta cada hora para verificar si hay confirmaciones por procesar
+   * (Backup/Fallback para confirmaciones que no se procesaron automáticamente)
    */
   @Cron(CronExpression.EVERY_HOUR)
   async checkPendingConfirmations() {
@@ -209,12 +210,184 @@ export class AppointmentConfirmationsService {
   }
 
   /**
+   * Cron job que se ejecuta cada 30 minutos para obtener y confirmar citas automáticamente
+   * Este es el flujo principal de confirmación automática
+   */
+  @Cron('*/30 * * * *') // Cada 30 minutos
+  async autoFetchAndConfirmAppointments() {
+    this.logger.log('🤖 Iniciando proceso automático de confirmación de citas...');
+
+    try {
+      // Obtener todas las configuraciones activas
+      const activeConfigs = await this.getAllActiveConfigs();
+      
+      if (activeConfigs.length === 0) {
+        this.logger.log('ℹ️ No hay configuraciones activas para procesar');
+        return;
+      }
+
+      this.logger.log(`📋 Encontradas ${activeConfigs.length} configuraciones activas`);
+
+      for (const config of activeConfigs) {
+        try {
+          const client = config.client;
+          const timezone = client.timezone || 'America/Santiago';
+          const now = moment.tz(timezone);
+
+          // Parsear la hora configurada
+          const [configHour, configMinute] = config.timeToSend.split(':').map(Number);
+          const currentHour = now.hour();
+          const currentMinute = now.minute();
+
+          // Verificar si estamos en el período de 30 minutos donde debe ejecutarse
+          // Por ejemplo, si timeToSend es "09:00", ejecutar entre 09:00 y 09:29
+          const isTimeToExecute = 
+            currentHour === configHour && 
+            currentMinute >= configMinute && 
+            currentMinute < configMinute + 30;
+
+          if (isTimeToExecute) {
+            this.logger.log(`⏰ Es hora de procesar "${config.name}" para cliente ${client.name} (${client.id})`);
+            this.logger.log(`   🕐 Hora configurada: ${config.timeToSend}, Hora actual: ${now.format('HH:mm')}`);
+
+            // 1. Obtener y almacenar citas con scheduledFor = now
+            this.logger.log(`   📥 Obteniendo citas de Dentalink...`);
+            const result = await this.fetchAndStoreAppointments(
+              client.id,
+              config.id,
+              undefined, // targetDate = null (usa fecha calculada automáticamente)
+              true, // immediateConfirmation = true
+            );
+
+            this.logger.log(`   ✅ ${result.stored} citas almacenadas para confirmación inmediata`);
+
+            // 2. Procesar TODAS las confirmaciones pendientes de este cliente
+            if (result.stored > 0) {
+              this.logger.log(`   🚀 Procesando todas las confirmaciones...`);
+              const processResult = await this.processAllPendingConfirmationsNow(client.id);
+              this.logger.log(`   ✅ Confirmaciones completadas: ${processResult.completed}/${processResult.processed}`);
+              
+              if (processResult.failed > 0) {
+                this.logger.warn(`   ⚠️ Confirmaciones fallidas: ${processResult.failed}`);
+              }
+            }
+          } else {
+            this.logger.debug(
+              `⏭️ Saltando config "${config.name}" (${client.name}) - ` +
+              `Hora actual: ${now.format('HH:mm')}, Hora configurada: ${config.timeToSend}`
+            );
+          }
+        } catch (error) {
+          this.logger.error(
+            `❌ Error procesando config "${config.name}" (${config.id}): ${error.message}`
+          );
+        }
+      }
+
+      this.logger.log('🤖 Proceso automático completado');
+    } catch (error) {
+      this.logger.error(`❌ Error en proceso automático: ${error.message}`);
+    }
+  }
+
+  /**
+   * Obtiene todas las configuraciones activas con sus clientes
+   */
+  private async getAllActiveConfigs(): Promise<ConfirmationConfig[]> {
+    return await this.configRepository.find({
+      where: { isEnabled: true },
+      relations: ['client'],
+    });
+  }
+
+  /**
+   * Procesa TODAS las confirmaciones pendientes de un cliente (sin límite de 10)
+   * Procesa en batches de 10 respetando rate limits hasta completar todas
+   */
+  async processAllPendingConfirmationsNow(
+    clientId: string,
+  ): Promise<{ processed: number; completed: number; failed: number }> {
+    this.logger.log(`🔄 Procesando TODAS las confirmaciones pendientes para cliente ${clientId}`);
+
+    let totalProcessed = 0;
+    let totalCompleted = 0;
+    let totalFailed = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      // Obtener siguiente batch de 10
+      const pending = await this.pendingRepository.find({
+        where: {
+          clientId,
+          status: ConfirmationStatus.PENDING,
+        },
+        relations: ['confirmationConfig', 'client'],
+        take: 10,
+      });
+
+      if (pending.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      this.logger.log(`📦 Procesando batch de ${pending.length} confirmaciones...`);
+
+      for (const confirmation of pending) {
+        try {
+          await this.processConfirmation(confirmation);
+          totalProcessed++;
+          
+          // Verificar si se completó exitosamente
+          const updated = await this.pendingRepository.findOne({
+            where: { id: confirmation.id },
+          });
+          
+          if (updated.status === ConfirmationStatus.COMPLETED) {
+            totalCompleted++;
+          } else if (updated.status === ConfirmationStatus.FAILED) {
+            totalFailed++;
+          }
+        } catch (error) {
+          totalFailed++;
+          this.logger.error(`❌ Error procesando confirmación ${confirmation.id}: ${error.message}`);
+        }
+
+        // Delay entre cada confirmación para rate limit
+        if (pending.indexOf(confirmation) < pending.length - 1) {
+          await this.sleep(600);
+        }
+      }
+
+      // Si procesamos menos de 10, significa que ya no hay más
+      if (pending.length < 10) {
+        hasMore = false;
+      } else {
+        // Pequeño delay entre batches
+        this.logger.log('⏱️ Esperando 1 segundo antes del siguiente batch...');
+        await this.sleep(1000);
+      }
+    }
+
+    this.logger.log(
+      `✅ Procesamiento completo: ${totalProcessed} procesadas, ` +
+      `${totalCompleted} completadas, ${totalFailed} fallidas`
+    );
+
+    return {
+      processed: totalProcessed,
+      completed: totalCompleted,
+      failed: totalFailed,
+    };
+  }
+
+  /**
    * Obtiene las citas de Dentalink y crea registros pendientes
    */
   async fetchAndStoreAppointments(
     clientId: string,
     configId?: string,
     targetDate?: string,
+    immediateConfirmation: boolean = false,
   ): Promise<{ stored: number; appointments: any[] }> {
     const client = await this.clientsService.findOne(clientId);
 
@@ -311,12 +484,14 @@ export class AppointmentConfirmationsService {
               }
 
               // Calcular cuándo enviar la confirmación
-              const scheduledFor = this.calculateScheduledTime(
-                appointmentDate,
-                config.timeToSend,
-                config.daysBeforeAppointment,
-                timezone,
-              );
+              const scheduledFor = immediateConfirmation
+                ? new Date() // Confirmar inmediatamente
+                : this.calculateScheduledTime(
+                    appointmentDate,
+                    config.timeToSend,
+                    config.daysBeforeAppointment,
+                    timezone,
+                  );
 
               // Verificar si ya existe esta cita pendiente
               const existing = await this.pendingRepository.findOne({
@@ -426,6 +601,22 @@ export class AppointmentConfirmationsService {
         ghlHeaders,
       );
 
+      // 3. Actualizar el estado de la cita en Dentalink/MediLink a "Contactado por Bookys"
+      if (client.contactedStateId) {
+        try {
+          this.logger.log(`📞 Actualizando cita ${confirmation.dentalinkAppointmentId} al estado "Contactado" (ID: ${client.contactedStateId})`);
+          await this.updateAppointmentState(
+            client,
+            confirmation.dentalinkAppointmentId,
+            client.contactedStateId,
+          );
+          this.logger.log(`✅ Estado de la cita actualizado a "Contactado"`);
+        } catch (error) {
+          this.logger.warn(`⚠️ No se pudo actualizar el estado de la cita: ${error.message}`);
+          // No fallar la confirmación si no se puede actualizar el estado
+        }
+      }
+
       // Marcar como completado
       confirmation.status = ConfirmationStatus.COMPLETED;
       confirmation.processedAt = new Date();
@@ -463,6 +654,60 @@ export class AppointmentConfirmationsService {
     }
 
     await this.pendingRepository.save(confirmation);
+  }
+
+  /**
+   * Actualiza el estado de una cita en Dentalink/MediLink
+   */
+  private async updateAppointmentState(
+    client: any,
+    appointmentId: number,
+    newStateId: number,
+  ): Promise<void> {
+    const headers = {
+      Authorization: `Token ${client.apiKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    const payload = {
+      id_estado: newStateId,
+    };
+
+    // Determinar qué APIs intentar
+    const hasDentalinkMedilink = client.integrations?.some(
+      (i) => i.integrationType === 'dentalink_medilink' && i.isEnabled,
+    );
+
+    const apisToTry = hasDentalinkMedilink
+      ? [
+          { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' },
+          { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' }
+        ]
+      : [{ type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' }];
+
+    let lastError: any;
+
+    // Intentar en ambas APIs
+    for (const api of apisToTry) {
+      try {
+        const response = await axios.put(
+          `${api.baseUrl}citas/${appointmentId}`,
+          payload,
+          { headers }
+        );
+
+        if (response.status === 200 || response.status === 204) {
+          this.logger.log(`✅ Estado actualizado en ${api.type.toUpperCase()}`);
+          return; // Éxito, salir
+        }
+      } catch (error) {
+        lastError = error;
+        this.logger.warn(`⚠️ Error actualizando estado en ${api.type}: ${error.message}`);
+      }
+    }
+
+    // Si llegamos aquí, ninguna API funcionó
+    throw lastError || new Error('No se pudo actualizar el estado de la cita');
   }
 
   /**
@@ -757,7 +1002,7 @@ export class AppointmentConfirmationsService {
   }
 
   /**
-   * Crea un estado de cita personalizado "Confirmado por Bookys"
+   * Crea los estados personalizados de Bookys: "Confirmado por Bookys" y "Contactado por Bookys"
    */
   async createBookysConfirmationState(clientId: string): Promise<any> {
     const client = await this.clientsService.findOne(clientId);
@@ -774,11 +1019,25 @@ export class AppointmentConfirmationsService {
       'Content-Type': 'application/json',
     };
 
-    const stateData = {
-      nombre: 'Confirmado por Bookys',
-      color: '#10B981', // Verde (Tailwind green-500)
-      anulacion: 0,
-    };
+    // Definir ambos estados a crear
+    const statesToCreate = [
+      {
+        key: 'confirmed',
+        data: {
+          nombre: 'Confirmado por Bookys',
+          color: '#10B981', // Verde (Tailwind green-500)
+          anulacion: 0,
+        },
+      },
+      {
+        key: 'contacted',
+        data: {
+          nombre: 'Contactado por Bookys',
+          color: '#3B82F6', // Azul (Tailwind blue-500)
+          anulacion: 0,
+        },
+      },
+    ];
 
     const apisToTry = apiType === 'dual'
       ? [
@@ -787,50 +1046,94 @@ export class AppointmentConfirmationsService {
         ]
       : [{ type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' }];
 
-    // Primero verificar si ya existe
+    // Verificar si ya existen los estados
     const existingStates = await this.getAppointmentStates(clientId);
-    const existingBookysState = existingStates.find(
+    const existingConfirmedState = existingStates.find(
       (s: any) => s.nombre.toLowerCase().includes('confirmado por bookys')
     );
+    const existingContactedState = existingStates.find(
+      (s: any) => s.nombre.toLowerCase().includes('contactado por bookys')
+    );
 
-    if (existingBookysState) {
-      this.logger.log(`✅ El estado "Confirmado por Bookys" ya existe con ID ${existingBookysState.id}`);
+    const results = {
+      confirmedState: existingConfirmedState,
+      contactedState: existingContactedState,
+      created: [],
+      alreadyExisting: [],
+    };
+
+    // Si ambos ya existen, retornar
+    if (existingConfirmedState && existingContactedState) {
+      this.logger.log(`✅ Ambos estados de Bookys ya existen`);
       return {
         alreadyExists: true,
-        state: existingBookysState,
-        message: 'El estado "Confirmado por Bookys" ya existe',
+        confirmedState: existingConfirmedState,
+        contactedState: existingContactedState,
+        message: 'Los estados de Bookys ya existen',
+        ...results,
       };
     }
 
-    // Intentar crear en la primera API disponible
-    for (const api of apisToTry) {
-      try {
-        this.logger.log(`🔄 Creando estado "Confirmado por Bookys" en ${api.type.toUpperCase()}`);
-        
-        const response = await axios.post(`${api.baseUrl}citas/estados`, stateData, { headers });
-        
-        if (response.status === 201 || response.status === 200) {
-          const newState = response.data?.data;
-          this.logger.log(`✅ Estado creado exitosamente en ${api.type.toUpperCase()} con ID ${newState.id}`);
+    // Crear los estados que no existen
+    for (const stateConfig of statesToCreate) {
+      const existing = stateConfig.key === 'confirmed' ? existingConfirmedState : existingContactedState;
+      
+      if (existing) {
+        this.logger.log(`✅ El estado "${stateConfig.data.nombre}" ya existe con ID ${existing.id}`);
+        results.alreadyExisting.push(existing);
+        if (stateConfig.key === 'confirmed') results.confirmedState = existing;
+        if (stateConfig.key === 'contacted') results.contactedState = existing;
+        continue;
+      }
+
+      // Intentar crear en la primera API disponible
+      let created = false;
+      for (const api of apisToTry) {
+        try {
+          this.logger.log(`🔄 Creando estado "${stateConfig.data.nombre}" en ${api.type.toUpperCase()}`);
           
-          return {
-            alreadyExists: false,
-            state: newState,
-            message: `Estado "Confirmado por Bookys" creado exitosamente en ${api.type}`,
-            apiUsed: api.type,
-          };
+          const response = await axios.post(`${api.baseUrl}citas/estados`, stateConfig.data, { headers });
+          
+          if (response.status === 201 || response.status === 200) {
+            const newState = response.data?.data;
+            this.logger.log(`✅ Estado "${stateConfig.data.nombre}" creado exitosamente con ID ${newState.id}`);
+            
+            results.created.push(newState);
+            if (stateConfig.key === 'confirmed') results.confirmedState = newState;
+            if (stateConfig.key === 'contacted') results.contactedState = newState;
+            created = true;
+            break;
+          }
+        } catch (error) {
+          this.logger.error(`❌ Error creando estado "${stateConfig.data.nombre}" en ${api.type}: ${error.message}`);
+          
+          // Si es el último intento, continuar con el siguiente estado
+          if (api === apisToTry[apisToTry.length - 1]) {
+            this.logger.warn(`⚠️ No se pudo crear "${stateConfig.data.nombre}" en ninguna API`);
+          }
         }
-      } catch (error) {
-        this.logger.error(`❌ Error creando estado en ${api.type}: ${error.message}`);
-        
-        // Si es el último intento, lanzar error
-        if (api === apisToTry[apisToTry.length - 1]) {
-          throw new Error(`No se pudo crear el estado en ninguna API: ${error.message}`);
-        }
+      }
+
+      if (!created && !existing) {
+        throw new Error(`No se pudo crear el estado "${stateConfig.data.nombre}"`);
       }
     }
 
-    throw new Error('No se pudo crear el estado "Confirmado por Bookys"');
+    // Actualizar automáticamente el cliente con los IDs de ambos estados
+    await this.clientsService.update(clientId, {
+      confirmationStateId: results.confirmedState.id,
+      contactedStateId: results.contactedState.id,
+    });
+
+    this.logger.log(`✅ Cliente actualizado con estados: Confirmado ID ${results.confirmedState.id}, Contactado ID ${results.contactedState.id}`);
+
+    return {
+      alreadyExists: false,
+      confirmedState: results.confirmedState,
+      contactedState: results.contactedState,
+      message: `Estados de Bookys creados y configurados exitosamente`,
+      ...results,
+    };
   }
 
   /**

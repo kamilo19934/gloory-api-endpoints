@@ -14,11 +14,13 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { AddIntegrationDto, UpdateIntegrationDto } from './dto/add-integration.dto';
 import { IntegrationType } from '../integrations/common/interfaces';
+import { EndpointsService } from '../endpoints/endpoints.service';
 
 @Controller('clients')
 export class ClientsController {
   constructor(
     private readonly clientsService: ClientsService,
+    private readonly endpointsService: EndpointsService,
   ) {}
 
   @Post()
@@ -35,6 +37,11 @@ export class ClientsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.clientsService.findOne(id);
+  }
+
+  @Get(':id/endpoints')
+  getEndpoints(@Param('id') id: string) {
+    return this.endpointsService.getEndpointsForClient(id);
   }
 
   @Patch(':id')

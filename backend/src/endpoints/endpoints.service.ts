@@ -3,6 +3,8 @@ import { AVAILABLE_ENDPOINTS, EndpointDefinition } from './endpoint-config';
 
 @Injectable()
 export class EndpointsService {
+  private readonly BASE_URL = 'https://gloory-api-endpoints-production.up.railway.app';
+
   getAllEndpoints(): EndpointDefinition[] {
     return AVAILABLE_ENDPOINTS;
   }
@@ -18,6 +20,16 @@ export class EndpointsService {
   getCategories(): string[] {
     const categories = new Set(AVAILABLE_ENDPOINTS.map(e => e.category));
     return Array.from(categories);
+  }
+
+  /**
+   * Obtiene todos los endpoints de un cliente con sus URLs completas
+   */
+  getEndpointsForClient(clientId: string): EndpointDefinition[] {
+    return AVAILABLE_ENDPOINTS.map(endpoint => ({
+      ...endpoint,
+      clientUrl: `${this.BASE_URL}/${clientId}${endpoint.path}`,
+    }));
   }
 }
 

@@ -77,7 +77,8 @@ export interface Client {
   ghlAccessToken?: string;
   ghlCalendarId?: string;
   ghlLocationId?: string;
-  confirmationStateId?: number;
+  confirmationStateId?: number | null;
+  contactedStateId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -121,7 +122,8 @@ export interface CreateClientDto {
   ghlAccessToken?: string;
   ghlCalendarId?: string;
   ghlLocationId?: string;
-  confirmationStateId?: number;
+  confirmationStateId?: number | null;
+  contactedStateId?: number | null;
 }
 
 export interface UpdateClientDto {
@@ -136,7 +138,8 @@ export interface UpdateClientDto {
   ghlAccessToken?: string;
   ghlCalendarId?: string;
   ghlLocationId?: string;
-  confirmationStateId?: number;
+  confirmationStateId?: number | null;
+  contactedStateId?: number | null;
 }
 
 export interface AddIntegrationDto {

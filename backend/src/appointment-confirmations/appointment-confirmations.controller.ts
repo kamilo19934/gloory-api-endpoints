@@ -97,14 +97,30 @@ export class AppointmentConfirmationsController {
 
   /**
    * Procesa manualmente las confirmaciones pendientes (sincroniza con GHL)
-   * Útil para testing - ignora el scheduledFor y procesa todo inmediatamente
+   * Útil para testing - ignora el scheduledFor y procesa hasta 10 inmediatamente
    */
   @Post('process')
   async processConfirmations(@Param('clientId') clientId: string) {
     const result = await this.confirmationsService.processPendingConfirmationsNow(clientId);
 
     return {
-      message: 'Confirmaciones procesadas',
+      message: 'Confirmaciones procesadas (hasta 10)',
+      processed: result.processed,
+      completed: result.completed,
+      failed: result.failed,
+    };
+  }
+
+  /**
+   * Procesa TODAS las confirmaciones pendientes de un cliente (sin límite)
+   * Procesa en batches de 10 respetando rate limits hasta completar todas
+   */
+  @Post('process-all')
+  async processAllConfirmations(@Param('clientId') clientId: string) {
+    const result = await this.confirmationsService.processAllPendingConfirmationsNow(clientId);
+
+    return {
+      message: 'Todas las confirmaciones procesadas',
       processed: result.processed,
       completed: result.completed,
       failed: result.failed,

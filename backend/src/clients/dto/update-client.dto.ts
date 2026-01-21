@@ -67,7 +67,13 @@ export class UpdateClientDto {
   @IsOptional()
   ghlLocationId?: string;
 
+  @ValidateIf((o) => o.confirmationStateId !== null)
   @IsInt()
   @IsOptional()
-  confirmationStateId?: number;
+  confirmationStateId?: number | null;
+
+  @ValidateIf((o) => o.contactedStateId !== null)
+  @IsInt()
+  @IsOptional()
+  contactedStateId?: number | null;
 }
