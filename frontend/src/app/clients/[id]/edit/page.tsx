@@ -33,7 +33,7 @@ export default function EditClientPage() {
         description: client.description || '',
         apiKey: client.apiKey || '',
         timezone: client.timezone || 'America/Santiago',
-        confirmationStateId: client.confirmationStateId,
+        confirmationStateId: client.confirmationStateId ?? undefined,
         isActive: client.isActive,
       });
     } catch (error) {
