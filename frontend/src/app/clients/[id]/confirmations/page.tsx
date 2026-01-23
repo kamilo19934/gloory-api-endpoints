@@ -101,6 +101,7 @@ export default function AppointmentConfirmationsPage() {
   const [editingConfig, setEditingConfig] = useState<ConfirmationConfig | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedConfirmations, setSelectedConfirmations] = useState<Set<string>>(new Set());
 
   // Filtros
   const [filters, setFilters] = useState({
@@ -247,20 +248,50 @@ export default function AppointmentConfirmationsPage() {
   };
 
   const handleProcess = async () => {
-    if (!confirm('¿Procesar todas las confirmaciones pendientes ahora? Esto sincronizará las citas con GoHighLevel inmediatamente.')) {
+    const confirmationIds = Array.from(selectedConfirmations);
+    
+    if (confirmationIds.length === 0) {
+      toast.error('Selecciona al menos una cita para procesar');
+      return;
+    }
+
+    if (!confirm(`¿Procesar ${confirmationIds.length} cita${confirmationIds.length > 1 ? 's' : ''} seleccionada${confirmationIds.length > 1 ? 's' : ''}? Esto sincronizará las citas con GoHighLevel inmediatamente.`)) {
       return;
     }
 
     try {
-      const result = await appointmentConfirmationsApi.process(clientId);
+      const result = await appointmentConfirmationsApi.processSelected(clientId, confirmationIds);
       toast.success(
         `Procesadas: ${result.processed} | Exitosas: ${result.completed} | Fallidas: ${result.failed}`
       );
+      setSelectedConfirmations(new Set());
       await loadData();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Error al procesar confirmaciones');
       console.error(error);
     }
+  };
+
+  const toggleSelectAll = () => {
+    const pendingIds = filteredPending
+      .filter(p => p.status === ConfirmationStatus.PENDING)
+      .map(p => p.id);
+    
+    if (selectedConfirmations.size === pendingIds.length) {
+      setSelectedConfirmations(new Set());
+    } else {
+      setSelectedConfirmations(new Set(pendingIds));
+    }
+  };
+
+  const toggleSelectConfirmation = (id: string) => {
+    const newSelected = new Set(selectedConfirmations);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedConfirmations(newSelected);
   };
 
   const handleSetupGHL = async () => {
@@ -1006,12 +1037,12 @@ export default function AppointmentConfirmationsPage() {
               </button>
               <button
                 onClick={handleProcess}
-                disabled={pending.length === 0}
+                disabled={selectedConfirmations.size === 0}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Procesar y sincronizar con GoHighLevel ahora (para testing)"
+                title="Procesar las citas seleccionadas y sincronizar con GoHighLevel"
               >
                 <FiCheckCircle className="mr-2" />
-                Procesar Pendientes ({pending.filter(p => p.status === ConfirmationStatus.PENDING).length})
+                Procesar Seleccionadas ({selectedConfirmations.size})
               </button>
             </div>
           </div>
@@ -1075,6 +1106,18 @@ export default function AppointmentConfirmationsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-4 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredPending.filter(p => p.status === ConfirmationStatus.PENDING).length > 0 &&
+                          selectedConfirmations.size === filteredPending.filter(p => p.status === ConfirmationStatus.PENDING).length
+                        }
+                        onChange={toggleSelectAll}
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        title="Seleccionar todas las citas pendientes"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Paciente / Contacto
                     </th>
@@ -1101,6 +1144,16 @@ export default function AppointmentConfirmationsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredPending.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedConfirmations.has(item.id)}
+                          onChange={() => toggleSelectConfirmation(item.id)}
+                          disabled={item.status !== ConfirmationStatus.PENDING}
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={item.status !== ConfirmationStatus.PENDING ? 'Solo se pueden seleccionar citas pendientes' : 'Seleccionar esta cita'}
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <div className="text-sm font-medium text-gray-900">
                           {item.appointmentData.nombre_paciente}

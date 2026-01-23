@@ -15,6 +15,7 @@ import { PendingConfirmation, ConfirmationStatus } from './entities/pending-conf
 import { CreateConfirmationConfigDto } from './dto/create-confirmation-config.dto';
 import { UpdateConfirmationConfigDto } from './dto/update-confirmation-config.dto';
 import { ClientsService } from '../clients/clients.service';
+import { HealthAtomService } from '../integrations/healthatom/healthatom.service';
 
 @Injectable()
 export class AppointmentConfirmationsService {
@@ -26,6 +27,7 @@ export class AppointmentConfirmationsService {
     @InjectRepository(PendingConfirmation)
     private pendingRepository: Repository<PendingConfirmation>,
     private clientsService: ClientsService,
+    private healthAtomService: HealthAtomService,
   ) {}
 
   /**
@@ -441,114 +443,126 @@ export class AppointmentConfirmationsService {
         // Parsear los estados configurados
         const stateIds = config.appointmentStates.split(',').map(id => parseInt(id.trim(), 10));
         
-        // Crear filtro para múltiples estados
-        const filtro = JSON.stringify({
-          fecha: { eq: appointmentDate },
-          id_estado: stateIds.length === 1 ? { eq: stateIds[0] } : { in: stateIds },
-        });
-
         this.logger.log(`📋 Filtrando por estados: [${stateIds.join(', ')}]`);
-        this.logger.log(`🔎 Filtro enviado a Dentalink: ${filtro}`);
-        this.logger.log(`🌐 URL completa: ${baseURL}citas?q=${encodeURIComponent(filtro)}`);
 
-        const response = await axios.get(`${baseURL}citas`, {
-          headers,
-          params: { q: filtro },
-        });
+        // Dentalink NO soporta el operador "in", así que hacemos una petición por cada estado
+        let appointments = [];
+        
+        for (const stateId of stateIds) {
+          const filtro = JSON.stringify({
+            fecha: { eq: appointmentDate },
+            id_estado: { eq: stateId },
+          });
 
-        if (response.status === 200) {
-          const appointments = response.data?.data || [];
-          this.logger.log(`✅ Obtenidas ${appointments.length} citas de Dentalink`);
-          
-          // Log de las fechas reales de las citas obtenidas
-          if (appointments.length > 0) {
-            const fechas = appointments.map((apt: any) => apt.fecha).filter((f: any, i: number, arr: any[]) => arr.indexOf(f) === i);
-            this.logger.log(`📅 Fechas de citas obtenidas: ${fechas.join(', ')}`);
+          this.logger.log(`🔎 Buscando citas con estado ${stateId}...`);
+          this.logger.log(`   Filtro: ${filtro}`);
+
+          const response = await axios.get(`${baseURL}citas`, {
+            headers,
+            params: { q: filtro },
+          });
+
+          if (response.status === 200) {
+            const stateAppointments = response.data?.data || [];
+            this.logger.log(`   ✅ ${stateAppointments.length} citas con estado ${stateId}`);
+            appointments = appointments.concat(stateAppointments);
           }
+        }
 
-          // Obtener información de pacientes
-          for (const apt of appointments) {
-            try {
-              // Obtener datos del paciente
-              const patientResp = await axios.get(`${baseURL}pacientes/${apt.id_paciente}`, {
-                headers,
-              });
+        this.logger.log(`✅ Total de citas obtenidas: ${appointments.length}`);
+        
+        // Log de las fechas reales de las citas obtenidas
+        if (appointments.length > 0) {
+          const fechas = appointments.map((apt: any) => apt.fecha).filter((f: any, i: number, arr: any[]) => arr.indexOf(f) === i);
+          this.logger.log(`📅 Fechas de citas obtenidas: ${fechas.join(', ')}`);
+        }
 
-              if (patientResp.status === 200) {
-                const patient = patientResp.data?.data || {};
-                apt.email_paciente = patient.email;
-                apt.telefono_paciente = patient.celular || patient.telefono;
-                apt.rut_paciente = patient.rut;
-                
-                this.logger.log(`📋 Datos del paciente ${apt.id_paciente}: RUT=${patient.rut}, Email=${patient.email}, Tel=${patient.celular || patient.telefono}`);
-              }
+        // Obtener información de pacientes
+        for (const apt of appointments) {
+          try {
+            // Obtener datos del paciente
+            const patientResp = await axios.get(`${baseURL}pacientes/${apt.id_paciente}`, {
+              headers,
+            });
 
-              // Calcular cuándo enviar la confirmación
-              const scheduledFor = immediateConfirmation
-                ? new Date() // Confirmar inmediatamente
-                : this.calculateScheduledTime(
-                    appointmentDate,
-                    config.timeToSend,
-                    config.daysBeforeAppointment,
-                    timezone,
-                  );
-
-              // Verificar si ya existe esta cita pendiente
-              const existing = await this.pendingRepository.findOne({
-                where: {
-                  clientId,
-                  confirmationConfigId: config.id,
-                  dentalinkAppointmentId: apt.id,
-                },
-              });
-
-              if (!existing) {
-                // Crear registro pendiente
-                const pending = this.pendingRepository.create({
-                  clientId,
-                  confirmationConfigId: config.id,
-                  dentalinkAppointmentId: apt.id,
-                  appointmentData: {
-                    id_paciente: apt.id_paciente,
-                    nombre_paciente: apt.nombre_paciente,
-                    nombre_social_paciente: apt.nombre_social_paciente,
-                    rut_paciente: apt.rut_paciente,
-                    email_paciente: apt.email_paciente,
-                    telefono_paciente: apt.telefono_paciente,
-                    id_tratamiento: apt.id_tratamiento,
-                    nombre_tratamiento: apt.nombre_tratamiento,
-                    fecha: apt.fecha,
-                    hora_inicio: apt.hora_inicio,
-                    hora_fin: apt.hora_fin,
-                    duracion: apt.duracion,
-                    id_dentista: apt.id_dentista,
-                    nombre_dentista: apt.nombre_dentista,
-                    id_sucursal: apt.id_sucursal,
-                    nombre_sucursal: apt.nombre_sucursal,
-                    id_estado: apt.id_estado,
-                    estado_cita: apt.estado_cita,
-                    motivo_atencion: apt.motivo_atencion,
-                    comentarios: apt.comentarios,
-                  },
-                  scheduledFor,
-                  status: ConfirmationStatus.PENDING,
-                });
-
-                await this.pendingRepository.save(pending);
-                totalStored++;
-                this.logger.log(`✅ Cita ${apt.id} almacenada para confirmación`);
-              } else {
-                this.logger.log(`⚠️ Cita ${apt.id} ya existe en pendientes`);
-              }
-
-              allAppointments.push(apt);
-            } catch (error) {
-              this.logger.error(`❌ Error procesando cita ${apt.id}: ${error.message}`);
+            if (patientResp.status === 200) {
+              const patient = patientResp.data?.data || {};
+              apt.email_paciente = patient.email;
+              apt.telefono_paciente = patient.celular || patient.telefono;
+              apt.rut_paciente = patient.rut;
+              
+              this.logger.log(`📋 Datos del paciente ${apt.id_paciente}: RUT=${patient.rut}, Email=${patient.email}, Tel=${patient.celular || patient.telefono}`);
             }
+
+            // Calcular cuándo enviar la confirmación
+            const scheduledFor = immediateConfirmation
+              ? new Date() // Confirmar inmediatamente
+              : this.calculateScheduledTime(
+                  appointmentDate,
+                  config.timeToSend,
+                  config.daysBeforeAppointment,
+                  timezone,
+                );
+
+            // Verificar si ya existe esta cita pendiente
+            const existing = await this.pendingRepository.findOne({
+              where: {
+                clientId,
+                confirmationConfigId: config.id,
+                dentalinkAppointmentId: apt.id,
+              },
+            });
+
+            if (!existing) {
+              // Crear registro pendiente
+              const pending = this.pendingRepository.create({
+                clientId,
+                confirmationConfigId: config.id,
+                dentalinkAppointmentId: apt.id,
+                appointmentData: {
+                  id_paciente: apt.id_paciente,
+                  nombre_paciente: apt.nombre_paciente,
+                  nombre_social_paciente: apt.nombre_social_paciente,
+                  rut_paciente: apt.rut_paciente,
+                  email_paciente: apt.email_paciente,
+                  telefono_paciente: apt.telefono_paciente,
+                  id_tratamiento: apt.id_tratamiento,
+                  nombre_tratamiento: apt.nombre_tratamiento,
+                  fecha: apt.fecha,
+                  hora_inicio: apt.hora_inicio,
+                  hora_fin: apt.hora_fin,
+                  duracion: apt.duracion,
+                  id_dentista: apt.id_dentista,
+                  nombre_dentista: apt.nombre_dentista,
+                  id_sucursal: apt.id_sucursal,
+                  nombre_sucursal: apt.nombre_sucursal,
+                  id_estado: apt.id_estado,
+                  estado_cita: apt.estado_cita,
+                  motivo_atencion: apt.motivo_atencion,
+                  comentarios: apt.comentarios,
+                },
+                scheduledFor,
+                status: ConfirmationStatus.PENDING,
+              });
+
+              await this.pendingRepository.save(pending);
+              totalStored++;
+              this.logger.log(`✅ Cita ${apt.id} almacenada para confirmación`);
+            } else {
+              this.logger.log(`⚠️ Cita ${apt.id} ya existe en pendientes`);
+            }
+
+            allAppointments.push(apt);
+          } catch (error) {
+            this.logger.error(`❌ Error procesando cita ${apt.id}: ${error.message}`);
           }
         }
       } catch (error) {
         this.logger.error(`❌ Error obteniendo citas de Dentalink: ${error.message}`);
+        if (error.response) {
+          this.logger.error(`   Status: ${error.response.status}`);
+          this.logger.error(`   Respuesta: ${JSON.stringify(error.response.data)}`);
+        }
       }
     }
 
@@ -664,50 +678,25 @@ export class AppointmentConfirmationsService {
     appointmentId: number,
     newStateId: number,
   ): Promise<void> {
-    const headers = {
-      Authorization: `Token ${client.apiKey}`,
-      'Content-Type': 'application/json',
-    };
-
-    const payload = {
-      id_estado: newStateId,
-    };
-
-    // Determinar qué APIs intentar
-    const hasDentalinkMedilink = client.integrations?.some(
-      (i) => i.integrationType === 'dentalink_medilink' && i.isEnabled,
+    this.logger.log(`🔄 Actualizando estado de cita ${appointmentId} al estado ${newStateId}`);
+    
+    // Usar HealthAtomService que ya tiene la lógica correcta para Dentalink y MediLink
+    const result = await this.healthAtomService.confirmAppointment(
+      appointmentId,
+      newStateId,
+      { apiKey: client.apiKey }
     );
 
-    const apisToTry = hasDentalinkMedilink
-      ? [
-          { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' },
-          { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' }
-        ]
-      : [{ type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' }];
-
-    let lastError: any;
-
-    // Intentar en ambas APIs
-    for (const api of apisToTry) {
-      try {
-        const response = await axios.put(
-          `${api.baseUrl}citas/${appointmentId}`,
-          payload,
-          { headers }
-        );
-
-        if (response.status === 200 || response.status === 204) {
-          this.logger.log(`✅ Estado actualizado en ${api.type.toUpperCase()}`);
-          return; // Éxito, salir
-        }
-      } catch (error) {
-        lastError = error;
-        this.logger.warn(`⚠️ Error actualizando estado en ${api.type}: ${error.message}`);
+    if (!result.success) {
+      this.logger.error(`❌ Error actualizando estado de cita ${appointmentId}:`);
+      this.logger.error(`   Detalles: ${result.error}`);
+      if (result.details) {
+        this.logger.error(`   Errores: ${JSON.stringify(result.details)}`);
       }
+      throw new Error(result.error);
     }
 
-    // Si llegamos aquí, ninguna API funcionó
-    throw lastError || new Error('No se pudo actualizar el estado de la cita');
+    this.logger.log(`✅ Estado de cita ${appointmentId} actualizado exitosamente en ${result.apiUsed}`);
   }
 
   /**
@@ -1140,6 +1129,68 @@ export class AppointmentConfirmationsService {
    * Procesa manualmente las confirmaciones pendientes de un cliente (para testing)
    * Ignora el scheduledFor y procesa todas las pendientes inmediatamente
    */
+  /**
+   * Procesa confirmaciones seleccionadas específicamente
+   */
+  async processSelectedConfirmations(
+    clientId: string,
+    confirmationIds: string[],
+  ): Promise<{ processed: number; completed: number; failed: number }> {
+    this.logger.log(
+      `🔄 Procesando ${confirmationIds.length} confirmaciones seleccionadas para cliente ${clientId}`,
+    );
+
+    const pending = await this.pendingRepository.find({
+      where: {
+        id: In(confirmationIds),
+        clientId,
+        status: ConfirmationStatus.PENDING,
+      },
+      relations: ['confirmationConfig', 'client', 'client.integrations'],
+    });
+
+    this.logger.log(`📋 Encontradas ${pending.length} confirmaciones válidas para procesar`);
+
+    let completed = 0;
+    let failed = 0;
+
+    for (const confirmation of pending) {
+      try {
+        await this.processConfirmation(confirmation);
+
+        // Delay entre procesamiento para rate limit
+        if (pending.indexOf(confirmation) < pending.length - 1) {
+          this.logger.log('⏱️ Esperando 600ms antes de procesar siguiente (rate limit GHL)...');
+          await this.sleep(600);
+        }
+
+        // Recargar para ver el estado actualizado
+        const updated = await this.pendingRepository.findOne({
+          where: { id: confirmation.id },
+        });
+
+        if (updated?.status === ConfirmationStatus.COMPLETED) {
+          completed++;
+        } else if (updated?.status === ConfirmationStatus.FAILED) {
+          failed++;
+        }
+      } catch (error) {
+        this.logger.error(`❌ Error procesando confirmación ${confirmation.id}: ${error.message}`);
+        failed++;
+      }
+    }
+
+    this.logger.log(
+      `✅ Procesamiento seleccionado completado: ${completed} exitosas, ${failed} fallidas`,
+    );
+
+    return {
+      processed: pending.length,
+      completed,
+      failed,
+    };
+  }
+
   async processPendingConfirmationsNow(
     clientId: string,
   ): Promise<{ processed: number; completed: number; failed: number }> {

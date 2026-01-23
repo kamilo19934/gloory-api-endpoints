@@ -112,6 +112,27 @@ export class AppointmentConfirmationsController {
   }
 
   /**
+   * Procesa confirmaciones seleccionadas específicamente
+   */
+  @Post('process-selected')
+  async processSelectedConfirmations(
+    @Param('clientId') clientId: string,
+    @Body() processSelectedDto: { confirmationIds: string[] },
+  ) {
+    const result = await this.confirmationsService.processSelectedConfirmations(
+      clientId,
+      processSelectedDto.confirmationIds,
+    );
+
+    return {
+      message: `${result.completed} de ${result.processed} confirmaciones procesadas exitosamente`,
+      processed: result.processed,
+      completed: result.completed,
+      failed: result.failed,
+    };
+  }
+
+  /**
    * Procesa TODAS las confirmaciones pendientes de un cliente (sin límite)
    * Procesa en batches de 10 respetando rate limits hasta completar todas
    */

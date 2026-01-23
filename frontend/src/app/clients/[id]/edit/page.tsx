@@ -21,6 +21,11 @@ export default function EditClientPage() {
     apiKey: '',
     timezone: 'America/Santiago',
     confirmationStateId: undefined as number | undefined,
+    contactedStateId: undefined as number | undefined,
+    ghlEnabled: false,
+    ghlAccessToken: '',
+    ghlCalendarId: '',
+    ghlLocationId: '',
     isActive: true,
   });
 
@@ -34,6 +39,11 @@ export default function EditClientPage() {
         apiKey: client.apiKey || '',
         timezone: client.timezone || 'America/Santiago',
         confirmationStateId: client.confirmationStateId ?? undefined,
+        contactedStateId: client.contactedStateId ?? undefined,
+        ghlEnabled: client.ghlEnabled || false,
+        ghlAccessToken: client.ghlAccessToken || '',
+        ghlCalendarId: client.ghlCalendarId || '',
+        ghlLocationId: client.ghlLocationId || '',
         isActive: client.isActive,
       });
     } catch (error) {
@@ -187,7 +197,100 @@ export default function EditClientPage() {
               </p>
             </div>
 
-            <div className="flex items-center">
+            <div>
+              <label htmlFor="contactedStateId" className="block text-sm font-medium text-gray-700 mb-2">
+                Estado de Contactado (ID)
+              </label>
+              <input
+                type="number"
+                id="contactedStateId"
+                value={formData.contactedStateId || ''}
+                onChange={(e) => setFormData({ ...formData, contactedStateId: e.target.value ? parseInt(e.target.value) : undefined })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Ej: 9 para Contactado por Bookys"
+                min="1"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                ID del estado que se usará para marcar las citas como contactadas después de enviar la confirmación.
+              </p>
+            </div>
+
+            {/* Sección de GoHighLevel */}
+            <div className="pt-6 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Configuración GoHighLevel</h3>
+              
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="ghlEnabled"
+                    checked={formData.ghlEnabled}
+                    onChange={(e) => setFormData({ ...formData, ghlEnabled: e.target.checked })}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="ghlEnabled" className="ml-2 block text-sm font-medium text-gray-900">
+                    Integración GoHighLevel habilitada
+                  </label>
+                </div>
+
+                {formData.ghlEnabled && (
+                  <>
+                    <div>
+                      <label htmlFor="ghlAccessToken" className="block text-sm font-medium text-gray-700 mb-2">
+                        GHL Access Token
+                      </label>
+                      <input
+                        type="text"
+                        id="ghlAccessToken"
+                        value={formData.ghlAccessToken}
+                        onChange={(e) => setFormData({ ...formData, ghlAccessToken: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                        placeholder="Access Token de GoHighLevel"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Token de acceso de tu cuenta de GoHighLevel
+                      </p>
+                    </div>
+
+                    <div>
+                      <label htmlFor="ghlLocationId" className="block text-sm font-medium text-gray-700 mb-2">
+                        GHL Location ID
+                      </label>
+                      <input
+                        type="text"
+                        id="ghlLocationId"
+                        value={formData.ghlLocationId}
+                        onChange={(e) => setFormData({ ...formData, ghlLocationId: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                        placeholder="ID de la ubicación en GoHighLevel"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        ID de la ubicación en tu cuenta de GoHighLevel
+                      </p>
+                    </div>
+
+                    <div>
+                      <label htmlFor="ghlCalendarId" className="block text-sm font-medium text-gray-700 mb-2">
+                        GHL Calendar ID
+                      </label>
+                      <input
+                        type="text"
+                        id="ghlCalendarId"
+                        value={formData.ghlCalendarId}
+                        onChange={(e) => setFormData({ ...formData, ghlCalendarId: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                        placeholder="ID del calendario en GoHighLevel"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        ID del calendario donde se sincronizarán las citas
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center pt-4 border-t border-gray-200">
               <input
                 type="checkbox"
                 id="isActive"

@@ -28,7 +28,7 @@ export class EndpointsService {
   getEndpointsForClient(clientId: string): EndpointDefinition[] {
     return AVAILABLE_ENDPOINTS.map(endpoint => ({
       ...endpoint,
-      clientUrl: `${this.BASE_URL}/${clientId}${endpoint.path}`,
+      clientUrl: `${this.BASE_URL}/api/clients/${clientId}${endpoint.path}`,
     }));
   }
 }

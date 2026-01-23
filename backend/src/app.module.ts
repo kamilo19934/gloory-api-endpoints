@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { APP_GUARD } from '@nestjs/core';
 import { ClientsModule } from './clients/clients.module';
 import { EndpointsModule } from './endpoints/endpoints.module';
 import { DentalinkModule } from './dentalink/dentalink.module';
@@ -8,6 +9,9 @@ import { ClinicModule } from './clinic/clinic.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { HealthAtomModule } from './integrations/healthatom/healthatom.module';
 import { AppointmentConfirmationsModule } from './appointment-confirmations/appointment-confirmations.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -66,6 +70,10 @@ import { AppointmentConfirmationsModule } from './appointment-confirmations/appo
         }
       },
     }),
+    // Auth modules
+    AuthModule,
+    UsersModule,
+    // Application modules
     IntegrationsModule, // Global module for integration registry
     HealthAtomModule, // Unified HealthAtom service (Dentalink + MediLink)
     ClientsModule,
@@ -73,6 +81,14 @@ import { AppointmentConfirmationsModule } from './appointment-confirmations/appo
     DentalinkModule,
     ClinicModule,
     AppointmentConfirmationsModule,
+  ],
+  providers: [
+    // Aplicar JwtAuthGuard globalmente
+    // Todas las rutas requieren autenticación excepto las marcadas con @Public()
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
   ],
 })
 export class AppModule {}

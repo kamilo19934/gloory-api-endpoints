@@ -7,12 +7,14 @@ import { GHLSetupService } from './ghl-setup.service';
 import { ConfirmationConfig } from './entities/confirmation-config.entity';
 import { PendingConfirmation } from './entities/pending-confirmation.entity';
 import { ClientsModule } from '../clients/clients.module';
+import { HealthAtomModule } from '../integrations/healthatom/healthatom.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ConfirmationConfig, PendingConfirmation]),
     ScheduleModule.forRoot(),
     ClientsModule,
+    HealthAtomModule,
   ],
   controllers: [AppointmentConfirmationsController],
   providers: [AppointmentConfirmationsService, GHLSetupService],

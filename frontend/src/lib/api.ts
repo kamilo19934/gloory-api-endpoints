@@ -585,6 +585,16 @@ export const appointmentConfirmationsApi = {
     return response.data;
   },
 
+  processSelected: async (
+    clientId: string,
+    confirmationIds: string[],
+  ): Promise<{ message: string; processed: number; completed: number; failed: number }> => {
+    const response = await api.post(`/clients/${clientId}/appointment-confirmations/process-selected`, {
+      confirmationIds,
+    });
+    return response.data;
+  },
+
   // Setup de GHL
   setupGHL: async (
     clientId: string,
