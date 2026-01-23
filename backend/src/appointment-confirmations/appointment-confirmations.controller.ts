@@ -11,6 +11,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AppointmentConfirmationsService } from './appointment-confirmations.service';
+import { Public } from '../auth/decorators/public.decorator';
 import { GHLSetupService } from './ghl-setup.service';
 import { CreateConfirmationConfigDto } from './dto/create-confirmation-config.dto';
 import { UpdateConfirmationConfigDto } from './dto/update-confirmation-config.dto';
@@ -18,6 +19,7 @@ import { TriggerConfirmationDto } from './dto/trigger-confirmation.dto';
 import { ConfirmationStatus } from './entities/pending-confirmation.entity';
 import { ClientsService } from '../clients/clients.service';
 
+@Public()
 @Controller('clients/:clientId/appointment-confirmations')
 export class AppointmentConfirmationsController {
   constructor(

@@ -10,6 +10,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { DentalinkService } from './dentalink.service';
+import { Public } from '../auth/decorators/public.decorator';
 import { ClientsService } from '../clients/clients.service';
 import { EndpointsService } from '../endpoints/endpoints.service';
 import { SearchAvailabilityDto } from './dto/search-availability.dto';
@@ -21,6 +22,7 @@ import { ConfirmAppointmentDto } from './dto/confirm-appointment.dto';
 import { GetFutureAppointmentsDto } from './dto/get-future-appointments.dto';
 import { GetTreatmentsDto } from './dto/get-treatments.dto';
 
+@Public()
 @Controller('clients/:clientId')
 export class DentalinkController {
   constructor(

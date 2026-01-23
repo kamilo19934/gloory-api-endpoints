@@ -10,6 +10,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ClinicService } from './clinic.service';
+import { Public } from '../auth/decorators/public.decorator';
 import { Branch } from './entities/branch.entity';
 import { Professional } from './entities/professional.entity';
 
@@ -37,6 +38,7 @@ interface ProfessionalResponse {
   activo?: boolean;      // Solo para panel admin
 }
 
+@Public()
 @Controller('clients/:clientId/clinic')
 export class ClinicController {
   constructor(private readonly clinicService: ClinicService) {}
