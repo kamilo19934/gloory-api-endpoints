@@ -580,6 +580,12 @@ export class AppointmentConfirmationsService {
     confirmation.attempts++;
     await this.pendingRepository.save(confirmation);
 
+    // Delay aleatorio entre 20 y 30 segundos antes de procesar
+    const delaySeconds = Math.floor(Math.random() * 11) + 20; // 20-30 segundos
+    const delayMs = delaySeconds * 1000;
+    this.logger.log(`⏱️ Esperando ${delaySeconds} segundos antes de procesar confirmación ${confirmation.id}...`);
+    await this.sleep(delayMs);
+
     try {
       const client = confirmation.client;
       const config = confirmation.confirmationConfig;
@@ -688,15 +694,11 @@ export class AppointmentConfirmationsService {
     );
 
     if (!result.success) {
-      this.logger.error(`❌ Error actualizando estado de cita ${appointmentId}:`);
-      this.logger.error(`   Detalles: ${result.error}`);
-      if (result.details) {
-        this.logger.error(`   Errores: ${JSON.stringify(result.details)}`);
-      }
+      this.logger.error(`❌ Error actualizando estado de cita ${appointmentId}: ${result.error}`);
       throw new Error(result.error);
     }
 
-    this.logger.log(`✅ Estado de cita ${appointmentId} actualizado exitosamente en ${result.apiUsed}`);
+    this.logger.log(`✅ Estado de cita ${appointmentId} actualizado exitosamente`);
   }
 
   /**

@@ -8,7 +8,7 @@ import {
   integrationsApi,
   getIntegrationColor,
 } from '@/lib/api';
-import { FiCheck, FiPlus, FiX, FiSettings } from 'react-icons/fi';
+import { FiCheck, FiPlus, FiX, FiSettings, FiAlertCircle } from 'react-icons/fi';
 
 interface IntegrationConfig {
   type: IntegrationType;
@@ -22,6 +22,14 @@ interface IntegrationSelectorProps {
   mode?: 'create' | 'edit';
 }
 
+// Integraciones de HealthAtom que son mutuamente excluyentes
+// Solo puedes tener UNA de estas activa a la vez
+const HEALTHATOM_INTEGRATIONS: IntegrationType[] = [
+  IntegrationType.DENTALINK,
+  IntegrationType.MEDILINK,
+  IntegrationType.DENTALINK_MEDILINK,
+];
+
 export default function IntegrationSelector({
   selectedIntegrations,
   onChange,
@@ -30,6 +38,10 @@ export default function IntegrationSelector({
   const [availableIntegrations, setAvailableIntegrations] = useState<IntegrationMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedIntegration, setExpandedIntegration] = useState<IntegrationType | null>(null);
+  
+  // Caché temporal para guardar configuraciones de integraciones deseleccionadas
+  // Esto permite recuperar los datos si el usuario vuelve a seleccionar antes de guardar
+  const [configCache, setConfigCache] = useState<Record<IntegrationType, Record<string, any>>>({} as Record<IntegrationType, Record<string, any>>);
 
   useEffect(() => {
     loadIntegrations();
@@ -54,24 +66,110 @@ export default function IntegrationSelector({
     return selectedIntegrations.find((i) => i.type === type);
   };
 
+  // Verifica si una integración es de HealthAtom (mutuamente excluyente)
+  const isHealthAtomIntegration = (type: IntegrationType) => {
+    return HEALTHATOM_INTEGRATIONS.includes(type);
+  };
+
+  // Obtiene qué integración de HealthAtom está actualmente seleccionada
+  const getSelectedHealthAtomIntegration = () => {
+    return selectedIntegrations.find((i) => HEALTHATOM_INTEGRATIONS.includes(i.type));
+  };
+
+  // Campos comunes que se transfieren entre integraciones de HealthAtom
+  const TRANSFERABLE_FIELDS = [
+    'apiKey',
+    'timezone',
+    'ghlEnabled',
+    'ghlAccessToken',
+    'ghlCalendarId',
+    'ghlLocationId',
+  ];
+
+  // Transfiere datos comunes de una integración de HealthAtom a otra
+  const transferHealthAtomConfig = (
+    fromConfig: Record<string, any>,
+    toConfig: Record<string, any>
+  ): Record<string, any> => {
+    const result = { ...toConfig };
+    TRANSFERABLE_FIELDS.forEach((field) => {
+      if (fromConfig[field] !== undefined && fromConfig[field] !== '') {
+        result[field] = fromConfig[field];
+      }
+    });
+    return result;
+  };
+
   const toggleIntegration = (type: IntegrationType) => {
     if (isSelected(type)) {
+      // Deseleccionar - guardar configuración en caché antes de eliminar
+      const integrationToRemove = selectedIntegrations.find((i) => i.type === type);
+      if (integrationToRemove && Object.keys(integrationToRemove.config).length > 0) {
+        // Guardar en caché solo si hay datos configurados
+        setConfigCache((prev) => ({
+          ...prev,
+          [type]: { ...integrationToRemove.config },
+        }));
+      }
+      
       onChange(selectedIntegrations.filter((i) => i.type !== type));
       if (expandedIntegration === type) {
         setExpandedIntegration(null);
       }
     } else {
+      // Seleccionar
       const metadata = availableIntegrations.find((i) => i.type === type);
       if (metadata) {
+        // Crear configuración con valores por defecto
         const defaultConfig: Record<string, any> = {};
         [...metadata.requiredFields, ...metadata.optionalFields].forEach((field) => {
           if (field.defaultValue !== undefined) {
             defaultConfig[field.key] = field.defaultValue;
           }
         });
+
+        let newIntegrations = selectedIntegrations;
+        let finalConfig = defaultConfig;
+
+        // Prioridad 1: Verificar si hay configuración en caché para esta integración
+        if (configCache[type] && Object.keys(configCache[type]).length > 0) {
+          finalConfig = { ...defaultConfig, ...configCache[type] };
+        }
+        // Si es una integración de HealthAtom, manejar exclusión mutua y transferencia de datos
+        else if (isHealthAtomIntegration(type)) {
+          // Prioridad 2: Verificar caché de otras integraciones de HealthAtom
+          const cachedHealthAtomConfig = HEALTHATOM_INTEGRATIONS
+            .filter((t) => t !== type && configCache[t])
+            .map((t) => configCache[t])
+            .find((c) => c && Object.keys(c).length > 0);
+
+          if (cachedHealthAtomConfig) {
+            // Transferir datos desde el caché de otra integración de HealthAtom
+            finalConfig = transferHealthAtomConfig(cachedHealthAtomConfig, defaultConfig);
+          } else {
+            // Prioridad 3: Buscar integración de HealthAtom actualmente seleccionada
+            const existingHealthAtom = getSelectedHealthAtomIntegration();
+            
+            if (existingHealthAtom) {
+              // Guardar la configuración de la integración que se va a deseleccionar en caché
+              setConfigCache((prev) => ({
+                ...prev,
+                [existingHealthAtom.type]: { ...existingHealthAtom.config },
+              }));
+              // Transferir datos comunes de la integración anterior
+              finalConfig = transferHealthAtomConfig(existingHealthAtom.config, defaultConfig);
+            }
+          }
+
+          // Filtrar las otras integraciones de HealthAtom
+          newIntegrations = selectedIntegrations.filter(
+            (i) => !HEALTHATOM_INTEGRATIONS.includes(i.type)
+          );
+        }
+
         onChange([
-          ...selectedIntegrations,
-          { type, isEnabled: true, config: defaultConfig },
+          ...newIntegrations,
+          { type, isEnabled: true, config: finalConfig },
         ]);
         setExpandedIntegration(type);
       }
@@ -197,8 +295,143 @@ export default function IntegrationSelector({
     );
   }
 
+  // Agrupar integraciones: HealthAtom primero, luego otras
+  const healthAtomIntegrations = availableIntegrations.filter((i) =>
+    HEALTHATOM_INTEGRATIONS.includes(i.type)
+  );
+  const otherIntegrations = availableIntegrations.filter(
+    (i) => !HEALTHATOM_INTEGRATIONS.includes(i.type)
+  );
+
+  const renderIntegrationCard = (integration: IntegrationMetadata) => {
+    const selected = isSelected(integration.type);
+    const config = getSelectedConfig(integration.type);
+    const isExpanded = expandedIntegration === integration.type;
+    const isHealthAtom = isHealthAtomIntegration(integration.type);
+    const selectedHealthAtom = getSelectedHealthAtomIntegration();
+    
+    // Si es una integración de HealthAtom y hay otra del grupo seleccionada (no esta)
+    const isBlockedByOther = isHealthAtom && selectedHealthAtom && selectedHealthAtom.type !== integration.type;
+
+    return (
+      <div
+        key={integration.type}
+        className={`rounded-xl transition-all duration-200 ${
+          selected
+            ? 'border-2 border-primary-400 bg-gradient-to-br from-primary-50 to-primary-100 shadow-md'
+            : isBlockedByOther
+              ? 'border-2 border-gray-200 bg-gray-50 opacity-60'
+              : 'border-2 border-gray-200 bg-white hover:border-primary-300 hover:shadow-sm'
+        }`}
+      >
+        <div
+          className={`flex items-center p-4 ${isBlockedByOther ? 'cursor-pointer' : 'cursor-pointer'} group`}
+          onClick={() => toggleIntegration(integration.type)}
+        >
+          <div
+            className={`w-12 h-12 rounded-xl flex items-center justify-center ${getIntegrationColor(
+              integration.type
+            )} text-white font-bold text-lg shadow-md transform transition-transform ${!isBlockedByOther ? 'group-hover:scale-105' : ''}`}
+          >
+            {integration.name.charAt(0)}
+          </div>
+          <div className="ml-4 flex-1">
+            <div className="flex items-center gap-2">
+              <h4 className="text-base font-semibold text-gray-900">{integration.name}</h4>
+              {isHealthAtom && (
+                <span className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-semibold uppercase">
+                  HealthAtom
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-600 mt-0.5">{integration.description}</p>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {integration.capabilities.map((cap) => (
+                <span
+                  key={cap}
+                  className="text-[11px] px-2.5 py-0.5 bg-white border border-gray-200 text-gray-700 rounded-full font-medium"
+                >
+                  {cap}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center space-x-3 ml-4">
+            {selected && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpandedIntegration(isExpanded ? null : integration.type);
+                }}
+                className={`p-2.5 rounded-lg transition-colors ${
+                  isExpanded 
+                    ? 'bg-primary-600 text-white shadow-sm' 
+                    : 'bg-white text-gray-600 hover:bg-primary-100 hover:text-primary-700'
+                }`}
+                title={isExpanded ? 'Ocultar configuración' : 'Mostrar configuración'}
+              >
+                <FiSettings size={18} />
+              </button>
+            )}
+            <div
+              className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                selected
+                  ? 'border-primary-600 bg-primary-600 text-white shadow-md scale-110'
+                  : 'border-gray-300 bg-white text-gray-400 group-hover:border-primary-400'
+              }`}
+            >
+              {selected ? <FiCheck size={16} className="font-bold" /> : <FiPlus size={16} />}
+            </div>
+          </div>
+        </div>
+
+        {selected && isExpanded && config && (
+          <div className="px-5 pb-5 border-t-2 border-primary-200 bg-white/60 rounded-b-xl">
+            <div className="pt-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <FiSettings className="text-primary-600" size={18} />
+                <h5 className="text-base font-bold text-gray-900">
+                  Configuración de {integration.name}
+                </h5>
+              </div>
+
+              {integration.requiredFields.length > 0 && (
+                <div className="mb-5">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Campos Requeridos</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      Obligatorio
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {integration.requiredFields.map((field) => renderField(field, config))}
+                  </div>
+                </div>
+              )}
+
+              {integration.optionalFields.length > 0 && (
+                <div>
+                  <div className="flex items-center space-x-2 mb-3">
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Campos Opcionales</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                      Opcional
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {integration.optionalFields.map((field) => renderField(field, config))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-lg font-semibold text-gray-900">Integraciones Disponibles</h3>
         <div className="flex items-center space-x-2">
@@ -208,120 +441,37 @@ export default function IntegrationSelector({
         </div>
       </div>
 
-      <div className="grid gap-3">
-        {availableIntegrations.map((integration) => {
-          const selected = isSelected(integration.type);
-          const config = getSelectedConfig(integration.type);
-          const isExpanded = expandedIntegration === integration.type;
+      {/* Integraciones de HealthAtom (mutuamente excluyentes) */}
+      {healthAtomIntegrations.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+            <FiAlertCircle className="text-purple-600" size={16} />
+            <span className="text-sm font-semibold text-gray-700">
+              Sistema de Agenda
+            </span>
+            <span className="text-xs text-gray-500">
+              (Selecciona solo una opción)
+            </span>
+          </div>
+          <div className="grid gap-3">
+            {healthAtomIntegrations.map(renderIntegrationCard)}
+          </div>
+        </div>
+      )}
 
-          return (
-            <div
-              key={integration.type}
-              className={`rounded-xl transition-all duration-200 ${
-                selected
-                  ? 'border-2 border-primary-400 bg-gradient-to-br from-primary-50 to-primary-100 shadow-md'
-                  : 'border-2 border-gray-200 bg-white hover:border-primary-300 hover:shadow-sm'
-              }`}
-            >
-              <div
-                className="flex items-center p-4 cursor-pointer group"
-                onClick={() => toggleIntegration(integration.type)}
-              >
-                <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center ${getIntegrationColor(
-                    integration.type
-                  )} text-white font-bold text-lg shadow-md transform transition-transform group-hover:scale-105`}
-                >
-                  {integration.name.charAt(0)}
-                </div>
-                <div className="ml-4 flex-1">
-                  <h4 className="text-base font-semibold text-gray-900">{integration.name}</h4>
-                  <p className="text-sm text-gray-600 mt-0.5">{integration.description}</p>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {integration.capabilities.map((cap) => (
-                      <span
-                        key={cap}
-                        className="text-[11px] px-2.5 py-0.5 bg-white border border-gray-200 text-gray-700 rounded-full font-medium"
-                      >
-                        {cap}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 ml-4">
-                  {selected && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedIntegration(isExpanded ? null : integration.type);
-                      }}
-                      className={`p-2.5 rounded-lg transition-colors ${
-                        isExpanded 
-                          ? 'bg-primary-600 text-white shadow-sm' 
-                          : 'bg-white text-gray-600 hover:bg-primary-100 hover:text-primary-700'
-                      }`}
-                      title={isExpanded ? 'Ocultar configuración' : 'Mostrar configuración'}
-                    >
-                      <FiSettings size={18} />
-                    </button>
-                  )}
-                  <div
-                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
-                      selected
-                        ? 'border-primary-600 bg-primary-600 text-white shadow-md scale-110'
-                        : 'border-gray-300 bg-white text-gray-400 group-hover:border-primary-400'
-                    }`}
-                  >
-                    {selected ? <FiCheck size={16} className="font-bold" /> : <FiPlus size={16} />}
-                  </div>
-                </div>
-              </div>
-
-              {selected && isExpanded && config && (
-                <div className="px-5 pb-5 border-t-2 border-primary-200 bg-white/60 rounded-b-xl">
-                  <div className="pt-4">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <FiSettings className="text-primary-600" size={18} />
-                      <h5 className="text-base font-bold text-gray-900">
-                        Configuración de {integration.name}
-                      </h5>
-                    </div>
-
-                    {integration.requiredFields.length > 0 && (
-                      <div className="mb-5">
-                        <div className="flex items-center space-x-2 mb-3">
-                          <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Campos Requeridos</span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            Obligatorio
-                          </span>
-                        </div>
-                        <div className="space-y-3">
-                          {integration.requiredFields.map((field) => renderField(field, config))}
-                        </div>
-                      </div>
-                    )}
-
-                    {integration.optionalFields.length > 0 && (
-                      <div>
-                        <div className="flex items-center space-x-2 mb-3">
-                          <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Campos Opcionales</span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                            Opcional
-                          </span>
-                        </div>
-                        <div className="space-y-3">
-                          {integration.optionalFields.map((field) => renderField(field, config))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* Otras integraciones */}
+      {otherIntegrations.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+            <span className="text-sm font-semibold text-gray-700">
+              Otras Integraciones
+            </span>
+          </div>
+          <div className="grid gap-3">
+            {otherIntegrations.map(renderIntegrationCard)}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

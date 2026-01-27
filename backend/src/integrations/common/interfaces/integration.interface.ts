@@ -102,7 +102,5 @@ export interface IntegrationEndpointArgument {
 export interface DualApiResult<T> {
   success: boolean;
   data?: T;
-  apiUsed?: string;
   error?: string;
-  details?: string[];
 }

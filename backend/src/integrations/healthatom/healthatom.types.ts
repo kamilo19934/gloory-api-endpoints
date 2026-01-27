@@ -60,7 +60,6 @@ export interface NormalizedProfessional {
   habilitado: boolean;
   agendaOnline: boolean;
   sucursales: number[];
-  source: HealthAtomApi;
 }
 
 /**
@@ -74,7 +73,6 @@ export interface NormalizedBranch {
   comuna?: string;
   direccion?: string;
   habilitada: boolean;
-  source: HealthAtomApi;
 }
 
 /**
@@ -87,7 +85,6 @@ export interface NormalizedPatient {
   apellidos?: string;
   celular?: string;
   email?: string;
-  source: HealthAtomApi;
 }
 
 /**
@@ -107,7 +104,5 @@ export interface NormalizedAvailability {
 export interface DualApiOperationResult<T> {
   success: boolean;
   data?: T;
-  apiUsed?: HealthAtomApi;
   error?: string;
-  details?: string[];
 }

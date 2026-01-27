@@ -1,0 +1,151 @@
+POST /citas/
+Permite agendar citas a pacientes.
+
+Ejemplo de solicitud:
+
+const url = 'https://api.dentalink.healthatom.com/api/v1/citas/';
+
+const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+        'Authorization': `Token ${token}`
+    },
+    body: JSON.stringify({
+        id_dentista: 2,
+        id_sucursal: 1,
+        id_estado: 7,
+        id_sillon: 1,
+        id_paciente: 2,
+        id_tratamiento: 2,
+        fecha: '2018-11-02',
+        hora_inicio: '09:00',
+        duracion: 30,
+        comentario: 'Control exodoncia',
+        videoconsulta: 1
+    })
+});
+
+const data = await response.json();
+console.log(data);
+Ejemplo de respuesta:
+
+{
+    "data": {
+        "id": 754,
+        "id_paciente": 2,
+        "nombre_paciente": "Fernanda Risopatrón",
+        "nombre_social_paciente":"Ferny",
+        "id_estado": 7,
+        "estado_cita": "No confirmado",
+        "estado_anulacion": 0,
+        "estado_confirmacion": 0,
+        "id_tratamiento": 2,
+        "nombre_tratamiento": "Exodoncia",
+        "tratamiento_sin_asignar": 0,
+        "id_dentista": 2,
+        "nombre_dentista": "Daniel Vergara",
+        "id_sucursal": 1,
+        "nombre_sucursal": "NORTE",
+        "id_sillon": 1,
+        "nombre_sillon": "Sillon 1",
+        "fecha": "2018-11-02",
+        "hora_inicio": "09:00:00",
+        "hora_fin": "09:30:00",
+        "duracion": 30,
+        "comentarios": "Control exodoncia",
+        "fecha_actualizacion": "2018-11-05 17:09:01",
+        "links": [
+            {
+                "rel": "self",
+                "href": "https://api.dentalink.healthatom.com/api/v1/citas/754",
+                "method": "GET"
+            },
+            {
+                "rel": "pacientes",
+                "href": "https://api.dentalink.healthatom.com/api/v1/pacientes/2",
+                "method": "GET"
+            },
+            {
+                "rel": "tratamientos",
+                "href": "https://api.dentalink.healthatom.com/api/v1/tratamientos/2",
+                "method": "GET"
+            },
+            {
+                "rel": "dentistas",
+                "href": "https://api.dentalink.healthatom.com/api/v1/dentistas/2",
+                "method": "GET"
+            }
+        ]
+    }
+}
+HTTP/Request
+URI
+POST api/v1/citas/
+
+Body
+Parámetro	Tipo de dato	Descripción
+id_dentista	Integer	ID profesional responsable de la cita(*)
+id_especialidad	Integer	ID especialidad(*)
+id_sucursal	Integer	ID sucursal donde se va a realizar la cita
+id_estado	Integer	(Opcional) ID estado de la cita. En caso de no ser especificado, la cita se crea con estado "No confirmado" (7)
+id_sillon	Integer	ID sillón asignado a la cita (Los sobrecupos usan el sillón/recurso con ID 7)
+id_paciente	Integer	ID paciente
+id_tratamiento	Integer	(Opcional) ID tratamiento al cual asignar la cita. En caso de no ser especificado, se busca un tratamiento activo con el mismo dentista y sucursal indicados para ser asignado. Si no hay tratamiento activo que cumpla dichas condiciones, se genera un nuevo tratamiento con el nombre "Diagnóstico" para el dentista en la sucursal indicada.
+fecha	date	Fecha de la cita
+hora_inicio	String	Horario de la cita
+duracion	Integer	Duración en minutos de la cita, debe ser compatible con el intervalo de atención del profesional.
+comentario	String	(Opcional) Comentario de la cita
+return_options	Bool	(Opcional) En caso de fallar el cambio de fecha, retorna opciones de cita
+videoconsulta	Bool	(Opcional) Define la modalidad de la cita:
+1 = Videoconsulta
+0 = Presencial
+Comportamiento según el horario de atención:
+
+Horario con una sola modalidad:
+
+Si no se envía el parámetro, la cita se agenda automáticamente en la modalidad disponible
+Si se envía, debe coincidir con la modalidad del horario
+Horario con ambas modalidades:
+
+El parámetro se vuelve requerido
+Se debe especificar explícitamente la modalidad deseada (0 o 1)
+Ejemplos:
+
+{
+    // Agendar videoconsulta
+    "videoconsulta": 1,
+    // ... otros parámetros ...
+}
+
+{
+    // Agendar cita presencial
+    "videoconsulta": 0,
+    // ... otros parámetros ...
+}
+(*): Puede enviarse id_dentista o id_especialidad para agendar por dentista o por especialidad
+
+HTTP/Response
+Atributos	Tipo de dato	Descripción
+id	Integer	ID de la cita
+id_paciente	Integer	ID del paciente
+nombre_paciente	String	Nombre del paciente
+nombre_social_paciente	String	Nombre social del paciente
+id_estado	Integer	ID del estado de la cita
+estado_cita	String	Estado de la cita
+estado_anulacion	Bool	Indica si el estado corresponde a anulación (1) o no (0)
+estado_confirmacion	Bool	Indica si el estado corresponde a confirmación (1) o no (0)
+id_tratamiento	Integer	ID del tratamiento
+nombre_tratamiento	String	Nombre para el tratamiento
+tratamiento_sin_asignar	Bool	Indica si la cita tiene un tratamiento asignado o no (*)
+fecha	String	Fecha de la cita
+hora_inicio	String	Hora de inicio de la cita
+hora_fin	String	Hora de término de la cita
+duracion	Integer	Duración de la cita, en minutos
+id_dentista	Integer	ID del dentista que realiza la cita
+nombre_dentista	String	Nombre del dentista que realiza la cita
+id_sucursal	Integer	ID de la sucursal
+nombre_sucursal	String	Nombre de la sucursal donde se realiza la cita
+id_sillon	Integer	ID del sillón
+comentarios	String	Comentarios asociados a la cita
+fecha_actualizacion	Datetime	Fecha y hora de la última actualización de estado formato AAAA-MM-DD H:I:S
+(*): Para generar citas sin asociar un plan de tratamiento, debes dirigirte a las configuraciones especiales de tu clínica.

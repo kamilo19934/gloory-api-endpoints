@@ -103,7 +103,7 @@ export class HealthAtomService {
     }
 
     if (allProfessionals.length === 0) {
-      return { success: false, error: 'No se pudieron obtener profesionales', details: errors };
+      return { success: false, error: 'No se pudieron obtener profesionales' };
     }
 
     return { success: true, data: allProfessionals };
@@ -137,7 +137,6 @@ export class HealthAtomService {
             return {
               success: true,
               data: this.normalizeProfessional(dentista, api),
-              apiUsed: api,
             };
           }
         } else {
@@ -147,7 +146,6 @@ export class HealthAtomService {
             return {
               success: true,
               data: this.normalizeProfessional(response.data.data, api),
-              apiUsed: api,
             };
           }
         }
@@ -158,10 +156,10 @@ export class HealthAtomService {
       }
     }
 
-    return { success: false, error: `Profesional ${professionalId} no encontrado`, details: errors };
+    return { success: false, error: `Profesional ${professionalId} no encontrado` };
   }
 
-  private normalizeProfessional(data: any, source: HealthAtomApi): NormalizedProfessional {
+  private normalizeProfessional(data: any, _source: HealthAtomApi): NormalizedProfessional {
     return {
       id: data.id,
       rut: data.rut,
@@ -175,7 +173,6 @@ export class HealthAtomService {
         ...(data.contratos_sucursal || []),
         ...(data.horarios_sucursal || []),
       ].filter((v, i, a) => a.indexOf(v) === i), // unique
-      source,
     };
   }
 
@@ -216,13 +213,13 @@ export class HealthAtomService {
     }
 
     if (allBranches.length === 0) {
-      return { success: false, error: 'No se pudieron obtener sucursales', details: errors };
+      return { success: false, error: 'No se pudieron obtener sucursales' };
     }
 
     return { success: true, data: allBranches };
   }
 
-  private normalizeBranch(data: any, source: HealthAtomApi): NormalizedBranch {
+  private normalizeBranch(data: any, _source: HealthAtomApi): NormalizedBranch {
     return {
       id: data.id,
       nombre: data.nombre,
@@ -231,7 +228,6 @@ export class HealthAtomService {
       comuna: data.comuna,
       direccion: data.direccion,
       habilitada: data.habilitada ?? true,
-      source,
     };
   }
 
@@ -267,7 +263,6 @@ export class HealthAtomService {
           return {
             success: true,
             data: this.normalizePatient(pacientes[0], api),
-            apiUsed: api,
           };
         }
       } catch (error: any) {
@@ -275,7 +270,7 @@ export class HealthAtomService {
       }
     }
 
-    return { success: false, error: `Paciente ${rutFormateado} no encontrado`, details: errors };
+    return { success: false, error: `Paciente ${rutFormateado} no encontrado` };
   }
 
   /**
@@ -293,9 +288,9 @@ export class HealthAtomService {
     config: HealthAtomConfig,
     branchId?: number,
   ): Promise<DualApiOperationResult<NormalizedPatient>> {
-    const errors: string[] = [];
     const apisToTry = this.getApisToTry();
     const rutFormateado = this.formatRut(data.rut);
+    let lastError: string | null = null;
 
     // Verificar si ya existe
     const existente = await this.searchPatientByRut(rutFormateado, config, branchId);
@@ -303,7 +298,6 @@ export class HealthAtomService {
       return {
         success: true,
         data: existente.data,
-        apiUsed: existente.apiUsed,
       };
     }
 
@@ -330,27 +324,33 @@ export class HealthAtomService {
           return {
             success: true,
             data: this.normalizePatient(response.data.data, api),
-            apiUsed: api,
           };
         }
       } catch (error: any) {
-        const msg = `${api}: ${error.response?.status || error.message}`;
-        errors.push(msg);
+        const apiErrorMessage = this.extractApiErrorMessage(error);
+        this.logger.warn(`⚠️ Error en ${api}: ${apiErrorMessage}`);
         
         // Si es duplicado, buscar de nuevo
-        if (error.response?.status === 400 && error.response?.data?.toString().toLowerCase().includes('existe')) {
-          const existente = await this.searchPatientByRut(rutFormateado, config, branchId);
-          if (existente.success && existente.data) {
-            return existente;
+        if (error.response?.status === 400) {
+          const errorStr = JSON.stringify(error.response?.data || '').toLowerCase();
+          if (errorStr.includes('existe') || errorStr.includes('duplicate')) {
+            const existente = await this.searchPatientByRut(rutFormateado, config, branchId);
+            if (existente.success && existente.data) {
+              return existente;
+            }
           }
+          lastError = apiErrorMessage;
+          break;
         }
+        
+        lastError = apiErrorMessage;
       }
     }
 
-    return { success: false, error: 'No se pudo crear el paciente', details: errors };
+    return { success: false, error: lastError || 'No se pudo crear el paciente' };
   }
 
-  private normalizePatient(data: any, source: HealthAtomApi): NormalizedPatient {
+  private normalizePatient(data: any, _source: HealthAtomApi): NormalizedPatient {
     return {
       id: data.id,
       rut: data.rut,
@@ -358,7 +358,6 @@ export class HealthAtomService {
       apellidos: data.apellidos,
       celular: data.celular,
       email: data.email,
-      source,
     };
   }
 
@@ -435,7 +434,7 @@ export class HealthAtomService {
 
           if (availability.length > 0) {
             this.logger.log(`✅ Disponibilidad encontrada en ${api}`);
-            return { success: true, data: availability, apiUsed: api };
+            return { success: true, data: availability };
           }
         }
       } catch (error: any) {
@@ -445,7 +444,7 @@ export class HealthAtomService {
       }
     }
 
-    return { success: false, error: 'No se encontró disponibilidad', details: errors };
+    return { success: false, error: 'No se encontró disponibilidad' };
   }
 
   private normalizeAvailability(
@@ -548,8 +547,8 @@ export class HealthAtomService {
     },
     config: HealthAtomConfig,
   ): Promise<DualApiOperationResult<{ id: number; mensaje: string }>> {
-    const errors: string[] = [];
     const apisToTry = this.getApisToTry();
+    let lastError: string | null = null;
 
     // Obtener duración si no se especifica
     let duracion = params.duration;
@@ -601,17 +600,58 @@ export class HealthAtomService {
           this.logger.log(`✅ Cita creada en ${api} con ID ${idCita}`);
           return {
             success: true,
-            data: { id: idCita, mensaje: `Cita agendada en ${api}` },
-            apiUsed: api,
+            data: { id: idCita, mensaje: 'Cita agendada exitosamente' },
           };
         }
       } catch (error: any) {
-        const msg = `${api}: ${error.response?.status || error.message}`;
-        errors.push(msg);
+        // Extraer el mensaje de error real de la API
+        const apiErrorMessage = this.extractApiErrorMessage(error);
+        this.logger.warn(`⚠️ Error en ${api}: ${apiErrorMessage}`);
+        
+        // Si es un error de negocio (400), guardar el mensaje y no continuar
+        // ya que el error es específico de la operación, no de la API
+        if (error.response?.status === 400) {
+          lastError = apiErrorMessage;
+          // En modo dual, si hay error de negocio, no tiene sentido intentar con la otra API
+          // ya que probablemente dará el mismo error
+          break;
+        }
+        
+        lastError = apiErrorMessage;
       }
     }
 
-    return { success: false, error: 'No se pudo agendar la cita', details: errors };
+    return { success: false, error: lastError || 'No se pudo agendar la cita' };
+  }
+
+  /**
+   * Extrae el mensaje de error real de la respuesta de la API
+   */
+  private extractApiErrorMessage(error: any): string {
+    // Intentar obtener el mensaje de error de diferentes formatos de respuesta
+    const responseData = error.response?.data;
+    
+    if (responseData) {
+      // Formato: { error: { message: "..." } }
+      if (responseData.error?.message) {
+        return responseData.error.message;
+      }
+      // Formato: { message: "..." }
+      if (responseData.message) {
+        return responseData.message;
+      }
+      // Formato: { error: "..." }
+      if (typeof responseData.error === 'string') {
+        return responseData.error;
+      }
+      // Si es un string directo
+      if (typeof responseData === 'string') {
+        return responseData;
+      }
+    }
+    
+    // Fallback al mensaje de error genérico
+    return error.message || 'Error desconocido';
   }
 
   /**
@@ -622,7 +662,7 @@ export class HealthAtomService {
     confirmationStateId: number,
     config: HealthAtomConfig,
   ): Promise<DualApiOperationResult<{ mensaje: string; cita: any }>> {
-    const errors: string[] = [];
+    let lastError: string | null = null;
 
     // Intentar en ambas APIs ya que no sabemos dónde está
     for (const api of [HealthAtomApi.DENTALINK, HealthAtomApi.MEDILINK]) {
@@ -654,17 +694,29 @@ export class HealthAtomService {
               mensaje: `Cita ${appointmentId} confirmada exitosamente`,
               cita: citaData 
             },
-            apiUsed: api,
           };
         }
       } catch (error: any) {
-        if (error.response?.status !== 404 && error.response?.status !== 400) {
-          errors.push(`${api}: ${error.response?.status || error.message}`);
+        // Si es 404, la cita no existe en esta API, intentar con la siguiente
+        if (error.response?.status === 404) {
+          continue;
         }
+        
+        // Extraer el mensaje de error real
+        const apiErrorMessage = this.extractApiErrorMessage(error);
+        this.logger.warn(`⚠️ Error en ${api}: ${apiErrorMessage}`);
+        
+        // Si es error de negocio (400), guardar y salir
+        if (error.response?.status === 400) {
+          lastError = apiErrorMessage;
+          break;
+        }
+        
+        lastError = apiErrorMessage;
       }
     }
 
-    return { success: false, error: `No se pudo confirmar la cita ${appointmentId}`, details: errors };
+    return { success: false, error: lastError || `No se pudo confirmar la cita ${appointmentId}` };
   }
 
   /**
@@ -674,7 +726,7 @@ export class HealthAtomService {
     appointmentId: number,
     config: HealthAtomConfig,
   ): Promise<DualApiOperationResult<{ mensaje: string }>> {
-    const errors: string[] = [];
+    let lastError: string | null = null;
 
     // Intentar en ambas APIs ya que no sabemos dónde está
     for (const api of [HealthAtomApi.DENTALINK, HealthAtomApi.MEDILINK]) {
@@ -700,17 +752,29 @@ export class HealthAtomService {
           return {
             success: true,
             data: { mensaje: `Cita ${appointmentId} cancelada` },
-            apiUsed: api,
           };
         }
       } catch (error: any) {
-        if (error.response?.status !== 404 && error.response?.status !== 400) {
-          errors.push(`${api}: ${error.response?.status || error.message}`);
+        // Si es 404, la cita no existe en esta API, intentar con la siguiente
+        if (error.response?.status === 404) {
+          continue;
         }
+        
+        // Extraer el mensaje de error real
+        const apiErrorMessage = this.extractApiErrorMessage(error);
+        this.logger.warn(`⚠️ Error en ${api}: ${apiErrorMessage}`);
+        
+        // Si es error de negocio (400), guardar y salir
+        if (error.response?.status === 400) {
+          lastError = apiErrorMessage;
+          break;
+        }
+        
+        lastError = apiErrorMessage;
       }
     }
 
-    return { success: false, error: `No se pudo cancelar la cita ${appointmentId}`, details: errors };
+    return { success: false, error: lastError || `No se pudo cancelar la cita ${appointmentId}` };
   }
 
   // ============================
@@ -796,7 +860,6 @@ export class HealthAtomService {
               total_citas: 0,
               citas: [],
             },
-            apiUsed: api,
           };
         }
 
@@ -874,7 +937,6 @@ export class HealthAtomService {
         return {
           success: true,
           data: responseData,
-          apiUsed: api,
         };
       } catch (error: any) {
         const errorMsg = error.response?.data?.message || error.message;
@@ -886,7 +948,6 @@ export class HealthAtomService {
     return {
       success: false,
       error: `No se pudieron obtener las citas para el RUT ${formattedRut}`,
-      details: errors,
     };
   }
 }
