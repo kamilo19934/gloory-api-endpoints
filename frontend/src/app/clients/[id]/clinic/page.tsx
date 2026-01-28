@@ -69,7 +69,17 @@ export default function ClinicConfigPage() {
     try {
       setSyncing(true);
       const result = await clinicApi.sync(clientId);
-      toast.success(result.mensaje);
+      
+      // Mostrar mensaje con detalles de la sincronización
+      if (result.totalProfesionalesAPI !== undefined) {
+        toast.success(
+          `${result.mensaje}\n\nTotal en API: ${result.totalSucursalesAPI} sucursales, ${result.totalProfesionalesAPI} profesionales`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success(result.mensaje);
+      }
+      
       // Limpiar cache de profesionales por sucursal
       setBranchProfessionals({});
       await loadData();
