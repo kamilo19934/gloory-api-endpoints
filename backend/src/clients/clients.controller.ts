@@ -15,6 +15,7 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { AddIntegrationDto, UpdateIntegrationDto } from './dto/add-integration.dto';
 import { IntegrationType } from '../integrations/common/interfaces';
 import { EndpointsService } from '../endpoints/endpoints.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('clients')
 export class ClientsController {
@@ -37,6 +38,16 @@ export class ClientsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.clientsService.findOne(id);
+  }
+
+  /**
+   * Obtiene las plataformas conectadas del cliente (sin exponer secretos)
+   * Útil para integraciones externas que necesitan saber qué está conectado
+   */
+  @Public()
+  @Get(':id/platform')
+  getConnectedPlatforms(@Param('id') id: string) {
+    return this.clientsService.getConnectedPlatforms(id);
   }
 
   @Get(':id/endpoints')

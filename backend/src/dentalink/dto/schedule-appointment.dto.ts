@@ -35,6 +35,6 @@ export class ScheduleAppointmentDto {
 
   @IsString()
   @IsOptional()
-  userId?: string; // Contact ID de GHL (solo si GHL está habilitado)
+  user_id?: string; // Contact ID de GHL (solo si GHL está habilitado)
 }
 

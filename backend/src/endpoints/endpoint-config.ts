@@ -212,7 +212,7 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
         example: 'Paciente solicita limpieza dental',
       },
       {
-        name: 'userId',
+        name: 'user_id',
         type: 'string',
         description: 'Contact ID de GHL (opcional, solo si GHL está habilitado. Se usa para sincronizar la cita con GoHighLevel)',
         required: false,

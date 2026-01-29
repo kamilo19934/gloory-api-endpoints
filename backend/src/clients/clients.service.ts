@@ -314,4 +314,47 @@ export class ClientsService {
     const integration = await this.getClientIntegration(clientId, type);
     return integration?.config || null;
   }
+
+  /**
+   * Obtiene información pública de las plataformas conectadas (sin secretos)
+   */
+  async getConnectedPlatforms(clientId: string): Promise<{
+    clientId: string;
+    clientName: string;
+    integrations: Record<string, { enabled: boolean; status: string }>;
+  }> {
+    const client = await this.findOne(clientId);
+    const integrations = await this.getClientIntegrations(clientId);
+
+    const result: Record<string, { enabled: boolean; status: string }> = {};
+
+    for (const integration of integrations) {
+      result[integration.integrationType] = {
+        enabled: integration.isEnabled,
+        status: integration.isEnabled ? 'connected' : 'disabled',
+      };
+    }
+
+    // Incluir legacy dentalink si existe apiKey pero no hay integración
+    if (client.apiKey && !result['dentalink']) {
+      result['dentalink'] = {
+        enabled: true,
+        status: 'connected',
+      };
+    }
+
+    // Incluir legacy GHL si está habilitado
+    if (client.ghlEnabled && !result['ghl']) {
+      result['ghl'] = {
+        enabled: true,
+        status: 'connected',
+      };
+    }
+
+    return {
+      clientId: client.id,
+      clientName: client.name,
+      integrations: result,
+    };
+  }
 }

@@ -649,8 +649,8 @@ export class DentalinkService {
 
           this.logger.log(`✅ Cita creada exitosamente en ${api.type.toUpperCase()} con ID ${idCita}`);
 
-          // Integración con GHL (si está habilitado y se proporcionó userId)
-          if (client.ghlEnabled && params.userId) {
+          // Integración con GHL (si está habilitado y se proporcionó user_id)
+          if (client.ghlEnabled && params.user_id) {
             this.logger.log('🔗 Iniciando integración con GHL en background...');
             
             // Ejecutar en background sin bloquear respuesta
@@ -663,7 +663,7 @@ export class DentalinkService {
                     locationId: client.ghlLocationId,
                   },
                   {
-                    userId: params.userId,
+                    userId: params.user_id,
                     fecha: params.fecha,
                     hora_inicio: params.hora_inicio,
                     duracion,
