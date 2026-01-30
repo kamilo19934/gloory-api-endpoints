@@ -75,21 +75,105 @@ export class DentalinkService {
 
     try {
       this.logger.log('👨‍⚕️ Obteniendo información de profesionales...');
-      const profResp = await axios.get(`${baseURL}dentistas`, { headers });
-      if (profResp.status === 200) {
-        const dentistas = profResp.data?.data || [];
-        for (const dentista of dentistas) {
-          if (params.ids_profesionales.includes(dentista.id)) {
-            const apellido = dentista.apellido || dentista.apellidos || '';
-            const nombreCompleto = `${dentista.nombre || 'Desconocido'} ${apellido}`.trim();
-            const intervalo = dentista.intervalo;
-            
-            profesionalesInfo[dentista.id] = nombreCompleto;
-            if (intervalo) {
-              profesionalesIntervalos[dentista.id] = intervalo;
-              this.logger.log(`✅ Profesional: ID ${dentista.id} - ${nombreCompleto} (Intervalo: ${intervalo} min)`);
-            } else {
-              this.logger.warn(`⚠️ Profesional ID ${dentista.id} sin intervalo configurado`);
+      
+      if (apiType === 'medilink') {
+        // Medilink: usar endpoint v6/profesionales/{id} para cada profesional
+        for (const idProf of params.ids_profesionales) {
+          try {
+            // Medilink usa v6 para el endpoint de profesionales
+            const profResp = await axios.get(
+              `https://api.medilink2.healthatom.com/api/v6/profesionales/${idProf}`, 
+              { headers }
+            );
+            if (profResp.status === 200) {
+              const profesional = profResp.data?.data;
+              if (profesional) {
+                const apellido = profesional.apellidos || profesional.apellido || '';
+                const nombreCompleto = `${profesional.nombre || 'Desconocido'} ${apellido}`.trim();
+                const intervalo = profesional.intervalo;
+                
+                profesionalesInfo[idProf] = nombreCompleto;
+                if (intervalo) {
+                  profesionalesIntervalos[idProf] = intervalo;
+                  this.logger.log(`✅ Profesional Medilink: ID ${idProf} - ${nombreCompleto} (Intervalo: ${intervalo} min)`);
+                } else {
+                  this.logger.warn(`⚠️ Profesional ID ${idProf} sin intervalo configurado`);
+                }
+              }
+            }
+          } catch (error) {
+            this.logger.warn(`⚠️ No se pudo obtener profesional ${idProf} de Medilink: ${error.message}`);
+          }
+        }
+      } else if (apiType === 'dual') {
+        // Modo dual: intentar obtener de ambas APIs
+        // Primero intentar Dentalink
+        try {
+          const profResp = await axios.get(`https://api.dentalink.healthatom.com/api/v1/dentistas`, { headers });
+          if (profResp.status === 200) {
+            const dentistas = profResp.data?.data || [];
+            for (const dentista of dentistas) {
+              if (params.ids_profesionales.includes(dentista.id)) {
+                const apellido = dentista.apellido || dentista.apellidos || '';
+                const nombreCompleto = `${dentista.nombre || 'Desconocido'} ${apellido}`.trim();
+                const intervalo = dentista.intervalo;
+                
+                profesionalesInfo[dentista.id] = nombreCompleto;
+                if (intervalo) {
+                  profesionalesIntervalos[dentista.id] = intervalo;
+                  this.logger.log(`✅ Profesional Dentalink: ID ${dentista.id} - ${nombreCompleto} (Intervalo: ${intervalo} min)`);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          this.logger.warn(`⚠️ Error obteniendo dentistas de Dentalink: ${error.message}`);
+        }
+        
+        // Luego buscar los faltantes en Medilink
+        const idsFaltantes = params.ids_profesionales.filter(id => !profesionalesInfo[id]);
+        for (const idProf of idsFaltantes) {
+          try {
+            const profResp = await axios.get(
+              `https://api.medilink2.healthatom.com/api/v6/profesionales/${idProf}`, 
+              { headers }
+            );
+            if (profResp.status === 200) {
+              const profesional = profResp.data?.data;
+              if (profesional) {
+                const apellido = profesional.apellidos || profesional.apellido || '';
+                const nombreCompleto = `${profesional.nombre || 'Desconocido'} ${apellido}`.trim();
+                const intervalo = profesional.intervalo;
+                
+                profesionalesInfo[idProf] = nombreCompleto;
+                if (intervalo) {
+                  profesionalesIntervalos[idProf] = intervalo;
+                  this.logger.log(`✅ Profesional Medilink (fallback): ID ${idProf} - ${nombreCompleto} (Intervalo: ${intervalo} min)`);
+                }
+              }
+            }
+          } catch (error) {
+            this.logger.warn(`⚠️ No se pudo obtener profesional ${idProf} de Medilink: ${error.message}`);
+          }
+        }
+      } else {
+        // Solo Dentalink
+        const profResp = await axios.get(`${baseURL}dentistas`, { headers });
+        if (profResp.status === 200) {
+          const dentistas = profResp.data?.data || [];
+          for (const dentista of dentistas) {
+            if (params.ids_profesionales.includes(dentista.id)) {
+              const apellido = dentista.apellido || dentista.apellidos || '';
+              const nombreCompleto = `${dentista.nombre || 'Desconocido'} ${apellido}`.trim();
+              const intervalo = dentista.intervalo;
+              
+              profesionalesInfo[dentista.id] = nombreCompleto;
+              if (intervalo) {
+                profesionalesIntervalos[dentista.id] = intervalo;
+                this.logger.log(`✅ Profesional Dentalink: ID ${dentista.id} - ${nombreCompleto} (Intervalo: ${intervalo} min)`);
+              } else {
+                this.logger.warn(`⚠️ Profesional ID ${dentista.id} sin intervalo configurado`);
+              }
             }
           }
         }
@@ -563,11 +647,9 @@ export class DentalinkService {
       if (intervaloProfesional) break;
       
       try {
-        // Dentalink usa 'dentistas', Medilink usa 'profesionales'
-        const endpoint = api.type === 'dentalink' ? 'dentistas' : 'profesionales';
-        
         if (api.type === 'dentalink') {
-          const profResp = await axios.get(`${api.baseUrl}${endpoint}`, { headers });
+          // Dentalink: obtener lista de dentistas y buscar por ID
+          const profResp = await axios.get(`${api.baseUrl}dentistas`, { headers });
           if (profResp.status === 200) {
             const profesionales = profResp.data?.data || [];
             const profesional = profesionales.find((p: any) => p.id === params.id_profesional);
@@ -577,8 +659,11 @@ export class DentalinkService {
             }
           }
         } else {
-          // Medilink: obtener profesional por ID directamente
-          const profResp = await axios.get(`${api.baseUrl}${endpoint}/${params.id_profesional}`, { headers });
+          // Medilink: usar endpoint v6/profesionales/{id} (no v5)
+          const profResp = await axios.get(
+            `https://api.medilink2.healthatom.com/api/v6/profesionales/${params.id_profesional}`, 
+            { headers }
+          );
           if (profResp.status === 200) {
             const profesional = profResp.data?.data;
             if (profesional?.intervalo) {

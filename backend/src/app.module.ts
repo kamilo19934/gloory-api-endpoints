@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ClientsModule } from './clients/clients.module';
 import { EndpointsModule } from './endpoints/endpoints.module';
 import { DentalinkModule } from './dentalink/dentalink.module';
@@ -12,6 +12,8 @@ import { AppointmentConfirmationsModule } from './appointment-confirmations/appo
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { ClientApiLogsModule } from './client-api-logs/client-api-logs.module';
+import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-logging.interceptor';
 
 @Module({
   imports: [
@@ -81,6 +83,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     DentalinkModule,
     ClinicModule,
     AppointmentConfirmationsModule,
+    ClientApiLogsModule, // API Logs module (with cron cleanup)
   ],
   providers: [
     // Aplicar JwtAuthGuard globalmente
@@ -88,6 +91,11 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    // Interceptor global para logging de peticiones a endpoints de cliente
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ClientLoggingInterceptor,
     },
   ],
 })

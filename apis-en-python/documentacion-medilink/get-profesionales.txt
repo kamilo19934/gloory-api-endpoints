@@ -1,0 +1,68 @@
+GET v6/profesionales/{id_profesional}
+Version 2 del endpoint GET profesionales/{id_profesional}. Muestra la información de un profesional en específico.
+
+Ejemplo de solicitud:
+
+var id_profesional = 2;
+var settings    = {
+    "url": "https://api.medilink2.healthatom.com/api/v6/profesionales/"+id_profesional,
+    "method": "GET",
+    "headers": {
+        "Authorization": "Token "+token
+    }
+}
+
+$.ajax(settings).done(function (response) {
+    console.log(response);
+});
+Ejemplo de respuesta:
+
+{
+    "data": {
+            "id": 51,
+            "rut": "1-9",
+            "nombre": "Manuel Juan",
+            "apellidos": "Perez",
+            "celular": "912345678",
+            "telefono": "",
+            "ciudad": "Viña del Mar",
+            "comuna": "Viña del Mar",
+            "direccion": "Viña del Mar",
+            "email": "manuelj@correo.cl",
+            "id_especialidad": 1,
+            "especialidad": "General",
+            "agenda_online": 1,
+            "es_recurso": 1,
+            "intervalo": 5,
+            "habilitado": 0,
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.medilink2.healthatom.com/api/v6/profesionales/51",
+                    "method": "GET"
+                }
+            ]
+        }
+}
+HTTP/Request
+URI
+GET api/v6/profesionales/{id_profesional}
+
+HTTP/Response
+Atributos	Tipo de dato	Descripción
+id	Integer	ID del profesional
+rut	String	Rut del profesional
+nombre	String	Nombre del profesional
+apellidos	String	Apellidos del profesional
+celular	String	Nº de teléfono celular del profesional
+telefono	String	Nº de teléfono del profesional
+ciudad	String	Ciudad del profesional
+comuna	String	Comuna del profesional
+direccion	String	Dirección del profesional
+email	String	Email del profesional
+id_especialidad	Integer	ID especialidad del profesional
+especialidad	String	Especialidad del profesional
+agenda_online	Bool	Indica si tiene (1) o no (0) agenda online
+es_recurso	Bool	Indica si el profesional es de tipo recurso (1) o no lo es (0)
+intervalo	Integer	Indica el intervalo de citas del profesional expresado en minutos
+habilitado	Bool	Indica si el profesional está (1) o no (0) habilitado

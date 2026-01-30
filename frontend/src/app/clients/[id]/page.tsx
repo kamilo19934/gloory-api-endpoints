@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import EndpointCard from '@/components/EndpointCard';
 import { clientsApi, Client, EndpointDefinition, IntegrationType } from '@/lib/api';
-import { FiArrowLeft, FiLoader, FiCheckCircle, FiXCircle, FiSettings } from 'react-icons/fi';
+import { FiArrowLeft, FiLoader, FiCheckCircle, FiXCircle, FiSettings, FiFileText } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 export default function ClientDetailPage() {
@@ -179,6 +179,14 @@ export default function ClientDetailPage() {
             >
               <FiCheckCircle className="mr-2" />
               Confirmaciones de Citas
+            </Link>
+
+            <Link
+              href={`/clients/${clientId}/logs`}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            >
+              <FiFileText className="mr-2" />
+              Ver Logs de API
             </Link>
             
             {connectionStatus !== null && (

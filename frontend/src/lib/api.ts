@@ -654,3 +654,122 @@ export const appointmentConfirmationsApi = {
     return response.data;
   },
 };
+
+// ============================================
+// CLIENT API LOGS TYPES & API
+// ============================================
+
+export type StatusCategory = '2xx' | '4xx' | '5xx';
+
+export interface ClientApiLog {
+  id: string;
+  clientId: string;
+  method: string;
+  endpoint: string;
+  fullPath: string;
+  requestBody: Record<string, any> | null;
+  statusCode: number;
+  statusCategory: StatusCategory;
+  responseBody: Record<string, any> | null;
+  errorMessage: string | null;
+  duration: number;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface LogsQueryParams {
+  search?: string;
+  status?: StatusCategory;
+  endpoint?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface LogsPagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface LogsResponse {
+  data: ClientApiLog[];
+  pagination: LogsPagination;
+}
+
+export interface LogStats {
+  total: number;
+  success: number;
+  clientError: number;
+  serverError: number;
+  successPercentage: number;
+  clientErrorPercentage: number;
+  serverErrorPercentage: number;
+}
+
+export const clientApiLogsApi = {
+  /**
+   * Obtiene los logs de un cliente con paginación y filtros
+   */
+  getLogs: async (clientId: string, params?: LogsQueryParams): Promise<LogsResponse> => {
+    const response = await api.get(`/clients/${clientId}/logs`, { params });
+    return response.data;
+  },
+
+  /**
+   * Obtiene las estadísticas de logs de un cliente
+   */
+  getStats: async (clientId: string): Promise<LogStats> => {
+    const response = await api.get(`/clients/${clientId}/logs/stats`);
+    return response.data;
+  },
+
+  /**
+   * Obtiene los endpoints únicos para el filtro
+   */
+  getEndpoints: async (clientId: string): Promise<{ endpoints: string[] }> => {
+    const response = await api.get(`/clients/${clientId}/logs/endpoints`);
+    return response.data;
+  },
+
+  /**
+   * Obtiene el detalle de un log específico
+   */
+  getLogDetail: async (clientId: string, logId: string): Promise<ClientApiLog> => {
+    const response = await api.get(`/clients/${clientId}/logs/${logId}`);
+    return response.data;
+  },
+
+  /**
+   * Elimina todos los logs de un cliente
+   */
+  deleteLogs: async (clientId: string): Promise<{ message: string; deleted: number }> => {
+    const response = await api.delete(`/clients/${clientId}/logs`);
+    return response.data;
+  },
+};
+
+/**
+ * Obtiene el color del badge según la categoría de status
+ */
+export function getStatusCategoryColor(category: StatusCategory): string {
+  const colors: Record<StatusCategory, string> = {
+    '2xx': 'bg-green-100 text-green-800',
+    '4xx': 'bg-yellow-100 text-yellow-800',
+    '5xx': 'bg-red-100 text-red-800',
+  };
+  return colors[category] || 'bg-gray-100 text-gray-800';
+}
+
+/**
+ * Obtiene el icono/emoji según la categoría de status
+ */
+export function getStatusCategoryIcon(category: StatusCategory): string {
+  const icons: Record<StatusCategory, string> = {
+    '2xx': '✅',
+    '4xx': '⚠️',
+    '5xx': '❌',
+  };
+  return icons[category] || '❓';
+}

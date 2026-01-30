@@ -6,6 +6,7 @@ import {
   HealthAtomConfig,
   DENTALINK_ENDPOINTS,
   MEDILINK_ENDPOINTS,
+  MEDILINK_PROFESSIONALS_V6_URL,
   NormalizedProfessional,
   NormalizedBranch,
   NormalizedPatient,
@@ -82,9 +83,14 @@ export class HealthAtomService {
           }
           this.logger.log(`✅ ${dentistas.length} profesionales de Dentalink`);
         } else {
-          // MediLink requiere obtener IDs primero o usar paginación
-          // Por ahora obtenemos los primeros 100
-          const response = await client.get(`${endpoints.professionals}?limit=100`);
+          // MediLink: usar endpoint v6 para profesionales
+          // El endpoint de profesionales de Medilink requiere v6, no v5
+          const response = await axios.get(`${MEDILINK_PROFESSIONALS_V6_URL}?limit=100`, {
+            headers: {
+              Authorization: `Token ${config.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+          });
           const profesionales = response.data?.data || [];
 
           for (const prof of profesionales) {
@@ -140,7 +146,13 @@ export class HealthAtomService {
             };
           }
         } else {
-          const response = await client.get(`${endpoints.professionals}/${professionalId}`);
+          // MediLink: usar endpoint v6 para profesionales
+          const response = await axios.get(`${MEDILINK_PROFESSIONALS_V6_URL}/${professionalId}`, {
+            headers: {
+              Authorization: `Token ${config.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+          });
           if (response.data?.data) {
             this.logger.log(`✅ Profesional encontrado en MediLink`);
             return {
