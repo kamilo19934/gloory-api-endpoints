@@ -122,7 +122,20 @@ export class ClientLoggingInterceptor implements NestInterceptor {
         await this.logsService.createLog(data);
       } catch (err) {
         // Solo loggear el error, no fallar la petición
-        this.logger.error(`Error guardando log: ${err.message}`);
+        // Si es AggregateError, mostrar todos los errores internos
+        if (err.name === 'AggregateError' && err.errors) {
+          this.logger.error(`Error guardando log (AggregateError):`);
+          err.errors.forEach((e: Error, i: number) => {
+            this.logger.error(`  [${i + 1}] ${e.name}: ${e.message}`);
+          });
+        } else {
+          this.logger.error(`Error guardando log: ${err.message || err}`);
+        }
+
+        // Log completo para debugging
+        if (process.env.NODE_ENV === 'development') {
+          this.logger.debug(`Error stack: ${err.stack}`);
+        }
       }
     });
   }

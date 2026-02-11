@@ -31,14 +31,25 @@ import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-
           // PostgreSQL configuration
           // DB_SYNC=true permite crear tablas en producción (usar solo la primera vez)
           const shouldSync = configService.get('DB_SYNC') === 'true' || configService.get('NODE_ENV') !== 'production';
-          
+
           const config: any = {
             type: 'postgres',
             entities: [__dirname + '/**/*.entity{.ts,.js}'],
             synchronize: shouldSync,
             logging: configService.get('NODE_ENV') === 'development',
+            // Configuración de pool de conexiones para evitar AggregateError
+            extra: {
+              max: 20, // Máximo de conexiones en el pool
+              connectionTimeoutMillis: 10000, // Timeout para obtener conexión del pool (10s)
+              idleTimeoutMillis: 30000, // Cerrar conexiones inactivas después de 30s
+              statement_timeout: 30000, // Timeout para queries (30s)
+              query_timeout: 30000, // Timeout alternativo para queries (30s)
+            },
+            // Configuración adicional de TypeORM
+            maxQueryExecutionTime: 30000, // Log queries lentas (>30s)
+            poolSize: 10, // Tamaño del pool (TypeORM)
           };
-          
+
           console.log(`📦 PostgreSQL - Synchronize: ${shouldSync}`);
 
           // Si hay DATABASE_URL, usarla (Railway/Render)
@@ -54,9 +65,12 @@ import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-
             config.database = configService.get('DATABASE_NAME');
           }
 
-          // SSL configuration
-          if (configService.get('DATABASE_SSL') === 'true') {
-            config.ssl = { rejectUnauthorized: false };
+          // SSL configuration (Railway/Render requieren SSL)
+          const sslEnabled = configService.get('DATABASE_SSL');
+          if (sslEnabled === 'true' || databaseUrl) {
+            config.ssl = {
+              rejectUnauthorized: false // Aceptar certificados autofirmados
+            };
           }
 
           return config;

@@ -260,7 +260,45 @@ export class ClinicService {
   private readonly BATCH_SIZE = 100;
 
   /**
-   * Sincroniza sucursales y profesionales desde Dentalink
+   * URLs base de las APIs
+   */
+  private readonly DENTALINK_BASE_URL = 'https://api.dentalink.healthatom.com/api/v1/';
+  private readonly MEDILINK_BASE_URL = 'https://api.medilink2.healthatom.com/api/v5/';
+  private readonly MEDILINK_PROFESSIONALS_V6_URL = 'https://api.medilink2.healthatom.com/api/v6/profesionales';
+
+  /**
+   * Determina qué APIs usar según el tipo de integración del cliente
+   */
+  private getApisToUse(client: any): Array<{ type: 'dentalink' | 'medilink'; baseUrl: string }> {
+    const dentalinkIntegration = client.getIntegration('dentalink');
+    const medilinkIntegration = client.getIntegration('medilink');
+    const dualIntegration = client.getIntegration('dentalink_medilink');
+
+    if (dualIntegration) {
+      // Modo dual: usar ambas APIs
+      this.logger.log('🔵 Modo dual: sincronizará desde Dentalink y Medilink');
+      return [
+        { type: 'dentalink', baseUrl: this.DENTALINK_BASE_URL },
+        { type: 'medilink', baseUrl: this.MEDILINK_BASE_URL },
+      ];
+    } else if (medilinkIntegration) {
+      // Solo Medilink
+      this.logger.log('🔵 Usando API Medilink');
+      return [
+        { type: 'medilink', baseUrl: this.MEDILINK_BASE_URL },
+      ];
+    } else {
+      // Default: Solo Dentalink
+      this.logger.log('🔵 Usando API Dentalink');
+      return [
+        { type: 'dentalink', baseUrl: process.env.DENTALINK_BASE_URL || this.DENTALINK_BASE_URL },
+      ];
+    }
+  }
+
+  /**
+   * Sincroniza sucursales y profesionales desde Dentalink/Medilink
+   * Soporta integración dual (dentalink_medilink)
    * Solo agrega nuevos registros, no modifica los existentes
    * Usa bulk insert optimizado para clientes con muchos profesionales
    * @param force Si es true, elimina todos los datos antes de sincronizar
@@ -281,7 +319,7 @@ export class ClinicService {
 
     const client = await this.clientsService.findOne(clientId);
     const apiKey = client.apiKey;
-    const baseURL = process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/';
+    const apisToUse = this.getApisToUse(client);
 
     const headers = {
       Authorization: `Token ${apiKey}`,
@@ -293,148 +331,184 @@ export class ClinicService {
     let totalSucursalesAPI = 0;
     let totalProfesionalesAPI = 0;
 
-    // 1. Sincronizar Sucursales (con paginación y bulk insert)
-    try {
-      this.logger.log('📍 Obteniendo sucursales de Dentalink (con paginación)...');
-      
-      const sucursalesData = await this.fetchAllPaginated<any>(
-        `${baseURL}sucursales/`,
-        headers,
-        'Sucursales',
-      );
-      
-      totalSucursalesAPI = sucursalesData.length;
-      this.logger.log(`📍 Total de sucursales obtenidas de Dentalink: ${totalSucursalesAPI}`);
+    // Obtener IDs existentes una sola vez
+    const existingBranches = await this.branchRepository.find({
+      where: { clientId },
+      select: ['dentalinkId'],
+    });
+    const existingBranchIds = new Set(existingBranches.map(b => b.dentalinkId));
+    this.logger.log(`📍 Sucursales existentes en BD: ${existingBranchIds.size}`);
 
-      // Obtener todos los dentalinkIds existentes en UNA sola query
-      const existingBranches = await this.branchRepository.find({
-        where: { clientId },
-        select: ['dentalinkId'],
-      });
-      const existingBranchIds = new Set(existingBranches.map(b => b.dentalinkId));
-      this.logger.log(`📍 Sucursales existentes en BD: ${existingBranchIds.size}`);
+    const existingProfessionals = await this.professionalRepository.find({
+      where: { clientId },
+      select: ['dentalinkId'],
+    });
+    const existingProfIds = new Set(existingProfessionals.map(p => p.dentalinkId));
+    this.logger.log(`👨‍⚕️ Profesionales existentes en BD: ${existingProfIds.size}`);
 
-      // Filtrar solo las nuevas
-      const newSucursales = sucursalesData.filter(s => !existingBranchIds.has(s.id));
-      this.logger.log(`📍 Sucursales nuevas a insertar: ${newSucursales.length}`);
+    // Sincronizar desde cada API configurada
+    for (const api of apisToUse) {
+      this.logger.log(`\n📡 Sincronizando desde ${api.type.toUpperCase()}...`);
 
-      // Bulk insert en lotes
-      if (newSucursales.length > 0) {
-        const branchEntities = newSucursales.map(sucursal => 
-          this.branchRepository.create({
-            clientId,
-            dentalinkId: sucursal.id,
-            nombre: sucursal.nombre || 'Sin nombre',
-            telefono: sucursal.telefono || null,
-            ciudad: sucursal.ciudad || null,
-            comuna: sucursal.comuna || null,
-            direccion: sucursal.direccion || null,
-            habilitada: sucursal.habilitada === 1,
-          })
+      // 1. Sincronizar Sucursales
+      try {
+        this.logger.log(`📍 Obteniendo sucursales de ${api.type.toUpperCase()} (con paginación)...`);
+        
+        const sucursalesData = await this.fetchAllPaginated<any>(
+          `${api.baseUrl}sucursales/`,
+          headers,
+          `Sucursales-${api.type}`,
         );
+        
+        const sucursalesFromApi = sucursalesData.length;
+        totalSucursalesAPI += sucursalesFromApi;
+        this.logger.log(`📍 Total de sucursales obtenidas de ${api.type.toUpperCase()}: ${sucursalesFromApi}`);
 
-        // Insertar en lotes
-        for (let i = 0; i < branchEntities.length; i += this.BATCH_SIZE) {
-          const batch = branchEntities.slice(i, i + this.BATCH_SIZE);
-          await this.branchRepository.save(batch);
-          this.logger.log(`📍 Insertadas ${Math.min(i + this.BATCH_SIZE, branchEntities.length)}/${branchEntities.length} sucursales`);
-        }
+        // Filtrar solo las nuevas (que no existan ya en la BD)
+        const newSucursales = sucursalesData.filter(s => !existingBranchIds.has(s.id));
+        this.logger.log(`📍 Sucursales nuevas a insertar desde ${api.type}: ${newSucursales.length}`);
 
-        sucursalesNuevas = newSucursales.length;
-        this.logger.log(`✅ ${sucursalesNuevas} sucursales nuevas agregadas`);
-      }
-    } catch (error) {
-      this.logger.error(`❌ Error obteniendo sucursales: ${error.message}`);
-      throw new HttpException(
-        `Error al sincronizar sucursales: ${error.message}`,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // 2. Sincronizar Profesionales (Dentistas) con paginación y bulk insert
-    try {
-      this.logger.log('👨‍⚕️ Obteniendo profesionales de Dentalink (con paginación)...');
-      
-      const dentistasData = await this.fetchAllPaginated<any>(
-        `${baseURL}dentistas/`,
-        headers,
-        'Profesionales',
-      );
-      
-      totalProfesionalesAPI = dentistasData.length;
-      this.logger.log(`👨‍⚕️ Total de profesionales obtenidos de Dentalink: ${totalProfesionalesAPI}`);
-
-      // Obtener todos los dentalinkIds existentes en UNA sola query
-      const existingProfessionals = await this.professionalRepository.find({
-        where: { clientId },
-        select: ['dentalinkId'],
-      });
-      const existingProfIds = new Set(existingProfessionals.map(p => p.dentalinkId));
-      this.logger.log(`👨‍⚕️ Profesionales existentes en BD: ${existingProfIds.size}`);
-
-      // Filtrar solo los nuevos
-      const newDentistas = dentistasData.filter(d => !existingProfIds.has(d.id));
-      this.logger.log(`👨‍⚕️ Profesionales nuevos a insertar: ${newDentistas.length}`);
-
-      // Preparar entidades para bulk insert
-      if (newDentistas.length > 0) {
-        const professionalEntities = newDentistas.map(dentista => {
-          // Filtrar y convertir arrays - Dentalink devuelve strings como "2" en lugar de números
-          const contratos = Array.isArray(dentista.contratos_sucursal)
-            ? dentista.contratos_sucursal
-                .map((id: any) => parseInt(id, 10))
-                .filter((id: number) => !isNaN(id))
-            : [];
-          const horarios = Array.isArray(dentista.horarios_sucursal)
-            ? dentista.horarios_sucursal
-                .map((id: any) => parseInt(id, 10))
-                .filter((id: number) => !isNaN(id))
-            : [];
-
-          return this.professionalRepository.create({
-            clientId,
-            dentalinkId: dentista.id,
-            rut: dentista.rut || null,
-            nombre: dentista.nombre || 'Sin nombre',
-            apellidos: dentista.apellidos || null,
-            celular: dentista.celular || null,
-            telefono: dentista.telefono || null,
-            email: dentista.email || null,
-            ciudad: dentista.ciudad || null,
-            comuna: dentista.comuna || null,
-            direccion: dentista.direccion || null,
-            idEspecialidad: dentista.id_especialidad || null,
-            especialidad: dentista.especialidad || null,
-            agendaOnline: dentista.agenda_online === 1,
-            intervalo: dentista.intervalo || null,
-            habilitado: dentista.habilitado === 1,
-            contratosSucursal: contratos,
-            horariosSucursal: horarios,
+        // Bulk insert en lotes
+        if (newSucursales.length > 0) {
+          const branchEntities = newSucursales.map(sucursal => {
+            // Agregar el ID al set para evitar duplicados en la siguiente API
+            existingBranchIds.add(sucursal.id);
+            
+            return this.branchRepository.create({
+              clientId,
+              dentalinkId: sucursal.id,
+              nombre: sucursal.nombre || 'Sin nombre',
+              telefono: sucursal.telefono || null,
+              ciudad: sucursal.ciudad || null,
+              comuna: sucursal.comuna || null,
+              direccion: sucursal.direccion || null,
+              habilitada: sucursal.habilitada === 1,
+            });
           });
-        });
 
-        // Insertar en lotes
-        for (let i = 0; i < professionalEntities.length; i += this.BATCH_SIZE) {
-          const batch = professionalEntities.slice(i, i + this.BATCH_SIZE);
-          await this.professionalRepository.save(batch);
-          this.logger.log(`👨‍⚕️ Insertados ${Math.min(i + this.BATCH_SIZE, professionalEntities.length)}/${professionalEntities.length} profesionales`);
+          // Insertar en lotes
+          for (let i = 0; i < branchEntities.length; i += this.BATCH_SIZE) {
+            const batch = branchEntities.slice(i, i + this.BATCH_SIZE);
+            await this.branchRepository.save(batch);
+            this.logger.log(`📍 Insertadas ${Math.min(i + this.BATCH_SIZE, branchEntities.length)}/${branchEntities.length} sucursales de ${api.type}`);
+          }
+
+          sucursalesNuevas += newSucursales.length;
+          this.logger.log(`✅ ${newSucursales.length} sucursales nuevas agregadas de ${api.type}`);
         }
-
-        profesionalesNuevos = newDentistas.length;
-        this.logger.log(`✅ ${profesionalesNuevos} profesionales nuevos agregados`);
+      } catch (error) {
+        this.logger.error(`❌ Error obteniendo sucursales de ${api.type}: ${error.message}`);
+        // En modo dual, continuar con la otra API; en modo simple, lanzar error
+        if (apisToUse.length === 1) {
+          throw new HttpException(
+            `Error al sincronizar sucursales: ${error.message}`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
       }
-    } catch (error) {
-      this.logger.error(`❌ Error obteniendo profesionales: ${error.message}`);
-      throw new HttpException(
-        `Error al sincronizar profesionales: ${error.message}`,
-        HttpStatus.BAD_REQUEST,
-      );
+
+      // 2. Sincronizar Profesionales
+      try {
+        this.logger.log(`👨‍⚕️ Obteniendo profesionales de ${api.type.toUpperCase()} (con paginación)...`);
+        
+        let profesionalesData: any[] = [];
+        
+        if (api.type === 'dentalink') {
+          // Dentalink usa endpoint /dentistas
+          profesionalesData = await this.fetchAllPaginated<any>(
+            `${api.baseUrl}dentistas/`,
+            headers,
+            `Profesionales-${api.type}`,
+          );
+        } else {
+          // Medilink usa endpoint v6/profesionales (no v5)
+          profesionalesData = await this.fetchAllPaginated<any>(
+            `${this.MEDILINK_PROFESSIONALS_V6_URL}?limit=100`,
+            headers,
+            `Profesionales-${api.type}`,
+          );
+        }
+        
+        const profesFromApi = profesionalesData.length;
+        totalProfesionalesAPI += profesFromApi;
+        this.logger.log(`👨‍⚕️ Total de profesionales obtenidos de ${api.type.toUpperCase()}: ${profesFromApi}`);
+
+        // Filtrar solo los nuevos
+        const newProfesionales = profesionalesData.filter(d => !existingProfIds.has(d.id));
+        this.logger.log(`👨‍⚕️ Profesionales nuevos a insertar desde ${api.type}: ${newProfesionales.length}`);
+
+        // Preparar entidades para bulk insert
+        if (newProfesionales.length > 0) {
+          const professionalEntities = newProfesionales.map(profesional => {
+            // Agregar el ID al set para evitar duplicados en la siguiente API
+            existingProfIds.add(profesional.id);
+            
+            // Filtrar y convertir arrays - APIs devuelven strings como "2" en lugar de números
+            const contratos = Array.isArray(profesional.contratos_sucursal)
+              ? profesional.contratos_sucursal
+                  .map((id: any) => parseInt(id, 10))
+                  .filter((id: number) => !isNaN(id))
+              : [];
+            const horarios = Array.isArray(profesional.horarios_sucursal)
+              ? profesional.horarios_sucursal
+                  .map((id: any) => parseInt(id, 10))
+                  .filter((id: number) => !isNaN(id))
+              : [];
+
+            // Normalizar nombres de campos según API
+            // Dentalink: nombre, apellidos, agenda_online, id_especialidad
+            // Medilink: nombre, apellido (singular), agenda_online, id_especialidad
+            const apellidos = profesional.apellidos || profesional.apellido || null;
+
+            return this.professionalRepository.create({
+              clientId,
+              dentalinkId: profesional.id,
+              rut: profesional.rut || null,
+              nombre: profesional.nombre || 'Sin nombre',
+              apellidos: apellidos,
+              celular: profesional.celular || null,
+              telefono: profesional.telefono || null,
+              email: profesional.email || null,
+              ciudad: profesional.ciudad || null,
+              comuna: profesional.comuna || null,
+              direccion: profesional.direccion || null,
+              idEspecialidad: profesional.id_especialidad || null,
+              especialidad: profesional.especialidad || null,
+              agendaOnline: profesional.agenda_online === 1,
+              intervalo: profesional.intervalo || null,
+              habilitado: profesional.habilitado === 1,
+              contratosSucursal: contratos,
+              horariosSucursal: horarios,
+            });
+          });
+
+          // Insertar en lotes
+          for (let i = 0; i < professionalEntities.length; i += this.BATCH_SIZE) {
+            const batch = professionalEntities.slice(i, i + this.BATCH_SIZE);
+            await this.professionalRepository.save(batch);
+            this.logger.log(`👨‍⚕️ Insertados ${Math.min(i + this.BATCH_SIZE, professionalEntities.length)}/${professionalEntities.length} profesionales de ${api.type}`);
+          }
+
+          profesionalesNuevos += newProfesionales.length;
+          this.logger.log(`✅ ${newProfesionales.length} profesionales nuevos agregados de ${api.type}`);
+        }
+      } catch (error) {
+        this.logger.error(`❌ Error obteniendo profesionales de ${api.type}: ${error.message}`);
+        // En modo dual, continuar con la otra API; en modo simple, lanzar error
+        if (apisToUse.length === 1) {
+          throw new HttpException(
+            `Error al sincronizar profesionales: ${error.message}`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
     }
 
+    const apisUsadas = apisToUse.map(a => a.type.toUpperCase()).join(' + ');
     const mensaje =
       sucursalesNuevas === 0 && profesionalesNuevos === 0
-        ? `No se encontraron nuevos registros para agregar (API tiene ${totalSucursalesAPI} sucursales y ${totalProfesionalesAPI} profesionales)`
-        : `Sincronización completada: ${sucursalesNuevas} sucursales y ${profesionalesNuevos} profesionales nuevos (de ${totalSucursalesAPI} sucursales y ${totalProfesionalesAPI} profesionales en API)`;
+        ? `No se encontraron nuevos registros para agregar (${apisUsadas} tiene ${totalSucursalesAPI} sucursales y ${totalProfesionalesAPI} profesionales)`
+        : `Sincronización completada desde ${apisUsadas}: ${sucursalesNuevas} sucursales y ${profesionalesNuevos} profesionales nuevos (de ${totalSucursalesAPI} sucursales y ${totalProfesionalesAPI} profesionales en API)`;
 
     this.logger.log(`✅ ${mensaje}`);
 

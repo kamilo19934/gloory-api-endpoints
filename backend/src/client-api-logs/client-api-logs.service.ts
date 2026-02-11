@@ -30,6 +30,7 @@ export class ClientApiLogsService {
 
   /**
    * Crea un nuevo log de API (llamado asíncronamente desde el interceptor)
+   * Incluye retry logic para manejar errores temporales de BD
    */
   async createLog(data: CreateLogDto): Promise<ClientApiLog> {
     const log = this.logsRepository.create({
@@ -40,7 +41,39 @@ export class ClientApiLogsService {
       requestBody: this.truncateJson(data.requestBody, 10000),
     });
 
-    return this.logsRepository.save(log);
+    // Retry logic: intentar hasta 3 veces con delays exponenciales
+    return this.retryOperation(() => this.logsRepository.save(log), 3);
+  }
+
+  /**
+   * Ejecuta una operación con retry logic
+   */
+  private async retryOperation<T>(
+    operation: () => Promise<T>,
+    maxRetries: number,
+    currentAttempt: number = 1,
+  ): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (currentAttempt >= maxRetries) {
+        // No more retries, throw error
+        throw error;
+      }
+
+      // Calcular delay exponencial: 100ms, 200ms, 400ms...
+      const delay = 100 * Math.pow(2, currentAttempt - 1);
+
+      this.logger.warn(
+        `⚠️  Intento ${currentAttempt}/${maxRetries} falló, reintentando en ${delay}ms...`,
+      );
+
+      // Esperar antes de reintentar
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
+      // Reintentar
+      return this.retryOperation(operation, maxRetries, currentAttempt + 1);
+    }
   }
 
   /**
