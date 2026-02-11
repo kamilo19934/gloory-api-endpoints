@@ -1,6 +1,6 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Branch } from './entities/branch.entity';
 import { Professional } from './entities/professional.entity';
@@ -201,6 +201,8 @@ export class ClinicService {
   /**
    * Obtiene profesionales filtrados por especialidad
    * Solo habilitados con agenda online
+   * Búsqueda parcial: encuentra coincidencias dentro del texto
+   * Ejemplo: "Ortodoncia" encuentra "Ortodoncia e Invisalign"
    */
   async getProfessionalsBySpecialty(
     clientId: string,
@@ -209,7 +211,7 @@ export class ClinicService {
     return this.professionalRepository.find({
       where: {
         clientId,
-        especialidad,
+        especialidad: ILike(`%${especialidad}%`), // Búsqueda parcial case-insensitive
         habilitado: true,
         agendaOnline: true,
       },
@@ -220,6 +222,8 @@ export class ClinicService {
   /**
    * Obtiene profesionales filtrados por especialidad Y sucursal
    * Solo habilitados con agenda online
+   * Búsqueda parcial: encuentra coincidencias dentro del texto
+   * Ejemplo: "Ortodoncia" encuentra "Ortodoncia e Invisalign"
    */
   async getProfessionalsBySpecialtyAndBranch(
     clientId: string,
@@ -229,7 +233,7 @@ export class ClinicService {
     const professionals = await this.professionalRepository.find({
       where: {
         clientId,
-        especialidad,
+        especialidad: ILike(`%${especialidad}%`), // Búsqueda parcial case-insensitive
         habilitado: true,
         agendaOnline: true,
       },

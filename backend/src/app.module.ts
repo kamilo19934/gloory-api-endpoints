@@ -40,10 +40,10 @@ import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-
             // Configuración de pool de conexiones para evitar AggregateError
             extra: {
               max: 20, // Máximo de conexiones en el pool
-              connectionTimeoutMillis: 10000, // Timeout para obtener conexión del pool (10s)
+              connectionTimeoutMillis: 30000, // Timeout para obtener conexión del pool (30s)
               idleTimeoutMillis: 30000, // Cerrar conexiones inactivas después de 30s
-              statement_timeout: 30000, // Timeout para queries (30s)
-              query_timeout: 30000, // Timeout alternativo para queries (30s)
+              statement_timeout: 60000, // Timeout para queries (60s)
+              query_timeout: 60000, // Timeout alternativo para queries (60s)
             },
             // Configuración adicional de TypeORM
             maxQueryExecutionTime: 30000, // Log queries lentas (>30s)
