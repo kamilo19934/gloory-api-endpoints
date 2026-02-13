@@ -145,6 +145,10 @@ export class GHLService {
         endTime: `${finMoment.format('YYYY-MM-DDTHH:mm:ss')}${offsetFmt}`,
       };
 
+      // LOG DETALLADO DEL PAYLOAD
+      this.logger.log('📤 Payload para crear appointment en GHL:');
+      this.logger.log(JSON.stringify(appointmentPayload, null, 2));
+
       const apptResp = await axios.post(
         'https://services.leadconnectorhq.com/calendars/events/appointments',
         appointmentPayload,
@@ -158,6 +162,19 @@ export class GHLService {
       }
     } catch (error) {
       this.logger.error(`❌ Error en integración GHL: ${error.message}`);
+
+      // LOG DETALLADO DEL ERROR
+      if (error.response) {
+        this.logger.error(`📛 Status: ${error.response.status}`);
+        this.logger.error(`📛 Response completa de GHL:`);
+        this.logger.error(JSON.stringify(error.response.data, null, 2));
+
+        if (error.config?.data) {
+          this.logger.error(`📛 Payload que se intentó enviar:`);
+          this.logger.error(error.config.data);
+        }
+      }
+
       throw error;
     }
   }
