@@ -294,6 +294,12 @@ export class DentalinkService {
             if (statusCode && errorMsg) {
               this.logger.warn(`📄 Respuesta del servidor: ${JSON.stringify(errorMsg)}`);
             }
+            if (statusCode === 404) {
+              throw new HttpException(
+                'Error. Revisa IDs.',
+                HttpStatus.NOT_FOUND,
+              );
+            }
           }
         }
 

@@ -455,6 +455,9 @@ export class HealthAtomService {
         const msg = `${api}: ${error.response?.status || error.message}`;
         errors.push(msg);
         this.logger.warn(`⚠️ Error en ${api}: ${msg}`);
+        if (error.response?.status === 404) {
+          return { success: false, error: 'Error. Revisa IDs.' };
+        }
       }
     }
 
