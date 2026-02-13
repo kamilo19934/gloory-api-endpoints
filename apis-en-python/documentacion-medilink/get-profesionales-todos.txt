@@ -1,0 +1,114 @@
+T v6/profesionales
+Version 2 del endpoint GET profesionales. Muestra el listado de todos los profesionales de la clínica e indica si un profesional es del tipo recurso o no.
+
+Ejemplo de solicitud:
+
+// Se define la variable token que contiene el access_token
+// obtenido en el proceso de autenticación.
+var settings = {
+    "url"       : "https://api.medilink2.healthatom.com/api/v6/profesionales",
+    "method"    : "GET",
+    "headers"   : {
+        "Authorization": "Token " + token
+    }
+}
+
+$.ajax(settings).done(function (response) {
+    console.log(response);
+});
+Ejemplo de respuesta:
+
+{
+    "data": [
+        {
+            "id": 51,
+            "rut": "1-9",
+            "nombre": "Manuel Juan",
+            "apellidos": "Perez",
+            "celular": "912345678",
+            "telefono": "",
+            "ciudad": "Viña del Mar",
+            "comuna": "Viña del Mar",
+            "direccion": "Viña del Mar",
+            "email": "manuelj@correo.cl",
+            "id_especialidad": 1,
+            "especialidad": "General",
+            "agenda_online": 1,
+            "es_recurso": 1,
+            "intervalo": 5,
+            "habilitado": 0,
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.medilink2.healthatom.com/api/v6/profesionales/51",
+                    "method": "GET"
+                }
+            ]
+        },
+        {
+            "id": 50,
+            "rut": "1-5",
+            "nombre": "Laura",
+            "apellidos": "Rodriguez",
+            "celular": "991259125",
+            "telefono": "00000",
+            "ciudad": "Santiago",
+            "comuna": "San Miguel",
+            "direccion": "Guardia Marina Riquelme 4861",
+            "email": "Laura.rod@correo.cl",
+            "id_especialidad": 1,
+            "especialidad": "General",
+            "agenda_online": 1,
+            "es_recurso": 0,
+            "intervalo": 5,
+            "habilitado": 1,
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "https://api.medilink2.healthatom.com/api/v6/profesionales/50",
+                    "method": "GET"
+                }
+            ]
+        }
+    ]
+}
+HTTP/Request
+URI
+GET api/v6/profesionales
+
+Parametros búsqueda (opcional)
+q={"columna1":{"operador1":"valor1"},"columna2":{"operador2":"valor2"},...,"columnaN":{"operadorN":"valorN"}}
+
+Columna	Tipo	Descripción
+rut	String	Buscar profesionales por RUT
+email	String	Buscar profesionales por email
+nombre	String	Buscar profesionales por nombre
+apellidos	String	Buscar profesionales por apellidos
+id_especialidad	Integer	Buscar profesionales por especialidad (id)
+especialidad	String	Buscar profesionales por especialidad (nombre)
+es_recurso	Boll	Buscar profesionales tipo recursos (1)
+habilitado	Bool	Filtrar según profesionales habilitados (1) o deshabilitados (0)
+Parametros orden (opcional)
+sort=columna1:[asc|desc],columna2:[asc|desc],...,columnaN:[asc|desc]
+
+El endpoint se puede ordenar de manera ascendente o descendente con las siguientes columnas:
+
+id
+HTTP/Response
+Atributos	Tipo de dato	Descripción
+id	Integer	ID del profesional
+rut	String	Rut del profesional
+nombre	String	Nombre del profesional
+apellidos	String	Apellidos del profesional
+celular	String	Nº de teléfono celular del profesional
+telefono	String	Nº de teléfono del profesional
+ciudad	String	Ciudad del profesional
+comuna	String	Comuna del profesional
+direccion	String	Dirección del profesional
+email	String	Email del profesional
+id_especialidad	Integer	ID especialidad del profesional
+especialidad	String	Especialidad del profesional
+agenda_online	Bool	Indica si tiene (1) o no (0) agenda online
+es_recurso	Bool	Indica si el profesional es de tipo recurso (1) o no lo es (0)
+intervalo	Integer	Indica el intervalo de citas del profesional expresado en minutos
+habilitado	Bool	Indica si el profesional está (1) o no (0) habilitado

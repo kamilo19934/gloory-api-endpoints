@@ -425,9 +425,9 @@ export class ClinicService {
             `Profesionales-${api.type}`,
           );
         } else {
-          // Medilink usa endpoint v6/profesionales (no v5)
+          // Medilink usa endpoint v6/profesionales
           profesionalesData = await this.fetchAllPaginated<any>(
-            `${this.MEDILINK_PROFESSIONALS_V6_URL}?limit=100`,
+            `${this.MEDILINK_PROFESSIONALS_V6_URL}`,
             headers,
             `Profesionales-${api.type}`,
           );
