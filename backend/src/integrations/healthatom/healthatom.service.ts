@@ -425,13 +425,15 @@ export class HealthAtomService {
             },
           });
         } else {
-          const queryParams = new URLSearchParams();
-          params.professionalIds.forEach(id => queryParams.append('ids_profesional[]', id.toString()));
-          queryParams.append('id_sucursal', params.branchId.toString());
-          queryParams.append('fecha_inicio', fechaInicio);
-          queryParams.append('fecha_fin', fechaFin);
-
-          response = await client.get(`${endpoints.availability}?${queryParams.toString()}`);
+          // MediLink: GET con body data (misma mecánica que Dentalink)
+          response = await client.get(endpoints.availability, {
+            data: {
+              ids_profesional: params.professionalIds,
+              id_sucursal: params.branchId,
+              fecha_inicio: fechaInicio,
+              fecha_fin: fechaFin,
+            },
+          });
         }
 
         const horariosData = response.data?.data || {};

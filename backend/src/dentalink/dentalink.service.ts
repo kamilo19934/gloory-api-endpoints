@@ -260,22 +260,23 @@ export class DentalinkService {
             if (api.type === 'dentalink') {
               // Dentalink: GET con body en el campo 'data'
               this.logger.log(`📋 Dentalink - Enviando body en GET: ${JSON.stringify(requestData)}`);
-              response = await axios.get(url, { 
+              response = await axios.get(url, {
                 headers,
                 data: requestData  // Body en GET para Dentalink
               });
             } else {
-              // MediLink: GET con query parameters
-              const queryParams = new URLSearchParams();
-              params.ids_profesionales.forEach((id: number) => 
-                queryParams.append('ids_profesional[]', id.toString())
-              );
-              queryParams.append('id_sucursal', params.id_sucursal.toString());
-              queryParams.append('fecha_inicio', requestData.fecha_inicio);
-              queryParams.append('fecha_fin', requestData.fecha_fin);
-              
-              this.logger.log(`📋 MediLink - Enviando query params: ${queryParams.toString()}`);
-              response = await axios.get(`${url}?${queryParams.toString()}`, { headers });
+              // MediLink: GET con body en el campo 'data' (misma mecánica que Dentalink)
+              const medilinkData = {
+                ids_profesional: params.ids_profesionales,
+                id_sucursal: params.id_sucursal,
+                fecha_inicio: requestData.fecha_inicio,
+                fecha_fin: requestData.fecha_fin,
+              };
+              this.logger.log(`📋 MediLink - Enviando body en GET: ${JSON.stringify(medilinkData)}`);
+              response = await axios.get(url, {
+                headers,
+                data: medilinkData,
+              });
             }
             
             this.logger.log(`📊 Status Code: ${response.status}`);

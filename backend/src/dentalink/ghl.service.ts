@@ -128,9 +128,8 @@ export class GHLService {
       );
       const finMoment = inicioMoment.clone().add(citaData.duracion, 'minutes');
 
-      const offset = inicioMoment.format('Z');
-      const offsetFmt = offset.slice(0, 3) + ':' + offset.slice(3);
-
+      // Usar formato ISO 8601 completo con milisegundos (requerido por GHL)
+      // Moment.format() sin parámetros devuelve ISO 8601 completo: YYYY-MM-DDTHH:mm:ss.SSSZ
       const appointmentPayload = {
         title: 'Cita Médica',
         overrideLocationConfig: true,
@@ -141,8 +140,8 @@ export class GHLService {
         locationId: config.locationId,
         assignedUserId,
         contactId: citaData.userId,
-        startTime: `${inicioMoment.format('YYYY-MM-DDTHH:mm:ss')}${offsetFmt}`,
-        endTime: `${finMoment.format('YYYY-MM-DDTHH:mm:ss')}${offsetFmt}`,
+        startTime: inicioMoment.format(), // ISO 8601 completo con milisegundos
+        endTime: finMoment.format(), // ISO 8601 completo con milisegundos
       };
 
       // LOG DETALLADO DEL PAYLOAD
