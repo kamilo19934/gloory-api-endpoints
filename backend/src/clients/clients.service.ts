@@ -335,20 +335,23 @@ export class ClientsService {
       };
     }
 
-    // Incluir legacy dentalink si existe apiKey pero no hay integración
-    if (client.apiKey && !result['dentalink']) {
-      result['dentalink'] = {
-        enabled: true,
-        status: 'connected',
-      };
-    }
+    // Solo incluir integraciones legacy si NO hay integraciones del nuevo sistema
+    if (integrations.length === 0) {
+      // Incluir legacy dentalink si existe apiKey
+      if (client.apiKey && !result['dentalink']) {
+        result['dentalink'] = {
+          enabled: true,
+          status: 'connected',
+        };
+      }
 
-    // Incluir legacy GHL si está habilitado
-    if (client.ghlEnabled && !result['ghl']) {
-      result['ghl'] = {
-        enabled: true,
-        status: 'connected',
-      };
+      // Incluir legacy GHL si está habilitado
+      if (client.ghlEnabled && !result['ghl']) {
+        result['ghl'] = {
+          enabled: true,
+          status: 'connected',
+        };
+      }
     }
 
     return {
