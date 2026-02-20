@@ -8,4 +8,3 @@ import { EndpointsController } from './endpoints.controller';
   exports: [EndpointsService],
 })
 export class EndpointsModule {}
-

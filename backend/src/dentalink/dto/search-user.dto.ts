@@ -11,4 +11,3 @@ export class SearchUserDto {
   @Type(() => Number)
   id_sucursal?: number;
 }
-

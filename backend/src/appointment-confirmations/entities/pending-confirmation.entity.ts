@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Client } from '../../clients/entities/client.entity';
 import { ConfirmationConfig } from './confirmation-config.entity';
+import { NormalizedAppointmentData } from '../adapters/confirmation-adapter.interface';
 
 export enum ConfirmationStatus {
   PENDING = 'pending',
@@ -19,11 +20,13 @@ export enum ConfirmationStatus {
 }
 
 /**
- * Cita pendiente de confirmar
- * Almacena las citas obtenidas de Dentalink que deben ser sincronizadas con GHL
+ * Cita pendiente de confirmar.
+ * Almacena citas obtenidas de cualquier plataforma (Dentalink, Reservo, etc.)
+ * que deben ser sincronizadas con GHL.
  */
 @Entity('pending_confirmations')
 @Index(['scheduledFor', 'status'])
+@Index(['clientId', 'confirmationConfigId', 'platform', 'platformAppointmentId'])
 export class PendingConfirmation {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -43,37 +46,25 @@ export class PendingConfirmation {
   confirmationConfig: ConfirmationConfig;
 
   /**
-   * ID de la cita en Dentalink
+   * Plataforma de origen: 'dentalink', 'reservo', etc.
    */
-  @Column()
-  dentalinkAppointmentId: number;
+  @Column({ default: 'dentalink' })
+  platform: string;
 
   /**
-   * Datos de la cita obtenidos de Dentalink
+   * ID de la cita en la plataforma de origen.
+   * Para Dentalink es el ID numérico como string ("12345").
+   * Para Reservo es el UUID ("3fa85f64-5717-4562-b3fc-2c963f66afa6").
+   */
+  @Column({ default: '0' })
+  platformAppointmentId: string;
+
+  /**
+   * Datos normalizados de la cita, independiente de la plataforma.
+   * Todos los IDs son string para uniformidad.
    */
   @Column({ type: 'json' })
-  appointmentData: {
-    id_paciente: number;
-    nombre_paciente: string;
-    nombre_social_paciente?: string;
-    rut_paciente?: string;
-    email_paciente?: string;
-    telefono_paciente?: string;
-    id_tratamiento: number;
-    nombre_tratamiento: string;
-    fecha: string; // YYYY-MM-DD
-    hora_inicio: string; // HH:mm:ss
-    hora_fin: string;
-    duracion: number;
-    id_dentista: number;
-    nombre_dentista: string;
-    id_sucursal: number;
-    nombre_sucursal: string;
-    id_estado: number;
-    estado_cita: string;
-    motivo_atencion?: string;
-    comentarios?: string;
-  };
+  appointmentData: NormalizedAppointmentData;
 
   /**
    * Estado de la confirmación
@@ -87,7 +78,7 @@ export class PendingConfirmation {
   /**
    * Fecha y hora programada para enviar la confirmación
    */
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime' })
   scheduledFor: Date;
 
   /**
@@ -117,7 +108,7 @@ export class PendingConfirmation {
   /**
    * Fecha de procesamiento
    */
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   processedAt: Date;
 
   @CreateDateColumn()

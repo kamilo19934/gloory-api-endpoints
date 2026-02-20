@@ -64,19 +64,13 @@ export class DentalinkController {
 
   @Post('patients/search')
   @HttpCode(HttpStatus.OK)
-  async searchUser(
-    @Param('clientId') clientId: string,
-    @Body() searchUserDto: SearchUserDto,
-  ) {
+  async searchUser(@Param('clientId') clientId: string, @Body() searchUserDto: SearchUserDto) {
     return await this.dentalinkService.searchUser(clientId, searchUserDto);
   }
 
   @Post('patients')
   @HttpCode(HttpStatus.CREATED)
-  async createUser(
-    @Param('clientId') clientId: string,
-    @Body() createUserDto: CreateUserDto,
-  ) {
+  async createUser(@Param('clientId') clientId: string, @Body() createUserDto: CreateUserDto) {
     return await this.dentalinkService.createUser(clientId, createUserDto);
   }
 
@@ -137,8 +131,9 @@ export class DentalinkController {
       // Try to get dentists list as a simple connection test
       const client = await this.clientsService.findOne(clientId);
       const apiKey = client.apiKey;
-      const baseURL = process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/';
-      
+      const baseURL =
+        process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/';
+
       const axios = require('axios');
       const response = await axios.get(`${baseURL}dentistas`, {
         headers: {

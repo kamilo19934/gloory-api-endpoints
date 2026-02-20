@@ -1,0 +1,80 @@
+GET
+/agenda_online/{uuid_agenda}/profesionales/
+
+
+Endpoint para mostrar los profesionales que pueden ser seleccionados de una agenda online.
+
+***El campo 'agenda' será deprecado en las proximas actualizaciones, utilizar campo 'uuid'.***
+
+Parameters
+Try it out
+Name	Description
+pagina
+integer
+(query)
+Número de página
+
+pagina
+search_text
+string
+(query)
+Cadena de carácteres para hacer una búsqueda por coincidencia.
+
+Examples: 
+Búsqueda de ejemplo
+Pedro
+uuid_profesional
+string
+(query)
+identificador único del profesional.
+
+Examples: 
+Búsqueda de ejemplo
+dbfeb643-e4d3-4af1-89ea-ed8af65d9c0f
+uuid_sucursal
+string
+(query)
+identificador único de la sucursal.
+
+Examples: 
+Búsqueda de ejemplo
+f58705f4-ceb3-11eb-ab88-0242ac12000e
+uuid_tratamiento
+string
+(query)
+identificador único del tratamiento.
+
+Examples: 
+Búsqueda de ejemplo
+2641a37f-621b-4d93-951d-4e19e3d5302f
+uuid_agenda *
+string
+(path)
+uuid_agenda
+Responses
+Code	Description	Links
+200	
+Media type
+
+application/json
+Controls Accept header.
+Examples
+
+Ejemplo de una respuesta exitosa
+Example Value
+Schema
+{
+  "cantidad_elementos": 123,
+  "pagina_siguiente": "http://api.example.org/accounts/?pagina=4",
+  "pagina_anterior": "http://api.example.org/accounts/?pagina=2",
+  "resultados": [
+    {
+      "uuid": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "identificador": "11111111-1",
+      "nombre": "Dr. Pedro",
+      "cargo": "Kinesiología",
+      "codigo_especialidad": "K",
+      "sucursal": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+    }
+  ]
+}

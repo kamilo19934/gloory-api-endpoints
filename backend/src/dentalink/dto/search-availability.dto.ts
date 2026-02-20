@@ -22,4 +22,3 @@ export class SearchAvailabilityDto {
   @Type(() => Number)
   tiempo_cita?: number; // Minutos requeridos para la cita
 }
-

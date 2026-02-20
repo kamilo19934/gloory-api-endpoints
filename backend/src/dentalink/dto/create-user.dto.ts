@@ -32,4 +32,3 @@ export class CreateUserDto {
   @Type(() => Number)
   id_sucursal?: number;
 }
-

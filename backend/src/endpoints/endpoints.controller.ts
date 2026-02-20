@@ -27,4 +27,3 @@ export class EndpointsController {
     return this.endpointsService.getEndpointById(id);
   }
 }
-

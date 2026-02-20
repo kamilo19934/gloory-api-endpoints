@@ -26,6 +26,9 @@ export class Branch {
   @Column()
   dentalinkId: number; // ID de Dentalink
 
+  @Column({ nullable: true })
+  externalId: string; // ID externo genérico (UUID para Reservo, etc.)
+
   @Column()
   nombre: string;
 

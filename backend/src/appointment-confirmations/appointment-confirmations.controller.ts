@@ -6,9 +6,9 @@ import {
   Delete,
   Body,
   Param,
-  Query,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { AppointmentConfirmationsService } from './appointment-confirmations.service';
 import { Public } from '../auth/decorators/public.decorator';
@@ -18,6 +18,7 @@ import { UpdateConfirmationConfigDto } from './dto/update-confirmation-config.dt
 import { TriggerConfirmationDto } from './dto/trigger-confirmation.dto';
 import { ConfirmationStatus } from './entities/pending-confirmation.entity';
 import { ClientsService } from '../clients/clients.service';
+import { ConfirmationAdapterFactory } from './adapters/confirmation-adapter.factory';
 
 @Public()
 @Controller('clients/:clientId/appointment-confirmations')
@@ -26,6 +27,7 @@ export class AppointmentConfirmationsController {
     private readonly confirmationsService: AppointmentConfirmationsService,
     private readonly ghlSetupService: GHLSetupService,
     private readonly clientsService: ClientsService,
+    private readonly adapterFactory: ConfirmationAdapterFactory,
   ) {}
 
   // ============================================
@@ -46,10 +48,7 @@ export class AppointmentConfirmationsController {
   }
 
   @Get('configs/:configId')
-  async getConfig(
-    @Param('clientId') clientId: string,
-    @Param('configId') configId: string,
-  ) {
+  async getConfig(@Param('clientId') clientId: string, @Param('configId') configId: string) {
     return await this.confirmationsService.getConfig(clientId, configId);
   }
 
@@ -64,10 +63,7 @@ export class AppointmentConfirmationsController {
 
   @Delete('configs/:configId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteConfig(
-    @Param('clientId') clientId: string,
-    @Param('configId') configId: string,
-  ) {
+  async deleteConfig(@Param('clientId') clientId: string, @Param('configId') configId: string) {
     await this.confirmationsService.deleteConfig(clientId, configId);
   }
 
@@ -76,8 +72,8 @@ export class AppointmentConfirmationsController {
   // ============================================
 
   /**
-   * Dispara manualmente la obtención y almacenamiento de citas
-   * Útil para testing o ejecución manual
+   * Dispara manualmente la obtención y almacenamiento de citas.
+   * Funciona con cualquier plataforma (Dentalink, Reservo, etc.)
    */
   @Post('trigger')
   async triggerConfirmation(
@@ -99,7 +95,6 @@ export class AppointmentConfirmationsController {
 
   /**
    * Procesa manualmente las confirmaciones pendientes (sincroniza con GHL)
-   * Útil para testing - ignora el scheduledFor y procesa hasta 10 inmediatamente
    */
   @Post('process')
   async processConfirmations(@Param('clientId') clientId: string) {
@@ -136,7 +131,6 @@ export class AppointmentConfirmationsController {
 
   /**
    * Procesa TODAS las confirmaciones pendientes de un cliente (sin límite)
-   * Procesa en batches de 10 respetando rate limits hasta completar todas
    */
   @Post('process-all')
   async processAllConfirmations(@Param('clientId') clientId: string) {
@@ -166,14 +160,11 @@ export class AppointmentConfirmationsController {
     @Param('clientId') clientId: string,
     @Param('status') status: ConfirmationStatus,
   ) {
-    return await this.confirmationsService.getPendingConfirmationsByStatus(
-      clientId,
-      status,
-    );
+    return await this.confirmationsService.getPendingConfirmationsByStatus(clientId, status);
   }
 
   // ============================================
-  // ESTADOS DE CITA
+  // ESTADOS DE CITA (solo Dentalink/MediLink)
   // ============================================
 
   /**
@@ -181,15 +172,32 @@ export class AppointmentConfirmationsController {
    */
   @Get('appointment-states')
   async getAppointmentStates(@Param('clientId') clientId: string) {
-    return await this.confirmationsService.getAppointmentStates(clientId);
+    const client = await this.clientsService.findOne(clientId);
+
+    if (client.hasIntegration('reservo')) {
+      throw new BadRequestException(
+        'Los estados de cita personalizados no están soportados para Reservo. ' +
+        'Reservo usa estados fijos: NC (No Confirmado), C (Confirmado), S (Suspendido).',
+      );
+    }
+
+    return await this.adapterFactory.getDentalinkAdapter().getAppointmentStates(client);
   }
 
   /**
-   * Crea un estado de cita personalizado "Confirmado por Bookys"
+   * Crea los estados personalizados "Confirmado por Bookys" y "Contactado por Bookys"
    */
   @Post('appointment-states/create-bookys')
   async createBookysState(@Param('clientId') clientId: string) {
-    return await this.confirmationsService.createBookysConfirmationState(clientId);
+    const client = await this.clientsService.findOne(clientId);
+
+    if (client.hasIntegration('reservo')) {
+      throw new BadRequestException(
+        'La creación de estados personalizados no está soportada para Reservo.',
+      );
+    }
+
+    return await this.adapterFactory.getDentalinkAdapter().createBookysConfirmationState(client);
   }
 
   // ============================================

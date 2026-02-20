@@ -119,11 +119,15 @@ export default function EditClientPage() {
 
     // Validar campos requeridos de cada integración
     for (const integration of selectedIntegrations) {
-      if (
-        (integration.type === IntegrationType.DENTALINK || 
+      if (integration.type === IntegrationType.RESERVO) {
+        if (!integration.config.apiToken) {
+          toast.error('API Token de Reservo es obligatorio');
+          return;
+        }
+      } else if (
+        (integration.type === IntegrationType.DENTALINK ||
          integration.type === IntegrationType.MEDILINK ||
-         integration.type === IntegrationType.DENTALINK_MEDILINK ||
-         integration.type === IntegrationType.RESERVO) && 
+         integration.type === IntegrationType.DENTALINK_MEDILINK) &&
         !integration.config.apiKey
       ) {
         toast.error(`API Key es requerida para ${integration.type}`);

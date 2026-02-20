@@ -8,7 +8,7 @@ import {
   integrationsApi,
   getIntegrationColor,
 } from '@/lib/api';
-import { FiCheck, FiPlus, FiX, FiSettings, FiAlertCircle } from 'react-icons/fi';
+import { FiCheck, FiPlus, FiX, FiSettings, FiAlertCircle, FiTrash2 } from 'react-icons/fi';
 
 interface IntegrationConfig {
   type: IntegrationType;
@@ -236,6 +236,115 @@ export default function IntegrationSelector({
                 </option>
               ))}
             </select>
+          </div>
+        );
+
+      case 'array':
+        // Renderizar como lista de agendas con campos: ID (auto), Nombre, UUID, Tipo
+        const items: any[] = Array.isArray(value) ? value : [];
+
+        const addItem = () => {
+          const nextId = items.length > 0 ? Math.max(...items.map((a: any) => a.id || 0)) + 1 : 1;
+          const newItems = [...items, { id: nextId, nombre: '', uuid: '', tipo: 'presencial' }];
+          updateConfig(integration.type, field.key, newItems);
+        };
+
+        const removeItem = (index: number) => {
+          const newItems = items.filter((_: any, i: number) => i !== index);
+          // Reasignar IDs secuenciales
+          const reindexed = newItems.map((item: any, i: number) => ({ ...item, id: i + 1 }));
+          updateConfig(integration.type, field.key, reindexed);
+        };
+
+        const updateItem = (index: number, key: string, val: any) => {
+          const newItems = items.map((item: any, i: number) =>
+            i === index ? { ...item, [key]: val } : item
+          );
+          updateConfig(integration.type, field.key, newItems);
+        };
+
+        return (
+          <div key={field.key} className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-semibold text-gray-900">
+                {field.label}
+                {field.description && (
+                  <span className="block text-xs font-normal text-gray-600 mt-0.5">{field.description}</span>
+                )}
+              </label>
+              <button
+                type="button"
+                onClick={addItem}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors"
+              >
+                <FiPlus size={14} />
+                Agregar Agenda
+              </button>
+            </div>
+
+            {items.length === 0 && (
+              <div className="text-center py-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                <p className="text-sm text-gray-500">No hay agendas configuradas</p>
+                <p className="text-xs text-gray-400 mt-1">Haz clic en &quot;Agregar Agenda&quot; para comenzar</p>
+              </div>
+            )}
+
+            {items.map((item: any, index: number) => (
+              <div
+                key={index}
+                className="p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-primary-200 transition-colors space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-primary-100 text-primary-800">
+                    ID: {item.id}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(index)}
+                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Eliminar agenda"
+                  >
+                    <FiTrash2 size={14} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-600">Nombre</label>
+                    <input
+                      type="text"
+                      value={item.nombre || ''}
+                      onChange={(e) => updateItem(index, 'nombre', e.target.value)}
+                      placeholder="Ej: Agenda Presencial"
+                      className="block w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-colors text-sm bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-600">Tipo</label>
+                    <select
+                      value={item.tipo || 'presencial'}
+                      onChange={(e) => updateItem(index, 'tipo', e.target.value)}
+                      className="block w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-colors text-sm bg-white"
+                    >
+                      <option value="presencial">Presencial</option>
+                      <option value="online">Online</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-600">UUID de Reservo</label>
+                  <input
+                    type="text"
+                    value={item.uuid || ''}
+                    onChange={(e) => updateItem(index, 'uuid', e.target.value)}
+                    placeholder="Ej: R046YRy070yZCa112n548wD3q7X0Gt"
+                    className="block w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-colors text-sm font-mono bg-white"
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         );
 

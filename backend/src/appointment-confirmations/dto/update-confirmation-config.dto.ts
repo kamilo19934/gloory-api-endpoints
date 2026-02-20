@@ -1,4 +1,13 @@
-import { IsString, IsInt, IsBoolean, Min, Max, Matches, IsOptional, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsInt,
+  IsBoolean,
+  Min,
+  Max,
+  Matches,
+  IsOptional,
+  IsArray,
+} from 'class-validator';
 
 export class UpdateConfirmationConfigDto {
   @IsString()

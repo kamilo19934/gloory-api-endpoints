@@ -8,6 +8,8 @@ import { DentalinkModule } from './dentalink/dentalink.module';
 import { ClinicModule } from './clinic/clinic.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { HealthAtomModule } from './integrations/healthatom/healthatom.module';
+import { ReservoModule } from './integrations/reservo/reservo.module';
+import { ReservoProxyModule } from './reservo/reservo-proxy.module';
 import { AppointmentConfirmationsModule } from './appointment-confirmations/appointment-confirmations.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -30,7 +32,9 @@ import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-
         if (isPostgres) {
           // PostgreSQL configuration
           // DB_SYNC=true permite crear tablas en producción (usar solo la primera vez)
-          const shouldSync = configService.get('DB_SYNC') === 'true' || configService.get('NODE_ENV') !== 'production';
+          const shouldSync =
+            configService.get('DB_SYNC') === 'true' ||
+            configService.get('NODE_ENV') !== 'production';
 
           const config: any = {
             type: 'postgres',
@@ -69,7 +73,7 @@ import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-
           const sslEnabled = configService.get('DATABASE_SSL');
           if (sslEnabled === 'true' || databaseUrl) {
             config.ssl = {
-              rejectUnauthorized: false // Aceptar certificados autofirmados
+              rejectUnauthorized: false, // Aceptar certificados autofirmados
             };
           }
 
@@ -92,6 +96,8 @@ import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-
     // Application modules
     IntegrationsModule, // Global module for integration registry
     HealthAtomModule, // Unified HealthAtom service (Dentalink + MediLink)
+    ReservoModule, // Reservo integration service (Global)
+    ReservoProxyModule, // Reservo proxy controller for client routes
     ClientsModule,
     EndpointsModule,
     DentalinkModule,

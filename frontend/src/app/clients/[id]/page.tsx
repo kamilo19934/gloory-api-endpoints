@@ -45,13 +45,19 @@ export default function ClientDetailPage() {
   const handleTestConnection = async () => {
     try {
       setTesting(true);
-      const result = await clientsApi.testConnection(clientId);
+      const isReservo = client?.integrations?.some(
+        (i) => i.integrationType === IntegrationType.RESERVO && i.isEnabled,
+      );
+      const platformName = isReservo ? 'Reservo' : 'Dentalink';
+      const result = isReservo
+        ? await clientsApi.testReservoConnection(clientId)
+        : await clientsApi.testConnection(clientId);
       setConnectionStatus(result.connected);
-      
+
       if (result.connected) {
-        toast.success('Conexión exitosa con Dentalink');
+        toast.success(`Conexión exitosa con ${platformName}`);
       } else {
-        toast.error('No se pudo conectar con Dentalink');
+        toast.error(`No se pudo conectar con ${platformName}`);
       }
     } catch (error) {
       setConnectionStatus(false);
@@ -128,15 +134,21 @@ export default function ClientDetailPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <p className="text-sm text-gray-500 mb-1">API Key</p>
+              <p className="text-sm text-gray-500 mb-1">API Key/Token</p>
               <code className="text-sm bg-gray-100 px-3 py-2 rounded block">
                 {(() => {
-                  // Try to get API key from integrations first
-                  const integration = client.integrations?.find(
-                    (i) => i.integrationType === IntegrationType.DENTALINK || 
+                  const reservoIntegration = client.integrations?.find(
+                    (i) => i.integrationType === IntegrationType.RESERVO
+                  );
+                  if (reservoIntegration) {
+                    const token = reservoIntegration.config?.apiToken;
+                    return token ? `${token.substring(0, 30)}...` : 'No configurada';
+                  }
+                  const dentalinkIntegration = client.integrations?.find(
+                    (i) => i.integrationType === IntegrationType.DENTALINK ||
                            i.integrationType === IntegrationType.DENTALINK_MEDILINK
                   );
-                  const apiKey = integration?.config?.apiKey || client.apiKey;
+                  const apiKey = dentalinkIntegration?.config?.apiKey || client.apiKey;
                   return apiKey ? `${apiKey.substring(0, 30)}...` : 'No configurada';
                 })()}
               </code>
@@ -212,7 +224,7 @@ export default function ClientDetailPage() {
             Endpoints Disponibles ({endpoints.length})
           </h2>
           <p className="text-gray-600 mt-1">
-            Utiliza estas URLs para hacer llamadas a Dentalink
+            Utiliza estas URLs para interactuar con la plataforma del cliente
           </p>
         </div>
 

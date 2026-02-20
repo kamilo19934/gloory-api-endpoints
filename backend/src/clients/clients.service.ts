@@ -66,7 +66,10 @@ export class ClientsService {
     }
 
     // Auto-create Dentalink integration from legacy apiKey
-    if (createClientDto.apiKey && !createClientDto.integrations?.some(i => i.type === IntegrationType.DENTALINK)) {
+    if (
+      createClientDto.apiKey &&
+      !createClientDto.integrations?.some((i) => i.type === IntegrationType.DENTALINK)
+    ) {
       await this.addIntegration(savedClient.id, {
         type: IntegrationType.DENTALINK,
         isEnabled: true,
@@ -127,15 +130,18 @@ export class ClientsService {
     // Legacy fields
     if (updateClientDto.apiKey !== undefined) client.apiKey = updateClientDto.apiKey;
     if (updateClientDto.ghlEnabled !== undefined) client.ghlEnabled = updateClientDto.ghlEnabled;
-    if (updateClientDto.ghlAccessToken !== undefined) client.ghlAccessToken = updateClientDto.ghlAccessToken;
-    if (updateClientDto.ghlCalendarId !== undefined) client.ghlCalendarId = updateClientDto.ghlCalendarId;
-    if (updateClientDto.ghlLocationId !== undefined) client.ghlLocationId = updateClientDto.ghlLocationId;
-    
+    if (updateClientDto.ghlAccessToken !== undefined)
+      client.ghlAccessToken = updateClientDto.ghlAccessToken;
+    if (updateClientDto.ghlCalendarId !== undefined)
+      client.ghlCalendarId = updateClientDto.ghlCalendarId;
+    if (updateClientDto.ghlLocationId !== undefined)
+      client.ghlLocationId = updateClientDto.ghlLocationId;
+
     // Manejar confirmationStateId: permitir null para limpiar el campo
     if (updateClientDto.confirmationStateId !== undefined) {
       client.confirmationStateId = updateClientDto.confirmationStateId;
     }
-    
+
     // Manejar contactedStateId: permitir null para limpiar el campo
     if (updateClientDto.contactedStateId !== undefined) {
       client.contactedStateId = updateClientDto.contactedStateId;
@@ -293,13 +299,16 @@ export class ClientsService {
 
   async getApiKey(clientId: string): Promise<string> {
     const client = await this.findOne(clientId);
-    
+
     // Try new integration first
-    const dentalinkIntegration = await this.getClientIntegration(clientId, IntegrationType.DENTALINK);
+    const dentalinkIntegration = await this.getClientIntegration(
+      clientId,
+      IntegrationType.DENTALINK,
+    );
     if (dentalinkIntegration?.config?.apiKey) {
       return dentalinkIntegration.config.apiKey;
     }
-    
+
     // Fallback to legacy
     return client.apiKey;
   }

@@ -1,11 +1,7 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { IntegrationRegistryService } from './integration-registry.service';
 import { Public } from '../auth/decorators/public.decorator';
-import {
-  IntegrationType,
-  IntegrationMetadata,
-  IntegrationCapability,
-} from './common/interfaces';
+import { IntegrationType, IntegrationMetadata, IntegrationCapability } from './common/interfaces';
 
 @Public()
 @Controller('integrations')
@@ -36,9 +32,7 @@ export class IntegrationsController {
    * Lista integraciones por capacidad
    */
   @Get('capability/:capability')
-  getByCapability(
-    @Param('capability') capability: IntegrationCapability,
-  ): IntegrationMetadata[] {
+  getByCapability(@Param('capability') capability: IntegrationCapability): IntegrationMetadata[] {
     return this.registryService.getByCapability(capability);
   }
 }

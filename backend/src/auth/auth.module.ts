@@ -18,7 +18,10 @@ import { UsersModule } from '../users/users.module';
       useFactory: (configService: ConfigService) => {
         const expiresIn = configService.get('JWT_EXPIRES_IN') || '7d';
         return {
-          secret: configService.get<string>('JWT_SECRET', 'tu-secreto-super-seguro-cambiar-en-produccion'),
+          secret: configService.get<string>(
+            'JWT_SECRET',
+            'tu-secreto-super-seguro-cambiar-en-produccion',
+          ),
           signOptions: {
             expiresIn: expiresIn as any, // JWT acepta strings como '7d', '1h', etc.
           },

@@ -7,10 +7,7 @@ import { ClientIntegration } from './entities/client-integration.entity';
 import { EndpointsModule } from '../endpoints/endpoints.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Client, ClientIntegration]),
-    EndpointsModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Client, ClientIntegration]), EndpointsModule],
   controllers: [ClientsController],
   providers: [ClientsService],
   exports: [ClientsService],

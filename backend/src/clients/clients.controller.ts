@@ -51,8 +51,12 @@ export class ClientsController {
   }
 
   @Get(':id/endpoints')
-  getEndpoints(@Param('id') id: string) {
-    return this.endpointsService.getEndpointsForClient(id);
+  async getEndpoints(@Param('id') id: string) {
+    const client = await this.clientsService.findOne(id);
+    const integrationTypes = (client.integrations || [])
+      .filter((i) => i.isEnabled)
+      .map((i) => i.integrationType);
+    return this.endpointsService.getEndpointsForClient(id, integrationTypes);
   }
 
   @Patch(':id')

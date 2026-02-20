@@ -22,8 +22,8 @@ interface BranchResponse {
   ciudad?: string;
   comuna?: string;
   direccion?: string;
-  habilitada?: boolean;  // Solo para panel admin
-  activa?: boolean;      // Solo para panel admin
+  habilitada?: boolean; // Solo para panel admin
+  activa?: boolean; // Solo para panel admin
 }
 
 interface ProfessionalResponse {
@@ -34,8 +34,8 @@ interface ProfessionalResponse {
   especialidad?: string;
   intervalo?: number;
   sucursales: number[];
-  habilitado?: boolean;  // Solo para panel admin
-  activo?: boolean;      // Solo para panel admin
+  habilitado?: boolean; // Solo para panel admin
+  activo?: boolean; // Solo para panel admin
 }
 
 @Public()
@@ -143,7 +143,11 @@ export class ClinicController {
     @Param('branchId') branchId: string,
     @Body() body: { activa: boolean },
   ): Promise<BranchResponse> {
-    const branch = await this.clinicService.toggleBranch(clientId, parseInt(branchId, 10), body.activa);
+    const branch = await this.clinicService.toggleBranch(
+      clientId,
+      parseInt(branchId, 10),
+      body.activa,
+    );
     // Incluir estados para respuesta de toggle
     return this.transformBranch(branch, true);
   }
@@ -174,7 +178,7 @@ export class ClinicController {
     @Body() body: { id_sucursal: number; includeInactive?: boolean },
   ): Promise<ProfessionalResponse[]> {
     const includeAll = body.includeInactive === true;
-    
+
     if (includeAll) {
       // Para admin: obtener todos los profesionales de la sucursal sin filtros
       const professionals = await this.clinicService.getProfessionalsByBranch(
@@ -184,7 +188,7 @@ export class ClinicController {
       // Incluir estados para panel admin
       return professionals.map((p) => this.transformProfessional(p, true));
     }
-    
+
     // Para agentes IA: solo activos
     const professionals = await this.clinicService.getActiveProfessionalsByBranch(
       clientId,
@@ -209,12 +213,12 @@ export class ClinicController {
     const professionals = includeAll
       ? await this.clinicService.getAllProfessionals(clientId)
       : await this.clinicService.getActiveProfessionals(clientId);
-    
+
     // Solo filtrar por agenda online si no incluimos inactivos
     const filtered = includeAll
       ? professionals
       : professionals.filter((p) => p.agendaOnline === true);
-    
+
     // No incluir estados para agentes IA
     return filtered.map((p) => this.transformProfessional(p, false));
   }
@@ -271,7 +275,11 @@ export class ClinicController {
     @Param('professionalId') professionalId: string,
     @Body() body: { activo: boolean },
   ): Promise<ProfessionalResponse> {
-    const professional = await this.clinicService.toggleProfessional(clientId, parseInt(professionalId, 10), body.activo);
+    const professional = await this.clinicService.toggleProfessional(
+      clientId,
+      parseInt(professionalId, 10),
+      body.activo,
+    );
     // Incluir estados para respuesta de toggle
     return this.transformProfessional(professional, true);
   }
@@ -296,7 +304,7 @@ export class ClinicController {
     @Body() body: { especialidad: string; id_sucursal?: number },
   ): Promise<ProfessionalResponse[]> {
     let professionals;
-    
+
     if (body.id_sucursal) {
       // Filtrar por especialidad Y sucursal
       professionals = await this.clinicService.getProfessionalsBySpecialtyAndBranch(
@@ -330,10 +338,7 @@ export class ClinicController {
    */
   @Post('sync')
   @HttpCode(HttpStatus.OK)
-  async syncFromDentalink(
-    @Param('clientId') clientId: string,
-    @Body() body?: { force?: boolean },
-  ) {
+  async syncFromDentalink(@Param('clientId') clientId: string, @Body() body?: { force?: boolean }) {
     const forceSync = body?.force === true;
     return this.clinicService.syncFromDentalink(clientId, forceSync);
   }

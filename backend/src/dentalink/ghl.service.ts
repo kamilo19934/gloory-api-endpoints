@@ -85,7 +85,7 @@ export class GHLService {
       this.logger.log(`🌐 Actualizando contacto en: ${updateUrl}`);
 
       const contactResp = await axios.put(updateUrl, updatePayload, { headers });
-      
+
       if (contactResp.status === 200) {
         this.logger.log(`✅ Contacto actualizado en GHL: ${nombreProfesional} - ${nombreSucursal}`);
       } else {
@@ -107,7 +107,7 @@ export class GHLService {
       if (calendarResp.status === 200) {
         const calendarData = calendarResp.data?.calendar || {};
         const teamMembers = calendarData.teamMembers || [];
-        
+
         if (teamMembers.length > 0) {
           assignedUserId = teamMembers[0].userId;
           this.logger.log(`✅ Obtenido assignedUserId: ${assignedUserId}`);
@@ -122,10 +122,7 @@ export class GHLService {
       }
 
       // 4. Crear appointment en GHL
-      const inicioMoment = moment.tz(
-        `${citaData.fecha} ${citaData.hora_inicio}`,
-        timezone,
-      );
+      const inicioMoment = moment.tz(`${citaData.fecha} ${citaData.hora_inicio}`, timezone);
       const finMoment = inicioMoment.clone().add(citaData.duracion, 'minutes');
 
       // Usar formato ISO 8601 completo con milisegundos (requerido por GHL)
@@ -178,4 +175,3 @@ export class GHLService {
     }
   }
 }
-

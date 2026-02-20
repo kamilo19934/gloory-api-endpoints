@@ -145,4 +145,3 @@ export function formatearFechaHoraGHL(fecha: string, hora: string, timezone: str
   const offset = fechaHora.format('Z');
   return `${fechaHora.format('YYYY-MM-DDTHH:mm:ss')}${offset}`;
 }
-

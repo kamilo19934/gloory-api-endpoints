@@ -8,6 +8,9 @@ import { ConfirmationConfig } from './entities/confirmation-config.entity';
 import { PendingConfirmation } from './entities/pending-confirmation.entity';
 import { ClientsModule } from '../clients/clients.module';
 import { HealthAtomModule } from '../integrations/healthatom/healthatom.module';
+import { DentalinkConfirmationAdapter } from './adapters/dentalink-confirmation.adapter';
+import { ReservoConfirmationAdapter } from './adapters/reservo-confirmation.adapter';
+import { ConfirmationAdapterFactory } from './adapters/confirmation-adapter.factory';
 
 @Module({
   imports: [
@@ -15,9 +18,16 @@ import { HealthAtomModule } from '../integrations/healthatom/healthatom.module';
     ScheduleModule.forRoot(),
     ClientsModule,
     HealthAtomModule,
+    // ReservoModule is @Global() so no explicit import needed
   ],
   controllers: [AppointmentConfirmationsController],
-  providers: [AppointmentConfirmationsService, GHLSetupService],
+  providers: [
+    AppointmentConfirmationsService,
+    GHLSetupService,
+    DentalinkConfirmationAdapter,
+    ReservoConfirmationAdapter,
+    ConfirmationAdapterFactory,
+  ],
   exports: [AppointmentConfirmationsService, GHLSetupService],
 })
 export class AppointmentConfirmationsModule {}

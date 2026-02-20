@@ -1,0 +1,203 @@
+GET
+/citas/
+
+
+Este endpoint permite obtener las citas creadas dentro del rango de 31 dias.
+
+Consideraciones
+
+Las citas tienen un timezone que puede ser diferente al del cliente ej: la cita es por videoconferencia y el profesional y el cliente están en diferentes regiones horarias.
+Las citas en estado lista de espera no se deben modificar de estado ni notificar al cliente, no utilizan cupo en la agenda.
+Una cita puede no tener un profesional asignado.
+Una cita puede no tener datos de un cliente.
+Una cita puede no tener tratamientos asignados.
+Existen citas que se atienden de forma online y otras que son presenciales.
+Parameters
+Try it out
+Name	Description
+fecha_final
+string($date)
+(query)
+Fecha final a partir de la cual se finaliza la búsqueda de citas.
+
+Examples: 
+Fecha final de ejemplo
+2022-10-16
+fecha_inicial
+string($date)
+(query)
+Fecha inicial a partir de la cual se inicia la búsqueda de citas.
+
+Examples: 
+Fecha inicial de ejemplo
+2022-10-01
+pagina
+integer
+(query)
+Número de página
+
+pagina
+uuid
+string
+(query)
+uuid de la cita
+
+uuid
+uuid_cliente
+string
+(query)
+uuid_cliente del cliente
+
+uuid_cliente
+Responses
+Code	Description	Links
+200	
+Media type
+
+application/json
+Controls Accept header.
+Examples
+
+Ejemplo respuesta exitosa
+Example Value
+Schema
+{
+  "cantidad_elementos": 123,
+  "pagina_siguiente": "http://api.example.org/accounts/?pagina=4",
+  "pagina_anterior": "http://api.example.org/accounts/?pagina=2",
+  "resultados": [
+    {
+      "uuid": "4488166370087689179d28_3917_11ed_abbe_0242ac120006",
+      "agenda": {
+        "uuid": "97754d14-b1f1-4b59-bd15-ac2f77de9b52",
+        "descripcion": "Agenda Doctor Mario"
+      },
+      "sucursal": {
+        "uuid": "76c095c2817311edae2e347df6bf83e9",
+        "nombre": "Centro Médico Doctor Mario"
+      },
+      "zona_horaria": "America/Santiago",
+      "inicio": "2022-10-27T11:30:00Z",
+      "fin": "2022-10-27T12:45:00Z",
+      "estado": {
+        "codigo": "NC",
+        "descripcion": "No Confirmado"
+      },
+      "estado_pago": {
+        "codigo": "NP",
+        "descripcion": "No Pagado"
+      },
+      "cliente": {
+        "uuid": null,
+        "identificador": "",
+        "sexo": null,
+        "nombre": "",
+        "apellido_paterno": "",
+        "apellido_materno": "",
+        "fecha_nacimiento": "",
+        "telefono_1": "",
+        "telefono_2": "",
+        "mail": "",
+        "zona_horaria": "",
+        "prevision": {
+          "nombre": "",
+          "codigo": ""
+        },
+        "direccion": {
+          "pais": "",
+          "estado": "",
+          "ciudad": "",
+          "calle": ""
+        }
+      },
+      "comentario": "",
+      "profesional": {
+        "uuid": "73004a79-276f-4b27-a5b9-894feb656574",
+        "identificador": "14442542-4",
+        "nombre": "Dra. Mirelly",
+        "cargo": "Doctora",
+        "codigo_especialidad": "12345"
+      },
+      "tratamientos": [
+        {
+          "uuid": "42f329c2-708f-424d-9bd0-1e988db8ffb5",
+          "nombre": "Agendamiento Demo",
+          "codigo": "T-DEMO",
+          "categoria": {
+            "uuid": "63ce753c-e024-4564-ae23-3ed528dd2745",
+            "nombre": "Tratamientos",
+            "codigo": "T"
+          },
+          "indicacion": "Indicación del tratamiento para el cliente"
+        }
+      ],
+      "online": true,
+      "fecha_creacion": "2022-09-20T19:07:57Z",
+      "origen_creacion": {
+        "descripcion": "Backoffice Reservo"
+      },
+      "simbolos": {
+        "simbolo_1": false,
+        "simbolo_2": false,
+        "simbolo_3": false,
+        "simbolo_4": false,
+        "simbolo_5": false,
+        "simbolo_6": false,
+        "simbolo_7": false,
+        "simbolo_8": false,
+        "simbolo_9": false,
+        "simbolo_10": false
+      },
+      "url_pago_online": "https//reservo.cl/example_pago_online/",
+      "url_videoconferencia": "https//reservo.cl/example_videoconferencia/"
+    }
+  ]
+}
+No links
+400	
+Media type
+
+application/json
+Examples
+
+Ejemplo de respuesta con error en el formato de los parámetros
+Example Value
+Schema
+{
+  "cantidad_elementos": 123,
+  "pagina_siguiente": "http://api.example.org/accounts/?pagina=4",
+  "pagina_anterior": "http://api.example.org/accounts/?pagina=2",
+  "resultados": [
+    {
+      "errores": {
+        "fecha": [
+          "Introduzca una fecha válida."
+        ]
+      }
+    }
+  ]
+}
+No links
+401	
+Media type
+
+application/json
+Examples
+
+Ejemplo de respuesta con error de token
+Example Value
+Schema
+{
+  "cantidad_elementos": 123,
+  "pagina_siguiente": "http://api.example.org/accounts/?pagina=4",
+  "pagina_anterior": "http://api.example.org/accounts/?pagina=2",
+  "resultados": [
+    {
+      "errores": {
+        "autenticacion_fallida": [
+          "Token inválido."
+        ]
+      }
+    }
+  ]
+}

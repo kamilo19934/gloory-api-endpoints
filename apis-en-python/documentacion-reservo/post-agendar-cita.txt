@@ -1,0 +1,26 @@
+**makereserva/confirmApptAPI/**
+
+method: POST
+
+header : {’Authorization’: Token {token_entregado por reservo} } deberia verse de la siguiente forma
+
+EJ: {’Authorization’: Token jek45e4c8d8c4b245bda52as4d56bb648a21f196d } → es importante poner la palabra Token antes de la variable entregado.
+
+Para user este endpoint tienes que tener contratado el modulo de API, de esta forma tendras el token requerido para autentificarte.
+
+```
+{
+    "sucursal": "{{uuid_sucursal}}",  
+    "url": "{{uuid_agenda }}",
+    "tratamientos_uuid": ["{{uuid_tratamiento}}"],
+    "agendas_uuid": ["{{uuid_profesional}}"],
+    "calendario": {
+        "hour": "{{HH:MM:SS}}",
+        "time_zone": "{{ tz identidicador ej:America/Santiago}}",
+        "date": "{{yyyy-mm-dd}}"
+    },
+    "cliente":{
+        "uuid": "{{uuid_cliente}}",
+        "campos_formulario"
+    }
+```

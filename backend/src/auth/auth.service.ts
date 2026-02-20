@@ -15,13 +15,13 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.usersService.findByEmail(email);
-    
+
     if (!user) {
       return null;
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
+
     if (!isPasswordValid) {
       return null;
     }
@@ -68,13 +68,13 @@ export class AuthService {
    */
   async seedAdmin(email: string, password: string, firstName: string, lastName: string) {
     const userCount = await this.usersService.countUsers();
-    
+
     if (userCount > 0) {
       throw new UnauthorizedException('Ya existe al menos un usuario. Use el login normal.');
     }
 
     this.logger.log(`Creando usuario admin inicial: ${email}`);
-    
+
     return this.usersService.create({
       email,
       password,

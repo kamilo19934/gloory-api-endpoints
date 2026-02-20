@@ -153,7 +153,8 @@ export class IntegrationRegistryService {
     this.register({
       type: IntegrationType.DENTALINK_MEDILINK,
       name: 'Dentalink + MediLink',
-      description: 'Modo dual: intenta primero con Dentalink, si falla usa MediLink. Ideal para clínicas que tienen servicios dentales y médicos.',
+      description:
+        'Modo dual: intenta primero con Dentalink, si falla usa MediLink. Ideal para clínicas que tienen servicios dentales y médicos.',
       logo: '/integrations/healthatom.png',
       capabilities: [
         IntegrationCapability.AVAILABILITY,
@@ -214,31 +215,37 @@ export class IntegrationRegistryService {
       ],
     });
 
-    // Registrar Reservo (placeholder)
+    // Registrar Reservo
     this.register({
       type: IntegrationType.RESERVO,
       name: 'Reservo',
-      description: 'Sistema de reservas y agenda online',
+      description:
+        'Sistema de reservas y agenda online con soporte de múltiples agendas (presencial/online)',
       logo: '/integrations/reservo.png',
       capabilities: [
         IntegrationCapability.AVAILABILITY,
+        IntegrationCapability.PATIENTS,
         IntegrationCapability.APPOINTMENTS,
+        IntegrationCapability.TREATMENTS,
+        IntegrationCapability.CLINIC_CONFIG,
       ],
       requiredFields: [
         {
-          key: 'apiKey',
-          label: 'API Key',
+          key: 'apiToken',
+          label: 'API Token',
           type: 'password',
-          description: 'Token de autenticación de Reservo',
-        },
-        {
-          key: 'businessId',
-          label: 'ID del Negocio',
-          type: 'string',
-          description: 'Identificador del negocio en Reservo',
+          description: 'Token de autenticación de la API pública de Reservo',
+          placeholder: 'Ingresa tu API Token de Reservo',
         },
       ],
       optionalFields: [
+        {
+          key: 'agendas',
+          label: 'Agendas',
+          type: 'array',
+          description:
+            'Lista de agendas configuradas (cada una con nombre, uuid y tipo: presencial/online)',
+        },
         {
           key: 'timezone',
           label: 'Zona Horaria',
@@ -250,6 +257,31 @@ export class IntegrationRegistryService {
             { value: 'America/Lima', label: 'Perú (Lima)' },
             { value: 'America/Bogota', label: 'Colombia (Bogotá)' },
           ],
+        },
+        {
+          key: 'ghlEnabled',
+          label: 'Integración GoHighLevel',
+          type: 'boolean',
+          description: 'Sincronizar citas con GoHighLevel',
+          defaultValue: false,
+        },
+        {
+          key: 'ghlAccessToken',
+          label: 'GHL Access Token',
+          type: 'password',
+          description: 'Token de acceso de GoHighLevel',
+        },
+        {
+          key: 'ghlCalendarId',
+          label: 'GHL Calendar ID',
+          type: 'string',
+          description: 'ID del calendario en GoHighLevel',
+        },
+        {
+          key: 'ghlLocationId',
+          label: 'GHL Location ID',
+          type: 'string',
+          description: 'ID de la ubicación en GoHighLevel',
         },
       ],
     });

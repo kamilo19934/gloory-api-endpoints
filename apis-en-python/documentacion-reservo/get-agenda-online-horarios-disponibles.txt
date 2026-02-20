@@ -1,0 +1,98 @@
+GET
+/agenda_online/{uuid_agenda}/horarios_disponibles/
+
+
+Endpoint que retorna los horarios disponibles de según la configuración de una agenda online y un tratamiento seleccionado.
+
+Es una búsqueda de forma semanal, es decir, de Lunes a Domingo.
+No se retornan bloques anteriores al tiempo de la consulta.
+Se respetan las configuraciones de la agenda online sobre mínimo de horas de antelación y máximo de horas hacia el futuro que se muestran disponibles.
+Parameters
+Try it out
+Name	Description
+fecha
+string($date)
+(query)
+Fecha que se tomará como partida para bloques de horas disponibles.
+
+Examples: 
+Fecha de ejemplo
+2023-12-14
+uuid_profesional
+string
+(query)
+Filtro por profesional uuid.
+
+Examples: 
+uuid_profesional de ejemplo
+3065108b-32be-4775-bb58-f0e2cc8ce627
+uuid_sucursal
+string
+(query)
+Filtro por sucursal uuid.
+
+Examples: 
+uuid_sucursal de ejemplo
+3065108b-32be-4775-bb58-f0e2cc8ce627
+uuid_tratamiento *
+string
+(query)
+Filtro por tratamiento uuid.
+
+Examples: 
+uuid_tratamiento de ejemplo
+3065108b-32be-4775-bb58-f0e2cc8ce627
+uuid_agenda *
+string
+(path)
+uuid_agenda
+Responses
+Code	Description	Links
+200	
+Media type
+
+application/json
+Controls Accept header.
+Examples
+
+Ejemplo respuesta exitosa
+Example Value
+Schema
+[
+  {
+    "fecha": "2023-12-15",
+    "sucursales": [
+      {
+        "nombre": "Clínica x",
+        "direccion": "Av. Vitacura 123",
+        "profesionales": [
+          {
+            "agenda": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "nombre": "Dr. Pedro",
+            "horas_disponibles": [
+              "2023-12-15T09:00:00-03:00",
+              "2023-12-15T09:30:00-03:00",
+              "2023-12-15T10:00:00-03:00",
+              "2023-12-15T10:30:00-03:00",
+              "2023-12-15T11:00:00-03:00",
+              "2023-12-15T11:30:00-03:00"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
+No links
+422	
+Media type
+
+application/json
+Examples
+
+Ejemplo de respuesta con error de región horaria de cliente
+Example Value
+Schema
+{
+  "errores": "Cliente no tiene configurada su zona horaria."
+}

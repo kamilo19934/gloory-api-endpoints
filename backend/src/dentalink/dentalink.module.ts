@@ -12,4 +12,3 @@ import { EndpointsModule } from '../endpoints/endpoints.module';
   exports: [DentalinkService],
 })
 export class DentalinkModule {}
-

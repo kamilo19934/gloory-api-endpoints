@@ -1,0 +1,118 @@
+POST
+/cliente/
+
+
+Endpoint para creación de un cliente. Recibe la información actualizada del cliente y reemplaza los valores existentes en el sistema. Retorna el cliente actualizado o un mensaje de error en caso de fallo.
+
+Parameters
+Try it out
+No parameters
+
+Request body
+
+application/json
+Examples: 
+Ejemplo de body
+Example Value
+Schema
+[
+  {
+    "identificador": "11111111",
+    "nombre": "Luis",
+    "apellido_paterno": "González",
+    "apellido_materno": "González",
+    "telefono_1": "+5225235",
+    "telefono_2": "+5224353253",
+    "mail": "example@example.com",
+    "sexo": 1,
+    "ficha": "1",
+    "ocupacion": "Carpintero",
+    "fecha_nacimiento": "1990-01-01",
+    "codigo_postal": "0000000",
+    "nombre_social": "Luis",
+    "campos_personalizados": [
+      {
+        "uuid": "2766ce34-99cc-4936-825c-f4a6781d3f71",
+        "valor": "ejemplo"
+      }
+    ]
+  }
+]
+Example Description
+Ejemplo de body correcto.
+
+Para el caso de sexo, revisar endpoint /agenda_online/sexo_paciente/ para obtener los valores válidos.
+Para los campos_personalizados, revisar endpoint /sucursal/campos_personalizados/ para obtener los UUIDs válidos.
+
+Responses
+Code	Description	Links
+201	
+Media type
+
+application/json
+Controls Accept header.
+Examples
+
+Ejemplo de respuesta exitosa
+Example Value
+Schema
+{
+  "uuid": "70f3b0f8-c12c-11ee-8da3-0242ac120005",
+  "identificador": "11111111",
+  "nombre": "Luis",
+  "apellido_paterno": "González",
+  "apellido_materno": "González",
+  "telefono_1": "+5225235",
+  "telefono_2": "+5224353253",
+  "mail": "example@example.com",
+  "sexo": 1,
+  "ficha": "1",
+  "ocupacion": "Carpintero",
+  "fecha_nacimiento": "1990-01-01",
+  "codigo_postal": "0000000",
+  "nombre_social": "Luis",
+  "campos_personalizados": [
+    {
+      "uuid": "2766ce34-99cc-4936-825c-f4a6781d3f71",
+      "valor": "ejemplo"
+    }
+  ]
+}
+No links
+400	
+Media type
+
+application/json
+Examples
+
+Ejemplo de error 400
+Example Value
+Schema
+{
+  "errores": {
+    "campo_ejemplo": [
+      "Este campo es requerido"
+    ]
+  }
+}
+Example Description
+Existen algunas formas de obtener un error 400, entre ellas está que un campo no sea válido o que no se esté incluyendo un campo requerido.
+
+
+No links
+401	
+Media type
+
+application/json
+Examples
+
+Ejemplo de respuesta con error de autorización
+Example Value
+Schema
+{
+  "errores": {
+    "autenticacion": [
+      "No autorizado"
+    ]
+  }
+}

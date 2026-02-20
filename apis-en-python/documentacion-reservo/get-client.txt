@@ -1,0 +1,93 @@
+GET
+/cliente/
+
+
+Parameters
+Try it out
+Name	Description
+identificador
+string
+(query)
+identificador
+mail
+string
+(query)
+mail
+pagina
+integer
+(query)
+Número de página
+
+pagina
+uuid
+string
+(query)
+uuid
+Responses
+Code	Description	Links
+200	
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "cantidad_elementos": 123,
+  "pagina_siguiente": "http://api.example.org/accounts/?pagina=4",
+  "pagina_anterior": "http://api.example.org/accounts/?pagina=2",
+  "resultados": [
+    {
+      "uuid": "string",
+      "identificador": "string",
+      "nombre": "string",
+      "apellido_paterno": "string",
+      "apellido_materno": "string",
+      "telefono_1": "string",
+      "telefono_2": "string",
+      "mail": "user@example.com",
+      "ficha": "string",
+      "sexo": "string",
+      "direccion": {
+        "pais": "string",
+        "estado": "string",
+        "ciudad": "string",
+        "calle": "string"
+      },
+      "prevision": {
+        "pk": 0,
+        "nombre": "string",
+        "codigo": "string"
+      },
+      "ocupacion": "string",
+      "fecha_nacimiento": "2026-02-18",
+      "codigo_postal": "string",
+      "nombre_social": "string",
+      "estado": "string",
+      "campos_personalizados": [
+        {
+          "uuid": "string",
+          "nombre": "string",
+          "valor": "string"
+        }
+      ],
+      "campos_por_pais": {
+        "rfc": "string",
+        "calle": "string",
+        "numero_exterior": "string",
+        "numero_interior": "string",
+        "codpos": "string",
+        "colonia": "string",
+        "razon_social": "string",
+        "ciudad": "string",
+        "delegacion": "string",
+        "regimen_fiscal": "616"
+      },
+      "categoria": {
+        "nombre": "string",
+        "descripcion": "string"
+      }
+    }
+  ]
+}
+No links

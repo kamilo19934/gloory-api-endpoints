@@ -1,0 +1,88 @@
+GET
+/cliente/{uuid}/
+
+
+Este endpoint permite obtener la información detallada de un cliente
+
+La información retornada dependerá del país del centro.
+
+Parameters
+Try it out
+Name	Description
+uuid *
+string
+(path)
+Identificador único del cliente
+
+uuid
+Responses
+Code	Description	Links
+200	
+Media type
+
+application/json
+Controls Accept header.
+Examples
+
+Ejemplo para centro de Chile
+Example Value
+Schema
+{
+  "uuid": "9462b4fc-c12d-11ee-8720-0242ac120005",
+  "identificador": "2233-6",
+  "nombre": "Luis",
+  "apellido_paterno": "González",
+  "apellido_materno": "González",
+  "telefono_1": "+5625235",
+  "telefono_2": "+5624353253",
+  "mail": "lgonza@gmol.cl",
+  "ficha": "A110067",
+  "sexo": "Masculino",
+  "direccion": {
+    "pais": "Chile",
+    "estado": "",
+    "ciudad": "",
+    "calle": ""
+  },
+  "prevision": {
+    "nombre": "Banmedica",
+    "codigo": null
+  },
+  "ocupacion": "abogado",
+  "fecha_nacimiento": "1970-05-19",
+  "codigo_postal": "0000000",
+  "nombre_social": "Luis",
+  "estado": "Activo",
+  "campos_personalizados": [
+    {
+      "uuid": "5558240c-a13e-4812-acf0-57d14af058eb",
+      "nombre": "Campo checkbox",
+      "valor": ""
+    },
+    {
+      "uuid": "9beed32c-657e-4eae-b901-d19336a0f0ca",
+      "nombre": "Madre",
+      "valor": ""
+    },
+    {
+      "uuid": "a37fd799-b40c-4ab8-930f-4ec7fca7d7c6",
+      "nombre": "Hijo",
+      "valor": ""
+    },
+    {
+      "uuid": "2766ce34-99cc-4936-825c-f4a6781d3f71",
+      "nombre": "Esto es un campo de texto",
+      "valor": ""
+    },
+    {
+      "uuid": "2e8efabb-95f9-4542-a7fe-5c6520fe10de",
+      "nombre": "Campo de selección",
+      "valor": ""
+    }
+  ],
+  "campos_por_pais": {},
+  "categoria": {
+    "nombre": "Premium",
+    "descripcion": "Clientes que llevan más de 3 años"
+  }
+}

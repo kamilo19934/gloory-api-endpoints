@@ -9,7 +9,7 @@
  */
 export function normalizarTexto(texto: string): string {
   if (!texto) return '';
-  
+
   return texto
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -35,4 +35,3 @@ export function extraerId(valor: any): number | null {
   }
   return null;
 }
-

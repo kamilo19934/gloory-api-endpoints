@@ -59,7 +59,9 @@ export class HealthAtomService {
   /**
    * Obtiene profesionales de ambas APIs
    */
-  async getProfessionals(config: HealthAtomConfig): Promise<DualApiOperationResult<NormalizedProfessional[]>> {
+  async getProfessionals(
+    config: HealthAtomConfig,
+  ): Promise<DualApiOperationResult<NormalizedProfessional[]>> {
     const errors: string[] = [];
     const allProfessionals: NormalizedProfessional[] = [];
     const seenIds = new Set<number>();
@@ -181,10 +183,9 @@ export class HealthAtomService {
       intervalo: data.intervalo,
       habilitado: data.habilitado ?? true,
       agendaOnline: data.agenda_online ?? true,
-      sucursales: [
-        ...(data.contratos_sucursal || []),
-        ...(data.horarios_sucursal || []),
-      ].filter((v, i, a) => a.indexOf(v) === i), // unique
+      sucursales: [...(data.contratos_sucursal || []), ...(data.horarios_sucursal || [])].filter(
+        (v, i, a) => a.indexOf(v) === i,
+      ), // unique
     };
   }
 
@@ -341,7 +342,7 @@ export class HealthAtomService {
       } catch (error: any) {
         const apiErrorMessage = this.extractApiErrorMessage(error);
         this.logger.warn(`⚠️ Error en ${api}: ${apiErrorMessage}`);
-        
+
         // Si es duplicado, buscar de nuevo
         if (error.response?.status === 400) {
           const errorStr = JSON.stringify(error.response?.data || '').toLowerCase();
@@ -354,7 +355,7 @@ export class HealthAtomService {
           lastError = apiErrorMessage;
           break;
         }
-        
+
         lastError = apiErrorMessage;
       }
     }
@@ -484,7 +485,11 @@ export class HealthAtomService {
             // Filtrar horarios futuros
             const horariosFiltrados = horarios.filter((h: any) => {
               try {
-                const horaCita = moment.tz(`${fecha} ${h.hora_inicio}`, 'YYYY-MM-DD HH:mm:ss', timezone);
+                const horaCita = moment.tz(
+                  `${fecha} ${h.hora_inicio}`,
+                  'YYYY-MM-DD HH:mm:ss',
+                  timezone,
+                );
                 return horaCita.isAfter(horaActual);
               } catch {
                 return false;
@@ -494,7 +499,9 @@ export class HealthAtomService {
             // Filtrar por duración si se especifica
             const horariosFinales = appointmentDuration
               ? this.filterByDuration(horariosFiltrados, appointmentDuration)
-              : horariosFiltrados.map((h: any) => moment(h.hora_inicio, 'HH:mm:ss').format('HH:mm'));
+              : horariosFiltrados.map((h: any) =>
+                  moment(h.hora_inicio, 'HH:mm:ss').format('HH:mm'),
+                );
 
             if (horariosFinales.length > 0) {
               fechas[fecha] = horariosFinales;
@@ -512,9 +519,7 @@ export class HealthAtomService {
   }
 
   private filterByDuration(horarios: any[], duracionRequerida: number): string[] {
-    const horariosOrdenados = horarios.sort((a, b) => 
-      a.hora_inicio.localeCompare(b.hora_inicio)
-    );
+    const horariosOrdenados = horarios.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
     const horariosValidos: string[] = [];
 
     for (let i = 0; i < horariosOrdenados.length; i++) {
@@ -525,7 +530,11 @@ export class HealthAtomService {
       let tiempoDisponible = intervalo;
       let horaEsperada = moment(horario.hora_inicio, 'HH:mm:ss').add(intervalo, 'minutes');
 
-      for (let j = i + 1; j < horariosOrdenados.length && tiempoDisponible < duracionRequerida; j++) {
+      for (
+        let j = i + 1;
+        j < horariosOrdenados.length && tiempoDisponible < duracionRequerida;
+        j++
+      ) {
         const siguiente = horariosOrdenados[j];
         const horaSiguiente = moment(siguiente.hora_inicio, 'HH:mm:ss');
 
@@ -570,7 +579,11 @@ export class HealthAtomService {
     // Obtener duración si no se especifica
     let duracion = params.duration;
     if (!duracion) {
-      const profResult = await this.getProfessionalById(params.professionalId, config, params.branchId);
+      const profResult = await this.getProfessionalById(
+        params.professionalId,
+        config,
+        params.branchId,
+      );
       if (profResult.success && profResult.data?.intervalo) {
         duracion = profResult.data.intervalo;
       } else {
@@ -585,30 +598,31 @@ export class HealthAtomService {
 
         this.logger.log(`🔄 Agendando cita en ${api}`);
 
-        const payload = api === HealthAtomApi.DENTALINK
-          ? {
-              id_dentista: params.professionalId,
-              id_sucursal: params.branchId,
-              id_estado: 7, // Confirmado
-              id_sillon: 1,
-              id_paciente: params.patientId,
-              fecha: params.date,
-              hora_inicio: params.startTime,
-              duracion: duracion,
-              comentario: params.comment || 'Agendado por IA',
-            }
-          : {
-              id_profesional: params.professionalId,
-              id_sucursal: params.branchId,
-              id_estado: 7,
-              id_sillon: 1,
-              id_paciente: params.patientId,
-              fecha: params.date,
-              hora_inicio: params.startTime,
-              duracion: duracion,
-              comentario: params.comment || 'Agendado por IA',
-              videoconsulta: 0,
-            };
+        const payload =
+          api === HealthAtomApi.DENTALINK
+            ? {
+                id_dentista: params.professionalId,
+                id_sucursal: params.branchId,
+                id_estado: 7, // Confirmado
+                id_sillon: 1,
+                id_paciente: params.patientId,
+                fecha: params.date,
+                hora_inicio: params.startTime,
+                duracion: duracion,
+                comentario: params.comment || 'Agendado por IA',
+              }
+            : {
+                id_profesional: params.professionalId,
+                id_sucursal: params.branchId,
+                id_estado: 7,
+                id_sillon: 1,
+                id_paciente: params.patientId,
+                fecha: params.date,
+                hora_inicio: params.startTime,
+                duracion: duracion,
+                comentario: params.comment || 'Agendado por IA',
+                videoconsulta: 0,
+              };
 
         const response = await client.post(`${endpoints.appointments}/`, payload);
 
@@ -624,7 +638,7 @@ export class HealthAtomService {
         // Extraer el mensaje de error real de la API
         const apiErrorMessage = this.extractApiErrorMessage(error);
         this.logger.warn(`⚠️ Error en ${api}: ${apiErrorMessage}`);
-        
+
         // Si es un error de negocio (400), guardar el mensaje y no continuar
         // ya que el error es específico de la operación, no de la API
         if (error.response?.status === 400) {
@@ -633,7 +647,7 @@ export class HealthAtomService {
           // ya que probablemente dará el mismo error
           break;
         }
-        
+
         lastError = apiErrorMessage;
       }
     }
@@ -647,7 +661,7 @@ export class HealthAtomService {
   private extractApiErrorMessage(error: any): string {
     // Intentar obtener el mensaje de error de diferentes formatos de respuesta
     const responseData = error.response?.data;
-    
+
     if (responseData) {
       // Formato: { error: { message: "..." } }
       if (responseData.error?.message) {
@@ -666,7 +680,7 @@ export class HealthAtomService {
         return responseData;
       }
     }
-    
+
     // Fallback al mensaje de error genérico
     return error.message || 'Error desconocido';
   }
@@ -697,19 +711,22 @@ export class HealthAtomService {
         this.logger.log(`✅ Cita encontrada en ${api}`);
 
         // Confirmar - solo cambiar el estado, sin comentarios
-        const payload = { 
-          id_estado: confirmationStateId
+        const payload = {
+          id_estado: confirmationStateId,
         };
 
-        const confirmResponse = await client.put(`${endpoints.appointments}/${appointmentId}`, payload);
+        const confirmResponse = await client.put(
+          `${endpoints.appointments}/${appointmentId}`,
+          payload,
+        );
 
         if (confirmResponse.status === 200) {
           this.logger.log(`✅ Cita confirmada en ${api}`);
           return {
             success: true,
-            data: { 
+            data: {
               mensaje: `Cita ${appointmentId} confirmada exitosamente`,
-              cita: citaData 
+              cita: citaData,
             },
           };
         }
@@ -718,17 +735,17 @@ export class HealthAtomService {
         if (error.response?.status === 404) {
           continue;
         }
-        
+
         // Extraer el mensaje de error real
         const apiErrorMessage = this.extractApiErrorMessage(error);
         this.logger.warn(`⚠️ Error en ${api}: ${apiErrorMessage}`);
-        
+
         // Si es error de negocio (400), guardar y salir
         if (error.response?.status === 400) {
           lastError = apiErrorMessage;
           break;
         }
-        
+
         lastError = apiErrorMessage;
       }
     }
@@ -758,11 +775,19 @@ export class HealthAtomService {
         if (getResponse.status !== 200) continue;
 
         // Cancelar
-        const payload = api === HealthAtomApi.DENTALINK
-          ? { id_estado: 1, comentarios: 'Cita cancelada por sistema', flag_notificar_anulacion: 1 }
-          : { id_estado: 1, comentario: 'Cita cancelada por sistema' };
+        const payload =
+          api === HealthAtomApi.DENTALINK
+            ? {
+                id_estado: 1,
+                comentarios: 'Cita cancelada por sistema',
+                flag_notificar_anulacion: 1,
+              }
+            : { id_estado: 1, comentario: 'Cita cancelada por sistema' };
 
-        const cancelResponse = await client.put(`${endpoints.appointments}/${appointmentId}`, payload);
+        const cancelResponse = await client.put(
+          `${endpoints.appointments}/${appointmentId}`,
+          payload,
+        );
 
         if (cancelResponse.status === 200) {
           this.logger.log(`✅ Cita cancelada en ${api}`);
@@ -776,17 +801,17 @@ export class HealthAtomService {
         if (error.response?.status === 404) {
           continue;
         }
-        
+
         // Extraer el mensaje de error real
         const apiErrorMessage = this.extractApiErrorMessage(error);
         this.logger.warn(`⚠️ Error en ${api}: ${apiErrorMessage}`);
-        
+
         // Si es error de negocio (400), guardar y salir
         if (error.response?.status === 400) {
           lastError = apiErrorMessage;
           break;
         }
-        
+
         lastError = apiErrorMessage;
       }
     }
@@ -846,7 +871,9 @@ export class HealthAtomService {
         }
 
         const patient = patients[0];
-        this.logger.log(`✅ Paciente encontrado en ${api}: ${patient.nombre} ${patient.apellidos} (ID: ${patient.id})`);
+        this.logger.log(
+          `✅ Paciente encontrado en ${api}: ${patient.nombre} ${patient.apellidos} (ID: ${patient.id})`,
+        );
 
         // 2. Obtener link de citas
         const citasLink = patient.links?.find((l: any) => l.rel === 'citas')?.href;
@@ -868,7 +895,7 @@ export class HealthAtomService {
         }
 
         const allAppointments = appointmentsResponse.data?.data || [];
-        
+
         if (allAppointments.length === 0) {
           return {
             success: true,
@@ -911,12 +938,13 @@ export class HealthAtomService {
         });
 
         // 6. Extraer datos del paciente (son los mismos para todas las citas)
-        const pacienteData = futureAppointments.length > 0
-          ? {
-              id_paciente: futureAppointments[0].id_paciente,
-              nombre_paciente: futureAppointments[0].nombre_paciente,
-            }
-          : null;
+        const pacienteData =
+          futureAppointments.length > 0
+            ? {
+                id_paciente: futureAppointments[0].id_paciente,
+                nombre_paciente: futureAppointments[0].nombre_paciente,
+              }
+            : null;
 
         // 7. Mapear citas para devolver solo los campos necesarios (sin datos del paciente)
         const mappedAppointments = futureAppointments.map((cita: any) => ({
@@ -934,9 +962,10 @@ export class HealthAtomService {
           comentarios: cita.comentarios,
         }));
 
-        const mensaje = futureAppointments.length > 0
-          ? 'Citas futuras activas encontradas'
-          : 'No hay citas futuras activas';
+        const mensaje =
+          futureAppointments.length > 0
+            ? 'Citas futuras activas encontradas'
+            : 'No hay citas futuras activas';
 
         this.logger.log(`✅ ${futureAppointments.length} citas futuras encontradas en ${api}`);
 

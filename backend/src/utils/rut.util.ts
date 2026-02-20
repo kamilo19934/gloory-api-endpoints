@@ -40,4 +40,3 @@ export function validarFormatoRut(rut: string): boolean {
   const rutRegex = /^\d{1,8}-[\dkK]$/;
   return rutRegex.test(formatearRut(rut));
 }
-

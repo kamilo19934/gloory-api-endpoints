@@ -27,6 +27,9 @@ export class Professional {
   dentalinkId: number; // ID de Dentalink
 
   @Column({ nullable: true })
+  externalId: string; // ID externo genérico (UUID para Reservo, etc.)
+
+  @Column({ nullable: true })
   rut: string;
 
   @Column()

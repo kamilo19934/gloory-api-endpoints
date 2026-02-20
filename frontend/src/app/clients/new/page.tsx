@@ -49,8 +49,8 @@ export default function NewClientPage() {
         toast.error('API Key de MediLink es obligatorio');
         return;
       }
-      if (integration.type === IntegrationType.RESERVO && !integration.config.apiKey) {
-        toast.error('API Key de Reservo es obligatorio');
+      if (integration.type === IntegrationType.RESERVO && !integration.config.apiToken) {
+        toast.error('API Token de Reservo es obligatorio');
         return;
       }
     }

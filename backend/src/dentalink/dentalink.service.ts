@@ -5,7 +5,11 @@ import { GHLService } from './ghl.service';
 import { HealthAtomService } from '../integrations/healthatom/healthatom.service';
 import { formatearRut } from '../utils/rut.util';
 import { formatearFechaEspanol, normalizarHora } from '../utils/date.util';
-import { obtenerHoraActual, filtrarHorariosFuturos, validarBloquesConsecutivos } from '../utils/timezone.util';
+import {
+  obtenerHoraActual,
+  filtrarHorariosFuturos,
+  validarBloquesConsecutivos,
+} from '../utils/timezone.util';
 import * as moment from 'moment-timezone';
 import { SearchAvailabilityDto } from './dto/search-availability.dto';
 import { SearchUserDto } from './dto/search-user.dto';
@@ -34,15 +38,15 @@ export class DentalinkService {
     const client = await this.clientsService.findOne(clientId);
     const apiKey = client.apiKey;
     const timezone = client.timezone;
-    
+
     // Detectar tipo de integración
     const dentalinkIntegration = client.getIntegration('dentalink');
     const medilinkIntegration = client.getIntegration('medilink');
     const dualIntegration = client.getIntegration('dentalink_medilink');
-    
+
     let baseURL = process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/';
     let apiType = 'dentalink'; // default
-    
+
     if (medilinkIntegration) {
       baseURL = 'https://api.medilink2.healthatom.com/api/v5/';
       apiType = 'medilink';
@@ -75,15 +79,15 @@ export class DentalinkService {
 
     try {
       this.logger.log('👨‍⚕️ Obteniendo información de profesionales...');
-      
+
       if (apiType === 'medilink') {
         // Medilink: usar endpoint v6/profesionales/{id} para cada profesional
         for (const idProf of params.ids_profesionales) {
           try {
             // Medilink usa v6 para el endpoint de profesionales
             const profResp = await axios.get(
-              `https://api.medilink2.healthatom.com/api/v6/profesionales/${idProf}`, 
-              { headers }
+              `https://api.medilink2.healthatom.com/api/v6/profesionales/${idProf}`,
+              { headers },
             );
             if (profResp.status === 200) {
               const profesional = profResp.data?.data;
@@ -91,25 +95,32 @@ export class DentalinkService {
                 const apellido = profesional.apellidos || profesional.apellido || '';
                 const nombreCompleto = `${profesional.nombre || 'Desconocido'} ${apellido}`.trim();
                 const intervalo = profesional.intervalo;
-                
+
                 profesionalesInfo[idProf] = nombreCompleto;
                 if (intervalo) {
                   profesionalesIntervalos[idProf] = intervalo;
-                  this.logger.log(`✅ Profesional Medilink: ID ${idProf} - ${nombreCompleto} (Intervalo: ${intervalo} min)`);
+                  this.logger.log(
+                    `✅ Profesional Medilink: ID ${idProf} - ${nombreCompleto} (Intervalo: ${intervalo} min)`,
+                  );
                 } else {
                   this.logger.warn(`⚠️ Profesional ID ${idProf} sin intervalo configurado`);
                 }
               }
             }
           } catch (error) {
-            this.logger.warn(`⚠️ No se pudo obtener profesional ${idProf} de Medilink: ${error.message}`);
+            this.logger.warn(
+              `⚠️ No se pudo obtener profesional ${idProf} de Medilink: ${error.message}`,
+            );
           }
         }
       } else if (apiType === 'dual') {
         // Modo dual: intentar obtener de ambas APIs
         // Primero intentar Dentalink
         try {
-          const profResp = await axios.get(`https://api.dentalink.healthatom.com/api/v1/dentistas`, { headers });
+          const profResp = await axios.get(
+            `https://api.dentalink.healthatom.com/api/v1/dentistas`,
+            { headers },
+          );
           if (profResp.status === 200) {
             const dentistas = profResp.data?.data || [];
             for (const dentista of dentistas) {
@@ -117,11 +128,13 @@ export class DentalinkService {
                 const apellido = dentista.apellido || dentista.apellidos || '';
                 const nombreCompleto = `${dentista.nombre || 'Desconocido'} ${apellido}`.trim();
                 const intervalo = dentista.intervalo;
-                
+
                 profesionalesInfo[dentista.id] = nombreCompleto;
                 if (intervalo) {
                   profesionalesIntervalos[dentista.id] = intervalo;
-                  this.logger.log(`✅ Profesional Dentalink: ID ${dentista.id} - ${nombreCompleto} (Intervalo: ${intervalo} min)`);
+                  this.logger.log(
+                    `✅ Profesional Dentalink: ID ${dentista.id} - ${nombreCompleto} (Intervalo: ${intervalo} min)`,
+                  );
                 }
               }
             }
@@ -129,14 +142,14 @@ export class DentalinkService {
         } catch (error) {
           this.logger.warn(`⚠️ Error obteniendo dentistas de Dentalink: ${error.message}`);
         }
-        
+
         // Luego buscar los faltantes en Medilink
-        const idsFaltantes = params.ids_profesionales.filter(id => !profesionalesInfo[id]);
+        const idsFaltantes = params.ids_profesionales.filter((id) => !profesionalesInfo[id]);
         for (const idProf of idsFaltantes) {
           try {
             const profResp = await axios.get(
-              `https://api.medilink2.healthatom.com/api/v6/profesionales/${idProf}`, 
-              { headers }
+              `https://api.medilink2.healthatom.com/api/v6/profesionales/${idProf}`,
+              { headers },
             );
             if (profResp.status === 200) {
               const profesional = profResp.data?.data;
@@ -144,16 +157,20 @@ export class DentalinkService {
                 const apellido = profesional.apellidos || profesional.apellido || '';
                 const nombreCompleto = `${profesional.nombre || 'Desconocido'} ${apellido}`.trim();
                 const intervalo = profesional.intervalo;
-                
+
                 profesionalesInfo[idProf] = nombreCompleto;
                 if (intervalo) {
                   profesionalesIntervalos[idProf] = intervalo;
-                  this.logger.log(`✅ Profesional Medilink (fallback): ID ${idProf} - ${nombreCompleto} (Intervalo: ${intervalo} min)`);
+                  this.logger.log(
+                    `✅ Profesional Medilink (fallback): ID ${idProf} - ${nombreCompleto} (Intervalo: ${intervalo} min)`,
+                  );
                 }
               }
             }
           } catch (error) {
-            this.logger.warn(`⚠️ No se pudo obtener profesional ${idProf} de Medilink: ${error.message}`);
+            this.logger.warn(
+              `⚠️ No se pudo obtener profesional ${idProf} de Medilink: ${error.message}`,
+            );
           }
         }
       } else {
@@ -166,11 +183,13 @@ export class DentalinkService {
               const apellido = dentista.apellido || dentista.apellidos || '';
               const nombreCompleto = `${dentista.nombre || 'Desconocido'} ${apellido}`.trim();
               const intervalo = dentista.intervalo;
-              
+
               profesionalesInfo[dentista.id] = nombreCompleto;
               if (intervalo) {
                 profesionalesIntervalos[dentista.id] = intervalo;
-                this.logger.log(`✅ Profesional Dentalink: ID ${dentista.id} - ${nombreCompleto} (Intervalo: ${intervalo} min)`);
+                this.logger.log(
+                  `✅ Profesional Dentalink: ID ${dentista.id} - ${nombreCompleto} (Intervalo: ${intervalo} min)`,
+                );
               } else {
                 this.logger.warn(`⚠️ Profesional ID ${dentista.id} sin intervalo configurado`);
               }
@@ -184,7 +203,7 @@ export class DentalinkService {
 
     // Obtener hora actual en el timezone del cliente
     const horaActual = obtenerHoraActual(timezone);
-    
+
     // Establecer fecha de inicio
     let fechaInicio: moment.Moment;
     if (params.fecha_inicio) {
@@ -229,16 +248,34 @@ export class DentalinkService {
       let apiUsada = null;
 
       // Si es modo dual, intentar ambas APIs
-      const apisToTry = apiType === 'dual' 
-        ? [
-            { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/', paramKey: 'ids_dentista' },
-            { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/', paramKey: 'ids_profesional' }
-          ]
-        : [{ type: apiType, baseUrl: baseURL, paramKey: apiType === 'medilink' ? 'ids_profesional' : 'ids_dentista' }];
+      const apisToTry =
+        apiType === 'dual'
+          ? [
+              {
+                type: 'dentalink',
+                baseUrl: 'https://api.dentalink.healthatom.com/api/v1/',
+                paramKey: 'ids_dentista',
+              },
+              {
+                type: 'medilink',
+                baseUrl: 'https://api.medilink2.healthatom.com/api/v5/',
+                paramKey: 'ids_profesional',
+              },
+            ]
+          : [
+              {
+                type: apiType,
+                baseUrl: baseURL,
+                paramKey: apiType === 'medilink' ? 'ids_profesional' : 'ids_dentista',
+              },
+            ];
 
       for (const api of apisToTry) {
-        const urlsToTry = [`${api.baseUrl}horariosdisponibles/`, `${api.baseUrl}horariosdisponibles`];
-        
+        const urlsToTry = [
+          `${api.baseUrl}horariosdisponibles/`,
+          `${api.baseUrl}horariosdisponibles`,
+        ];
+
         // Preparar datos según el tipo de API
         const requestData = {
           ...bodyData,
@@ -248,21 +285,25 @@ export class DentalinkService {
         delete requestData.ids_profesional;
         requestData[api.paramKey] = params.ids_profesionales;
 
-        this.logger.log(`🔍 Intentando API ${api.type.toUpperCase()} con parámetro ${api.paramKey}`);
+        this.logger.log(
+          `🔍 Intentando API ${api.type.toUpperCase()} con parámetro ${api.paramKey}`,
+        );
 
         for (const url of urlsToTry) {
           try {
             this.logger.log(`🌐 Intentando URL: ${url}`);
-            
+
             // Dentalink y MediLink usan GET pero de forma diferente:
             // - Dentalink: GET con body (en campo 'data')
             // - MediLink: GET con query parameters
             if (api.type === 'dentalink') {
               // Dentalink: GET con body en el campo 'data'
-              this.logger.log(`📋 Dentalink - Enviando body en GET: ${JSON.stringify(requestData)}`);
+              this.logger.log(
+                `📋 Dentalink - Enviando body en GET: ${JSON.stringify(requestData)}`,
+              );
               response = await axios.get(url, {
                 headers,
-                data: requestData  // Body en GET para Dentalink
+                data: requestData, // Body en GET para Dentalink
               });
             } else {
               // MediLink: GET con body en el campo 'data' (misma mecánica que Dentalink)
@@ -272,13 +313,15 @@ export class DentalinkService {
                 fecha_inicio: requestData.fecha_inicio,
                 fecha_fin: requestData.fecha_fin,
               };
-              this.logger.log(`📋 MediLink - Enviando body en GET: ${JSON.stringify(medilinkData)}`);
+              this.logger.log(
+                `📋 MediLink - Enviando body en GET: ${JSON.stringify(medilinkData)}`,
+              );
               response = await axios.get(url, {
                 headers,
                 data: medilinkData,
               });
             }
-            
+
             this.logger.log(`📊 Status Code: ${response.status}`);
 
             if (response.status === 200) {
@@ -295,10 +338,7 @@ export class DentalinkService {
               this.logger.warn(`📄 Respuesta del servidor: ${JSON.stringify(errorMsg)}`);
             }
             if (statusCode === 404) {
-              throw new HttpException(
-                'Error. Revisa IDs.',
-                HttpStatus.NOT_FOUND,
-              );
+              throw new HttpException('Error. Revisa IDs.', HttpStatus.NOT_FOUND);
             }
           }
         }
@@ -326,7 +366,8 @@ export class DentalinkService {
 
           for (const [idProfesionalStr, fechasHorarios] of Object.entries<any>(horariosData)) {
             const idProfesionalInt = parseInt(idProfesionalStr, 10);
-            const nombreProfesional = profesionalesInfo[idProfesionalInt] || `Profesional ${idProfesionalInt}`;
+            const nombreProfesional =
+              profesionalesInfo[idProfesionalInt] || `Profesional ${idProfesionalInt}`;
             const intervaloProfesional = profesionalesIntervalos[idProfesionalInt];
 
             const disponibilidadProfesional: any = {
@@ -338,10 +379,12 @@ export class DentalinkService {
             if (typeof fechasHorarios === 'object') {
               for (const [fecha, horarios] of Object.entries<any>(fechasHorarios)) {
                 if (Array.isArray(horarios)) {
-                  let horariosFuturos = filtrarHorariosFuturos(horarios, fecha, horaActual);
+                  const horariosFuturos = filtrarHorariosFuturos(horarios, fecha, horaActual);
 
                   if (horariosFuturos.length > 0) {
-                    let horariosNormalizados = horariosFuturos.map((h) => normalizarHora(h.hora_inicio));
+                    let horariosNormalizados = horariosFuturos.map((h) =>
+                      normalizarHora(h.hora_inicio),
+                    );
 
                     // Determinar tiempo de cita: usar el proporcionado o el intervalo del profesional
                     const tiempoCitaEfectivo = params.tiempo_cita || intervaloProfesional;
@@ -366,7 +409,9 @@ export class DentalinkService {
                     if (horariosNormalizados.length > 0) {
                       const fechaFormateada = formatearFechaEspanol(fecha);
                       disponibilidadProfesional.fechas[fechaFormateada] = horariosNormalizados;
-                      this.logger.log(`✅ Fecha ${fecha} agregada con ${horariosNormalizados.length} horarios`);
+                      this.logger.log(
+                        `✅ Fecha ${fecha} agregada con ${horariosNormalizados.length} horarios`,
+                      );
                     }
                   }
                 }
@@ -417,14 +462,15 @@ export class DentalinkService {
     } else if (medilinkIntegration) {
       // Solo Medilink
       this.logger.log('🔵 Usando API Medilink');
-      return [
-        { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' },
-      ];
+      return [{ type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' }];
     } else {
       // Default: Solo Dentalink
       this.logger.log('🔵 Usando API Dentalink');
       return [
-        { type: 'dentalink', baseUrl: process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/' },
+        {
+          type: 'dentalink',
+          baseUrl: process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/',
+        },
       ];
     }
   }
@@ -463,7 +509,9 @@ export class DentalinkService {
           const pacientes = response.data?.data || [];
           if (pacientes.length > 0) {
             const paciente = pacientes[0];
-            this.logger.log(`✅ Paciente encontrado en ${api.type.toUpperCase()} con ID ${paciente.id}`);
+            this.logger.log(
+              `✅ Paciente encontrado en ${api.type.toUpperCase()} con ID ${paciente.id}`,
+            );
             return {
               paciente,
             };
@@ -494,10 +542,7 @@ export class DentalinkService {
 
     // Validaciones
     if (!params.nombre || !params.apellidos || !params.rut) {
-      throw new HttpException(
-        'Nombre, apellidos y RUT son requeridos',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('Nombre, apellidos y RUT son requeridos', HttpStatus.BAD_REQUEST);
     }
 
     const rutFormateado = formatearRut(params.rut);
@@ -537,14 +582,18 @@ export class DentalinkService {
 
     for (const api of apisToTry) {
       try {
-        this.logger.log(`📤 Intentando crear paciente en ${api.type.toUpperCase()}: ${JSON.stringify(payloadPaciente)}`);
+        this.logger.log(
+          `📤 Intentando crear paciente en ${api.type.toUpperCase()}: ${JSON.stringify(payloadPaciente)}`,
+        );
 
         const response = await axios.post(`${api.baseUrl}pacientes/`, payloadPaciente, { headers });
 
         if (response.status === 201) {
           const pacienteData = response.data?.data || {};
           const idPaciente = pacienteData.id;
-          this.logger.log(`✅ Paciente creado exitosamente en ${api.type.toUpperCase()} con ID ${idPaciente}`);
+          this.logger.log(
+            `✅ Paciente creado exitosamente en ${api.type.toUpperCase()} con ID ${idPaciente}`,
+          );
           return {
             id_paciente: idPaciente,
             mensaje: 'Paciente creado exitosamente',
@@ -554,9 +603,9 @@ export class DentalinkService {
         const errorStatus = error.response?.status;
         const errorData = error.response?.data;
         const apiErrorMessage = this.extractApiErrorMessage(error);
-        
+
         this.logger.warn(`⚠️ Error al crear paciente en ${api.type}: ${apiErrorMessage}`);
-        
+
         // Si es error 400 con mensaje de "existe", buscar el paciente
         if (errorStatus === 400 && errorData?.message?.toLowerCase().includes('existe')) {
           this.logger.log(`⚠️ Paciente ya existe en ${api.type}, buscando...`);
@@ -572,7 +621,7 @@ export class DentalinkService {
             // Continuar con el siguiente intento
           }
         }
-        
+
         // Si es error 412 (sucursal incompatible), continuar con la siguiente API
         if (errorStatus === 412) {
           this.logger.warn(`⚠️ ${api.type} incompatible (412), intentando siguiente API...`);
@@ -584,9 +633,9 @@ export class DentalinkService {
           lastError = apiErrorMessage;
           break;
         }
-        
+
         lastError = apiErrorMessage;
-        
+
         // Log detallado
         if (error.response) {
           this.logger.error(`📊 Status Code: ${errorStatus}`);
@@ -596,10 +645,7 @@ export class DentalinkService {
     }
 
     // Si llegamos aquí, falló en todas las APIs
-    throw new HttpException(
-      lastError || 'No se pudo crear el paciente',
-      HttpStatus.BAD_REQUEST,
-    );
+    throw new HttpException(lastError || 'No se pudo crear el paciente', HttpStatus.BAD_REQUEST);
   }
 
   /**
@@ -607,7 +653,7 @@ export class DentalinkService {
    */
   private extractApiErrorMessage(error: any): string {
     const responseData = error.response?.data;
-    
+
     if (responseData) {
       // Formato: { error: { message: "..." } }
       if (responseData.error?.message) {
@@ -626,7 +672,7 @@ export class DentalinkService {
         return responseData;
       }
     }
-    
+
     return error.message || 'Error desconocido';
   }
 
@@ -634,7 +680,9 @@ export class DentalinkService {
    * Agenda una cita en Dentalink/Medilink y opcionalmente integra con GHL
    */
   async scheduleAppointment(clientId: string, params: ScheduleAppointmentDto): Promise<any> {
-    this.logger.log(`📅 Agendando cita para paciente ${params.id_paciente} con profesional ${params.id_profesional}`);
+    this.logger.log(
+      `📅 Agendando cita para paciente ${params.id_paciente} con profesional ${params.id_profesional}`,
+    );
 
     const client = await this.clientsService.findOne(clientId);
     const apiKey = client.apiKey;
@@ -652,7 +700,7 @@ export class DentalinkService {
 
     for (const api of apisToTry) {
       if (intervaloProfesional) break;
-      
+
       try {
         if (api.type === 'dentalink') {
           // Dentalink: obtener lista de dentistas y buscar por ID
@@ -668,8 +716,8 @@ export class DentalinkService {
         } else {
           // Medilink: usar endpoint v6/profesionales/{id} (no v5)
           const profResp = await axios.get(
-            `https://api.medilink2.healthatom.com/api/v6/profesionales/${params.id_profesional}`, 
-            { headers }
+            `https://api.medilink2.healthatom.com/api/v6/profesionales/${params.id_profesional}`,
+            { headers },
           );
           if (profResp.status === 200) {
             const profesional = profResp.data?.data;
@@ -680,7 +728,9 @@ export class DentalinkService {
           }
         }
       } catch (error) {
-        this.logger.warn(`⚠️ No se pudo obtener intervalo del profesional en ${api.type}: ${error.message}`);
+        this.logger.warn(
+          `⚠️ No se pudo obtener intervalo del profesional en ${api.type}: ${error.message}`,
+        );
       }
     }
 
@@ -702,7 +752,7 @@ export class DentalinkService {
       try {
         // Crear payload según el tipo de API
         let payloadCita: any;
-        
+
         if (api.type === 'dentalink') {
           payloadCita = {
             id_dentista: params.id_profesional,
@@ -731,7 +781,9 @@ export class DentalinkService {
           };
         }
 
-        this.logger.log(`📤 Intentando agendar en ${api.type.toUpperCase()}: ${JSON.stringify(payloadCita)}`);
+        this.logger.log(
+          `📤 Intentando agendar en ${api.type.toUpperCase()}: ${JSON.stringify(payloadCita)}`,
+        );
 
         const response = await axios.post(`${api.baseUrl}citas/`, payloadCita, { headers });
 
@@ -739,12 +791,14 @@ export class DentalinkService {
           const citaData = response.data?.data || {};
           const idCita = citaData.id;
 
-          this.logger.log(`✅ Cita creada exitosamente en ${api.type.toUpperCase()} con ID ${idCita}`);
+          this.logger.log(
+            `✅ Cita creada exitosamente en ${api.type.toUpperCase()} con ID ${idCita}`,
+          );
 
           // Integración con GHL (si está habilitado y se proporcionó user_id)
           if (client.ghlEnabled && params.user_id) {
             this.logger.log('🔗 Iniciando integración con GHL en background...');
-            
+
             // Ejecutar en background sin bloquear respuesta
             setImmediate(async () => {
               try {
@@ -783,36 +837,35 @@ export class DentalinkService {
         const errorStatus = error.response?.status;
         const errorData = error.response?.data;
         const apiErrorMessage = this.extractApiErrorMessage(error);
-        
+
         this.logger.error(`❌ Error al agendar cita en ${api.type}: ${apiErrorMessage}`);
-        
+
         // Log detallado
         if (error.response) {
           this.logger.error(`📊 Status Code: ${errorStatus}`);
           this.logger.error(`📄 Respuesta de ${api.type}: ${JSON.stringify(errorData)}`);
         }
-        
+
         // Si es error 412 (sucursal incompatible), continuar con la siguiente API
         if (errorStatus === 412) {
-          this.logger.warn(`⚠️ ${api.type} incompatible con esta sucursal (412), intentando siguiente API...`);
+          this.logger.warn(
+            `⚠️ ${api.type} incompatible con esta sucursal (412), intentando siguiente API...`,
+          );
           continue;
         }
-        
+
         // Si es error de negocio (400), guardar el mensaje y no continuar
         if (errorStatus === 400) {
           lastError = apiErrorMessage;
           break;
         }
-        
+
         lastError = apiErrorMessage;
       }
     }
 
     // Si llegamos aquí, falló en todas las APIs
-    throw new HttpException(
-      lastError || 'No se pudo agendar la cita',
-      HttpStatus.BAD_REQUEST,
-    );
+    throw new HttpException(lastError || 'No se pudo agendar la cita', HttpStatus.BAD_REQUEST);
   }
 
   /**
@@ -834,14 +887,14 @@ export class DentalinkService {
     // Usar la función centralizada para determinar las APIs
     const apisBase = this.getApisToUse(client);
     const apiKey = client.apiKey;
-    
+
     const headers = {
       Authorization: `Token ${apiKey}`,
       'Content-Type': 'application/json',
     };
 
     // Agregar commentKey según el tipo de API
-    const apisToTry = apisBase.map(api => ({
+    const apisToTry = apisBase.map((api) => ({
       ...api,
       commentKey: api.type === 'dentalink' ? 'comentarios' : 'comentario',
     }));
@@ -849,7 +902,7 @@ export class DentalinkService {
     for (const api of apisToTry) {
       try {
         const urlCita = `${api.baseUrl}citas/${params.id_cita}`;
-        
+
         this.logger.log(`🔍 Intentando confirmar en ${api.type.toUpperCase()}: ${urlCita}`);
 
         // Verificar que la cita existe
@@ -859,11 +912,15 @@ export class DentalinkService {
         }
 
         const citaData = respGet.data?.data || {};
-        this.logger.log(`📋 Cita encontrada en ${api.type.toUpperCase()}: Paciente ${citaData.nombre_paciente}, Fecha ${citaData.fecha}, Estado actual: ${citaData.id_estado} (${citaData.estado_cita})`);
+        this.logger.log(
+          `📋 Cita encontrada en ${api.type.toUpperCase()}: Paciente ${citaData.nombre_paciente}, Fecha ${citaData.fecha}, Estado actual: ${citaData.id_estado} (${citaData.estado_cita})`,
+        );
 
         // Validar que el estado de destino sea diferente al actual
         if (citaData.id_estado === client.confirmationStateId) {
-          this.logger.log(`⚠️ La cita ya tiene el estado ${client.confirmationStateId}, retornando sin modificar`);
+          this.logger.log(
+            `⚠️ La cita ya tiene el estado ${client.confirmationStateId}, retornando sin modificar`,
+          );
           return {
             mensaje: 'La cita ya está en el estado de confirmación especificado',
             id_cita: params.id_cita,
@@ -886,7 +943,9 @@ export class DentalinkService {
         const respConfirm = await axios.put(urlCita, payloadConfirmar, { headers });
 
         if (respConfirm.status === 200) {
-          this.logger.log(`✅ Cita ${params.id_cita} confirmada exitosamente en ${api.type.toUpperCase()}`);
+          this.logger.log(
+            `✅ Cita ${params.id_cita} confirmada exitosamente en ${api.type.toUpperCase()}`,
+          );
           return {
             mensaje: 'Cita confirmada exitosamente',
             id_cita: params.id_cita,
@@ -899,9 +958,9 @@ export class DentalinkService {
       } catch (error) {
         const errorStatus = error.response?.status;
         const errorData = error.response?.data;
-        
+
         this.logger.warn(`⚠️ Error confirmando cita en ${api.type}: ${error.message}`);
-        
+
         // Log detallado para error 400
         if (errorStatus === 400) {
           this.logger.error(`❌ Error 400 en ${api.type}:`);
@@ -909,17 +968,17 @@ export class DentalinkService {
           this.logger.error(`   - Estado solicitado: ${client.confirmationStateId}`);
           this.logger.error(`   - Respuesta del servidor: ${JSON.stringify(errorData)}`);
         }
-        
+
         if (errorStatus === 404) {
           // Cita no encontrada en esta API, intentar con la siguiente
           continue;
         }
-        
+
         // Si es el último intento o un error diferente a 404, lanzar excepción con más detalles
         if (api === apisToTry[apisToTry.length - 1]) {
           const errorMessage = errorData?.message || errorData?.error || error.message;
           const errorDetails = errorData ? ` | Detalles: ${JSON.stringify(errorData)}` : '';
-          
+
           throw new HttpException(
             `Error al confirmar cita en ${api.type}: ${errorMessage}${errorDetails}`,
             errorStatus || HttpStatus.BAD_REQUEST,
@@ -943,14 +1002,14 @@ export class DentalinkService {
 
     const client = await this.clientsService.findOne(clientId);
     const apisToTry = this.getApisToUse(client);
-    
+
     return await this.cancelarCitaPorId(client.apiKey, params.id_cita, apisToTry);
   }
 
   private async cancelarCitaPorId(
-    apiKey: string, 
-    idCita: number, 
-    apisToTry: Array<{ type: string; baseUrl: string }>
+    apiKey: string,
+    idCita: number,
+    apisToTry: Array<{ type: string; baseUrl: string }>,
   ): Promise<any> {
     const headers = {
       Authorization: `Token ${apiKey}`,
@@ -968,7 +1027,7 @@ export class DentalinkService {
 
         // Obtener datos de la cita primero
         const respGet = await axios.get(urlCita, { headers });
-        
+
         if (respGet.status !== 200) {
           continue; // Intentar con la siguiente API
         }
@@ -978,7 +1037,7 @@ export class DentalinkService {
 
         // Preparar payload de cancelación según el tipo de API
         let payloadCancelar: any;
-        
+
         if (api.type === 'dentalink') {
           payloadCancelar = {
             id_estado: 1, // Estado anulado
@@ -1010,20 +1069,20 @@ export class DentalinkService {
       } catch (error) {
         const errorStatus = error.response?.status;
         const apiErrorMessage = this.extractApiErrorMessage(error);
-        
+
         this.logger.warn(`⚠️ Error cancelando cita en ${api.type}: ${apiErrorMessage}`);
-        
+
         // Si es 404, la cita no existe en esta API, intentar con la siguiente
         if (errorStatus === 404) {
           continue;
         }
-        
+
         // Si es error de negocio (400), guardar el mensaje y salir
         if (errorStatus === 400) {
           lastError = apiErrorMessage;
           break;
         }
-        
+
         lastError = apiErrorMessage;
       }
     }
@@ -1056,7 +1115,9 @@ export class DentalinkService {
 
     for (const api of apisToTry) {
       try {
-        this.logger.log(`🔍 Buscando paciente en ${api.type.toUpperCase()}: ${api.baseUrl}pacientes`);
+        this.logger.log(
+          `🔍 Buscando paciente en ${api.type.toUpperCase()}: ${api.baseUrl}pacientes`,
+        );
 
         // 1. Buscar paciente por RUT
         const respPaciente = await axios.get(`${api.baseUrl}pacientes`, {
@@ -1079,7 +1140,9 @@ export class DentalinkService {
         const idPaciente = paciente.id;
         const nombreCompleto = `${paciente.nombre || ''} ${paciente.apellidos || ''}`.trim();
 
-        this.logger.log(`✅ Paciente encontrado en ${api.type.toUpperCase()}: ${nombreCompleto} (ID: ${idPaciente})`);
+        this.logger.log(
+          `✅ Paciente encontrado en ${api.type.toUpperCase()}: ${nombreCompleto} (ID: ${idPaciente})`,
+        );
 
         // 2. Buscar link de tratamientos/atenciones
         // Dentalink usa 'tratamientos', Medilink usa 'atenciones'

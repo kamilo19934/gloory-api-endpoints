@@ -49,7 +49,8 @@ export const MEDILINK_ENDPOINTS: ApiEndpoints = {
 
 // URL específica para el endpoint de profesionales v6 de Medilink
 // El endpoint de profesionales de Medilink requiere v6, no v5
-export const MEDILINK_PROFESSIONALS_V6_URL = 'https://api.medilink2.healthatom.com/api/v6/profesionales';
+export const MEDILINK_PROFESSIONALS_V6_URL =
+  'https://api.medilink2.healthatom.com/api/v6/profesionales';
 
 /**
  * Estructura de profesional normalizada

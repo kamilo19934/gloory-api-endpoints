@@ -20,10 +20,7 @@ export class ClientApiLogsController {
    * Obtiene los logs de un cliente con paginación y filtros
    */
   @Get()
-  async getLogs(
-    @Param('clientId') clientId: string,
-    @Query() query: QueryLogsDto,
-  ) {
+  async getLogs(@Param('clientId') clientId: string, @Query() query: QueryLogsDto) {
     const result = await this.logsService.findLogs(clientId, query);
 
     return {
@@ -61,10 +58,7 @@ export class ClientApiLogsController {
    * Obtiene el detalle de un log específico
    */
   @Get(':logId')
-  async getLogDetail(
-    @Param('clientId') clientId: string,
-    @Param('logId') logId: string,
-  ) {
+  async getLogDetail(@Param('clientId') clientId: string, @Param('logId') logId: string) {
     const log = await this.logsService.findOne(clientId, logId);
 
     if (!log) {

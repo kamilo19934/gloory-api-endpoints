@@ -32,7 +32,7 @@ export class UsersService {
     });
 
     const savedUser = await this.usersRepository.save(user);
-    
+
     // Retornar sin password
     const { password, ...result } = savedUser;
     return result;
@@ -45,7 +45,7 @@ export class UsersService {
 
   async findOne(id: string): Promise<Omit<User, 'password'>> {
     const user = await this.usersRepository.findOne({ where: { id } });
-    
+
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
     }
@@ -81,7 +81,7 @@ export class UsersService {
     }
 
     await this.usersRepository.update(id, updateUserDto);
-    
+
     const updatedUser = await this.usersRepository.findOne({ where: { id } });
     const { password, ...result } = updatedUser;
     return result;

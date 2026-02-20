@@ -15,10 +15,7 @@ export interface IPatientProvider {
   /**
    * Crea un nuevo paciente
    */
-  createPatient(
-    config: IntegrationConfig,
-    params: CreatePatientParams,
-  ): Promise<PatientResult>;
+  createPatient(config: IntegrationConfig, params: CreatePatientParams): Promise<PatientResult>;
 
   /**
    * Obtiene tratamientos de un paciente

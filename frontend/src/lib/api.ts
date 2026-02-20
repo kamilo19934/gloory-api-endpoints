@@ -31,7 +31,7 @@ export enum IntegrationCapability {
 export interface IntegrationFieldDefinition {
   key: string;
   label: string;
-  type: 'string' | 'number' | 'boolean' | 'select' | 'password';
+  type: 'string' | 'number' | 'boolean' | 'select' | 'password' | 'array';
   description?: string;
   placeholder?: string;
   options?: { value: string; label: string }[];
@@ -210,6 +210,11 @@ export const clientsApi = {
 
   testConnection: async (clientId: string): Promise<{ connected: boolean; message: string }> => {
     const response = await api.post(`/clients/${clientId}/test-connection`);
+    return response.data;
+  },
+
+  testReservoConnection: async (clientId: string): Promise<{ connected: boolean; message: string }> => {
+    const response = await api.post(`/clients/${clientId}/reservo/test-connection`);
     return response.data;
   },
 

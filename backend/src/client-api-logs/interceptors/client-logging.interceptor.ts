@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { ClientApiLogsService } from '../client-api-logs.service';
@@ -44,7 +38,7 @@ export class ClientLoggingInterceptor implements NestInterceptor {
     // - logs: para evitar recursión infinita
     // - endpoints: es solo para mostrar la lista de endpoints en el panel admin
     const excludedEndpoints = ['logs', 'endpoints'];
-    if (excludedEndpoints.some(excluded => endpoint.startsWith(excluded))) {
+    if (excludedEndpoints.some((excluded) => endpoint.startsWith(excluded))) {
       return next.handle();
     }
 
