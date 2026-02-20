@@ -44,7 +44,7 @@ export class ClientIntegration {
   /**
    * Última vez que se sincronizó datos de esta integración
    */
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   lastSyncAt: Date;
 
   /**

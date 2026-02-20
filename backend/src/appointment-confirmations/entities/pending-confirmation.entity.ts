@@ -78,7 +78,7 @@ export class PendingConfirmation {
   /**
    * Fecha y hora programada para enviar la confirmación
    */
-  @Column({ type: 'datetime' })
+  @Column({ type: 'timestamp' })
   scheduledFor: Date;
 
   /**
@@ -108,7 +108,7 @@ export class PendingConfirmation {
   /**
    * Fecha de procesamiento
    */
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   processedAt: Date;
 
   @CreateDateColumn()
