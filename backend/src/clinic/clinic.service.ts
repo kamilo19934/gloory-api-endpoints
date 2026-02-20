@@ -322,6 +322,7 @@ export class ClinicService {
   ): Promise<{
     sucursalesNuevas: number;
     profesionalesNuevos: number;
+    profesionalesActualizados: number;
     totalSucursalesAPI: number;
     totalProfesionalesAPI: number;
     mensaje: string;
@@ -346,6 +347,7 @@ export class ClinicService {
 
     let sucursalesNuevas = 0;
     let profesionalesNuevos = 0;
+    let profesionalesActualizados = 0;
     let totalSucursalesAPI = 0;
     let totalProfesionalesAPI = 0;
 
@@ -359,10 +361,10 @@ export class ClinicService {
 
     const existingProfessionals = await this.professionalRepository.find({
       where: { clientId },
-      select: ['dentalinkId'],
+      select: ['dentalinkId', 'id'],
     });
-    const existingProfIds = new Set(existingProfessionals.map((p) => p.dentalinkId));
-    this.logger.log(`👨‍⚕️ Profesionales existentes en BD: ${existingProfIds.size}`);
+    const existingProfMap = new Map(existingProfessionals.map((p) => [p.dentalinkId, p.id]));
+    this.logger.log(`👨‍⚕️ Profesionales existentes en BD: ${existingProfMap.size}`);
 
     // Sincronizar desde cada API configurada
     for (const api of apisToUse) {
@@ -463,58 +465,64 @@ export class ClinicService {
           `👨‍⚕️ Total de profesionales obtenidos de ${api.type.toUpperCase()}: ${profesFromApi}`,
         );
 
-        // Filtrar solo los nuevos
-        const newProfesionales = profesionalesData.filter((d) => !existingProfIds.has(d.id));
+        // Separar entre nuevos y existentes
+        const newProfesionales = profesionalesData.filter((d) => !existingProfMap.has(d.id));
+        const existingProfesionales = profesionalesData.filter((d) => existingProfMap.has(d.id));
         this.logger.log(
           `👨‍⚕️ Profesionales nuevos a insertar desde ${api.type}: ${newProfesionales.length}`,
         );
+        this.logger.log(
+          `👨‍⚕️ Profesionales existentes a actualizar desde ${api.type}: ${existingProfesionales.length}`,
+        );
 
-        // Preparar entidades para bulk insert
+        /**
+         * Campos comunes extraidos de la API (sin especialidad, que se edita manualmente)
+         */
+        const mapProfessionalBase = (profesional: any) => {
+          const contratos = Array.isArray(profesional.contratos_sucursal)
+            ? profesional.contratos_sucursal
+                .map((id: any) => parseInt(id, 10))
+                .filter((id: number) => !isNaN(id))
+            : [];
+          const horarios = Array.isArray(profesional.horarios_sucursal)
+            ? profesional.horarios_sucursal
+                .map((id: any) => parseInt(id, 10))
+                .filter((id: number) => !isNaN(id))
+            : [];
+          const apellidos = profesional.apellidos || profesional.apellido || null;
+
+          return {
+            rut: profesional.rut || null,
+            nombre: profesional.nombre || 'Sin nombre',
+            apellidos,
+            celular: profesional.celular || null,
+            telefono: profesional.telefono || null,
+            email: profesional.email || null,
+            ciudad: profesional.ciudad || null,
+            comuna: profesional.comuna || null,
+            direccion: profesional.direccion || null,
+            idEspecialidad: profesional.id_especialidad || null,
+            agendaOnline: profesional.agenda_online === 1,
+            intervalo: profesional.intervalo || null,
+            habilitado: profesional.habilitado === 1,
+            contratosSucursal: contratos,
+            horariosSucursal: horarios,
+          };
+        };
+
+        // Insertar nuevos profesionales
         if (newProfesionales.length > 0) {
           const professionalEntities = newProfesionales.map((profesional) => {
-            // Agregar el ID al set para evitar duplicados en la siguiente API
-            existingProfIds.add(profesional.id);
-
-            // Filtrar y convertir arrays - APIs devuelven strings como "2" en lugar de números
-            const contratos = Array.isArray(profesional.contratos_sucursal)
-              ? profesional.contratos_sucursal
-                  .map((id: any) => parseInt(id, 10))
-                  .filter((id: number) => !isNaN(id))
-              : [];
-            const horarios = Array.isArray(profesional.horarios_sucursal)
-              ? profesional.horarios_sucursal
-                  .map((id: any) => parseInt(id, 10))
-                  .filter((id: number) => !isNaN(id))
-              : [];
-
-            // Normalizar nombres de campos según API
-            // Dentalink: nombre, apellidos, agenda_online, id_especialidad
-            // Medilink: nombre, apellido (singular), agenda_online, id_especialidad
-            const apellidos = profesional.apellidos || profesional.apellido || null;
+            existingProfMap.set(profesional.id, null);
 
             return this.professionalRepository.create({
               clientId,
               dentalinkId: profesional.id,
-              rut: profesional.rut || null,
-              nombre: profesional.nombre || 'Sin nombre',
-              apellidos: apellidos,
-              celular: profesional.celular || null,
-              telefono: profesional.telefono || null,
-              email: profesional.email || null,
-              ciudad: profesional.ciudad || null,
-              comuna: profesional.comuna || null,
-              direccion: profesional.direccion || null,
-              idEspecialidad: profesional.id_especialidad || null,
+              ...mapProfessionalBase(profesional),
               especialidad: profesional.especialidad || null,
-              agendaOnline: profesional.agenda_online === 1,
-              intervalo: profesional.intervalo || null,
-              habilitado: profesional.habilitado === 1,
-              contratosSucursal: contratos,
-              horariosSucursal: horarios,
             });
           });
 
-          // Insertar en lotes
           for (let i = 0; i < professionalEntities.length; i += this.BATCH_SIZE) {
             const batch = professionalEntities.slice(i, i + this.BATCH_SIZE);
             await this.professionalRepository.save(batch);
@@ -526,6 +534,29 @@ export class ClinicService {
           profesionalesNuevos += newProfesionales.length;
           this.logger.log(
             `✅ ${newProfesionales.length} profesionales nuevos agregados de ${api.type}`,
+          );
+        }
+
+        // Actualizar profesionales existentes con datos frescos de la API
+        if (existingProfesionales.length > 0) {
+          for (let i = 0; i < existingProfesionales.length; i += this.BATCH_SIZE) {
+            const batch = existingProfesionales.slice(i, i + this.BATCH_SIZE);
+
+            for (const profesional of batch) {
+              await this.professionalRepository.update(
+                { clientId, dentalinkId: profesional.id },
+                mapProfessionalBase(profesional),
+              );
+            }
+
+            this.logger.log(
+              `👨‍⚕️ Actualizados ${Math.min(i + this.BATCH_SIZE, existingProfesionales.length)}/${existingProfesionales.length} profesionales de ${api.type}`,
+            );
+          }
+
+          profesionalesActualizados += existingProfesionales.length;
+          this.logger.log(
+            `✅ ${existingProfesionales.length} profesionales actualizados de ${api.type}`,
           );
         }
       } catch (error) {
@@ -541,16 +572,22 @@ export class ClinicService {
     }
 
     const apisUsadas = apisToUse.map((a) => a.type.toUpperCase()).join(' + ');
+    const partes: string[] = [];
+    if (sucursalesNuevas > 0) partes.push(`${sucursalesNuevas} sucursales nuevas`);
+    if (profesionalesNuevos > 0) partes.push(`${profesionalesNuevos} profesionales nuevos`);
+    if (profesionalesActualizados > 0) partes.push(`${profesionalesActualizados} profesionales actualizados`);
+
     const mensaje =
-      sucursalesNuevas === 0 && profesionalesNuevos === 0
-        ? `No se encontraron nuevos registros para agregar (${apisUsadas} tiene ${totalSucursalesAPI} sucursales y ${totalProfesionalesAPI} profesionales)`
-        : `Sincronización completada desde ${apisUsadas}: ${sucursalesNuevas} sucursales y ${profesionalesNuevos} profesionales nuevos (de ${totalSucursalesAPI} sucursales y ${totalProfesionalesAPI} profesionales en API)`;
+      partes.length === 0
+        ? `No se encontraron cambios (${apisUsadas} tiene ${totalSucursalesAPI} sucursales y ${totalProfesionalesAPI} profesionales)`
+        : `Sincronización completada desde ${apisUsadas}: ${partes.join(', ')} (de ${totalSucursalesAPI} sucursales y ${totalProfesionalesAPI} profesionales en API)`;
 
     this.logger.log(`✅ ${mensaje}`);
 
     return {
       sucursalesNuevas,
       profesionalesNuevos,
+      profesionalesActualizados,
       totalSucursalesAPI,
       totalProfesionalesAPI,
       mensaje,

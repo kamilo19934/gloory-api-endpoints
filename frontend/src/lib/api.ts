@@ -313,6 +313,7 @@ export interface ClinicStats {
 export interface SyncResult {
   sucursalesNuevas: number;
   profesionalesNuevos: number;
+  profesionalesActualizados?: number;
   totalSucursalesAPI?: number;
   totalProfesionalesAPI?: number;
   mensaje: string;
