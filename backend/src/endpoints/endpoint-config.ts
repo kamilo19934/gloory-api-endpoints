@@ -768,4 +768,322 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
     category: 'reservo',
     arguments: [],
   },
+
+  // ============================
+  // GOHIGHLEVEL ENDPOINTS
+  // ============================
+
+  // GHL - Sedes y Calendarios (datos propios)
+  {
+    id: 'ghl-get-branches',
+    name: 'Obtener Sedes (GHL)',
+    description: 'Obtiene las sedes activas configuradas para este cliente en GoHighLevel',
+    method: 'GET',
+    path: '/ghl/branches',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [],
+  },
+  {
+    id: 'ghl-get-branch-calendars',
+    name: 'Calendarios por Sede (GHL)',
+    description: 'Obtiene los calendarios asignados a una sede específica',
+    method: 'POST',
+    path: '/ghl/branches/calendars',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [
+      {
+        name: 'branchId',
+        type: 'number',
+        description: 'ID de la sede',
+        required: true,
+        example: 1,
+      },
+    ],
+  },
+  {
+    id: 'ghl-get-calendars',
+    name: 'Obtener Calendarios (GHL)',
+    description: 'Obtiene los calendarios activos sincronizados desde GoHighLevel',
+    method: 'GET',
+    path: '/ghl/calendars',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [],
+  },
+  {
+    id: 'ghl-get-specialties',
+    name: 'Listar Especialidades (GHL)',
+    description: 'Obtiene la lista de especialidades únicas de los calendarios activos en GHL',
+    method: 'GET',
+    path: '/ghl/specialties',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [],
+  },
+  {
+    id: 'ghl-get-calendars-by-specialty',
+    name: 'Calendarios por Especialidad (GHL)',
+    description:
+      'Obtiene calendarios filtrados por especialidad. Opcionalmente filtra por sede.',
+    method: 'POST',
+    path: '/ghl/specialties/calendars',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [
+      {
+        name: 'especialidad',
+        type: 'string',
+        description: 'Nombre de la especialidad a filtrar',
+        required: true,
+        example: 'Kinesiología',
+      },
+      {
+        name: 'id_sucursal',
+        type: 'number',
+        description: 'ID de la sede para filtrar adicionalmente (opcional)',
+        required: false,
+        example: 1,
+      },
+    ],
+  },
+  {
+    id: 'ghl-sync',
+    name: 'Sincronizar Calendarios (GHL)',
+    description:
+      'Sincroniza calendarios desde la API de GoHighLevel. Solo agrega nuevos registros.',
+    method: 'POST',
+    path: '/ghl/sync',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [
+      {
+        name: 'force',
+        type: 'boolean',
+        description: 'Si es true, elimina los datos existentes antes de sincronizar',
+        required: false,
+        example: false,
+      },
+    ],
+  },
+  {
+    id: 'ghl-get-stats',
+    name: 'Estadísticas (GHL)',
+    description: 'Obtiene estadísticas de calendarios y sedes sincronizados en GHL',
+    method: 'GET',
+    path: '/ghl/stats',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [],
+  },
+
+  // GHL - Disponibilidad
+  {
+    id: 'ghl-search-availability',
+    name: 'Buscar Disponibilidad (GHL)',
+    description:
+      'Busca horarios disponibles en los calendarios de GoHighLevel. Busca iterativamente hasta 4 semanas si no encuentra disponibilidad en la primera.',
+    method: 'POST',
+    path: '/ghl/availability',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [
+      {
+        name: 'profesionales',
+        type: 'array',
+        description:
+          'Lista de IDs de los profesionales a consultar (corresponden al orden en que aparecen los calendarios)',
+        required: true,
+        example: [1, 2],
+      },
+      {
+        name: 'fecha_inicio',
+        type: 'string',
+        description:
+          'Fecha de inicio de busqueda (formato YYYY-MM-DD). Si no se proporciona, se usa la fecha actual.',
+        required: false,
+        example: '2026-01-15',
+      },
+      {
+        name: 'tiempo_cita',
+        type: 'number',
+        description:
+          'Duracion de la cita en minutos. Si la cita requiere mas de un slot, se buscan slots consecutivos.',
+        required: false,
+        example: 60,
+      },
+    ],
+  },
+
+  // GHL - Crear Cita
+  {
+    id: 'ghl-create-appointment',
+    name: 'Crear Cita (GHL)',
+    description:
+      'Crea una nueva cita en un calendario de GoHighLevel. Opcionalmente actualiza el nombre y comentario del contacto.',
+    method: 'POST',
+    path: '/ghl/appointments',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [
+      {
+        name: 'user_id',
+        type: 'string',
+        description: 'Contact ID del contacto en GoHighLevel',
+        required: true,
+        example: 'abc123xyz',
+      },
+      {
+        name: 'profesional',
+        type: 'number',
+        description: 'ID del profesional (calendario) que atendera',
+        required: true,
+        example: 1,
+      },
+      {
+        name: 'fecha',
+        type: 'string',
+        description: 'Fecha de la cita (formato YYYY-MM-DD)',
+        required: true,
+        example: '2026-01-20',
+      },
+      {
+        name: 'hora_inicio',
+        type: 'string',
+        description: 'Hora de inicio de la cita (formato HH:MM)',
+        required: true,
+        example: '10:30',
+      },
+      {
+        name: 'tiempo_cita',
+        type: 'number',
+        description: 'Duracion de la cita en minutos',
+        required: false,
+        example: 30,
+      },
+      {
+        name: 'nombre',
+        type: 'string',
+        description: 'Nombre del contacto (actualiza el contacto en GHL)',
+        required: false,
+        example: 'Juan Perez',
+      },
+      {
+        name: 'comentario',
+        type: 'string',
+        description: 'Comentario o notas sobre la cita (se guarda como custom field en GHL)',
+        required: false,
+        example: 'Primera consulta',
+      },
+      {
+        name: 'telefono',
+        type: 'string',
+        description: 'Telefono del contacto (actualiza el contacto en GHL)',
+        required: false,
+        example: '+56912345678',
+      },
+      {
+        name: 'email',
+        type: 'string',
+        description: 'Email del contacto (actualiza el contacto en GHL)',
+        required: false,
+        example: 'paciente@correo.com',
+      },
+    ],
+  },
+
+  // GHL - Cancelar Cita
+  {
+    id: 'ghl-cancel-appointment',
+    name: 'Cancelar Cita (GHL)',
+    description: 'Elimina una cita de GoHighLevel por su ID de evento',
+    method: 'POST',
+    path: '/ghl/appointments/cancel',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [
+      {
+        name: 'event_id',
+        type: 'string',
+        description: 'ID del evento/cita en GoHighLevel',
+        required: true,
+        example: 'event-uuid-123',
+      },
+    ],
+  },
+
+  // GHL - Actualizar Cita
+  {
+    id: 'ghl-update-appointment',
+    name: 'Actualizar Cita (GHL)',
+    description:
+      'Actualiza informacion del contacto asociado a una cita en GoHighLevel (comentario, telefono)',
+    method: 'POST',
+    path: '/ghl/appointments/update',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [
+      {
+        name: 'event_id',
+        type: 'string',
+        description: 'ID del evento/cita en GoHighLevel',
+        required: true,
+        example: 'event-uuid-123',
+      },
+      {
+        name: 'user_id',
+        type: 'string',
+        description: 'Contact ID del contacto (requerido si se actualiza comentario o telefono)',
+        required: false,
+        example: 'abc123xyz',
+      },
+      {
+        name: 'comentario',
+        type: 'string',
+        description: 'Nuevo comentario (se actualiza como custom field del contacto)',
+        required: false,
+        example: 'Paciente requiere atencion especial',
+      },
+      {
+        name: 'telefono',
+        type: 'string',
+        description: 'Nuevo telefono del contacto',
+        required: false,
+        example: '+56912345678',
+      },
+    ],
+  },
+
+  // GHL - Citas de Contacto
+  {
+    id: 'ghl-contact-appointments',
+    name: 'Citas de Contacto (GHL)',
+    description: 'Obtiene todas las citas de un contacto en GoHighLevel',
+    method: 'POST',
+    path: '/ghl/appointments/contact',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [
+      {
+        name: 'user_id',
+        type: 'string',
+        description: 'Contact ID del contacto en GoHighLevel',
+        required: true,
+        example: 'abc123xyz',
+      },
+    ],
+  },
+
+  // GHL - Test de Conexion
+  {
+    id: 'ghl-test-connection',
+    name: 'Probar Conexion (GHL)',
+    description: 'Verifica la conexion con GoHighLevel y muestra la cantidad de calendarios encontrados',
+    method: 'POST',
+    path: '/ghl/test-connection',
+    dentalinkPath: '',
+    category: 'gohighlevel',
+    arguments: [],
+  },
 ];

@@ -286,6 +286,52 @@ export class IntegrationRegistryService {
       ],
     });
 
+    // Registrar GoHighLevel
+    this.register({
+      type: IntegrationType.GOHIGHLEVEL,
+      name: 'GoHighLevel',
+      description:
+        'Sistema de calendarios y citas GoHighLevel. Los calendarios se mapean a profesionales y las sedes se configuran manualmente.',
+      logo: '/integrations/gohighlevel.png',
+      capabilities: [
+        IntegrationCapability.AVAILABILITY,
+        IntegrationCapability.APPOINTMENTS,
+        IntegrationCapability.CLINIC_CONFIG,
+      ],
+      requiredFields: [
+        {
+          key: 'ghlAccessToken',
+          label: 'GHL Access Token',
+          type: 'password',
+          description: 'Token de acceso (Private Integration Token) de GoHighLevel',
+          placeholder: 'pit-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+        },
+        {
+          key: 'ghlLocationId',
+          label: 'GHL Location ID',
+          type: 'string',
+          description: 'ID de la ubicación en GoHighLevel',
+          placeholder: 'Ingresa el Location ID',
+        },
+      ],
+      optionalFields: [
+        {
+          key: 'timezone',
+          label: 'Zona Horaria',
+          type: 'select',
+          description: 'Zona horaria para las operaciones',
+          defaultValue: 'America/Santiago',
+          options: [
+            { value: 'America/Santiago', label: 'Chile (Santiago)' },
+            { value: 'America/Lima', label: 'Perú (Lima)' },
+            { value: 'America/Bogota', label: 'Colombia (Bogotá)' },
+            { value: 'America/Mexico_City', label: 'México (Ciudad de México)' },
+            { value: 'America/Buenos_Aires', label: 'Argentina (Buenos Aires)' },
+          ],
+        },
+      ],
+    });
+
     this.logger.log(`📦 Registradas ${this.integrations.size} integraciones disponibles`);
   }
 

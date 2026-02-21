@@ -48,20 +48,25 @@ export default function ClientDetailPage() {
       const isReservo = client?.integrations?.some(
         (i) => i.integrationType === IntegrationType.RESERVO && i.isEnabled,
       );
-      const platformName = isReservo ? 'Reservo' : 'Dentalink';
-      const result = isReservo
-        ? await clientsApi.testReservoConnection(clientId)
-        : await clientsApi.testConnection(clientId);
+      const isGHL = client?.integrations?.some(
+        (i) => i.integrationType === IntegrationType.GOHIGHLEVEL && i.isEnabled,
+      );
+      const platformName = isGHL ? 'GoHighLevel' : isReservo ? 'Reservo' : 'Dentalink';
+      const result = isGHL
+        ? await clientsApi.testGHLConnection(clientId)
+        : isReservo
+          ? await clientsApi.testReservoConnection(clientId)
+          : await clientsApi.testConnection(clientId);
       setConnectionStatus(result.connected);
 
       if (result.connected) {
-        toast.success(`Conexión exitosa con ${platformName}`);
+        toast.success(`Conexion exitosa con ${platformName}`);
       } else {
         toast.error(`No se pudo conectar con ${platformName}`);
       }
     } catch (error) {
       setConnectionStatus(false);
-      toast.error('Error al probar la conexión');
+      toast.error('Error al probar la conexion');
       console.error(error);
     } finally {
       setTesting(false);
@@ -114,9 +119,18 @@ export default function ClientDetailPage() {
                 <span className="text-sm text-gray-500">
                   🌍 <strong>Timezone:</strong> {client.timezone || 'America/Santiago'}
                 </span>
-                {client.ghlEnabled && (
+                {client.integrations?.some(
+                  (i) => i.integrationType === IntegrationType.GOHIGHLEVEL && i.isEnabled,
+                ) && (
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
+                    GoHighLevel
+                  </span>
+                )}
+                {client.integrations?.some(
+                  (i) => i.integrationType === IntegrationType.RESERVO && i.isEnabled,
+                ) && (
                   <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
-                    🔗 GHL Integrado
+                    Reservo
                   </span>
                 )}
               </div>
@@ -137,6 +151,13 @@ export default function ClientDetailPage() {
               <p className="text-sm text-gray-500 mb-1">API Key/Token</p>
               <code className="text-sm bg-gray-100 px-3 py-2 rounded block">
                 {(() => {
+                  const ghlIntegration = client.integrations?.find(
+                    (i) => i.integrationType === IntegrationType.GOHIGHLEVEL
+                  );
+                  if (ghlIntegration) {
+                    const token = ghlIntegration.config?.ghlAccessToken;
+                    return token ? `${token.substring(0, 30)}...` : 'No configurada';
+                  }
                   const reservoIntegration = client.integrations?.find(
                     (i) => i.integrationType === IntegrationType.RESERVO
                   );
@@ -182,8 +203,20 @@ export default function ClientDetailPage() {
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
               <FiSettings className="mr-2" />
-              Configuración Clínica
+              Configuracion Clinica
             </Link>
+
+            {client.integrations?.some(
+              (i) => i.integrationType === IntegrationType.GOHIGHLEVEL && i.isEnabled,
+            ) && (
+              <Link
+                href={`/clients/${clientId}/ghl-config`}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+              >
+                <FiSettings className="mr-2" />
+                Config GHL
+              </Link>
+            )}
 
             <Link
               href={`/clients/${clientId}/confirmations`}

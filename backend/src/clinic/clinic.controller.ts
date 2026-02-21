@@ -333,13 +333,14 @@ export class ClinicController {
   }
 
   /**
-   * Sincroniza datos desde Dentalink (solo agrega nuevos)
+   * Sincroniza datos desde la API correspondiente (Dentalink/Medilink/Reservo)
    * force: true en el body para eliminar datos existentes antes de sincronizar
    */
   @Post('sync')
   @HttpCode(HttpStatus.OK)
-  async syncFromDentalink(@Param('clientId') clientId: string, @Body() body?: { force?: boolean }) {
+  async syncClinic(@Param('clientId') clientId: string, @Body() body?: { force?: boolean }) {
     const forceSync = body?.force === true;
-    return this.clinicService.syncFromDentalink(clientId, forceSync);
+    return this.clinicService.sync(clientId, forceSync);
   }
+
 }

@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { AVAILABLE_ENDPOINTS, EndpointDefinition } from './endpoint-config';
 
-/** Categorías de endpoints que pertenecen a Reservo */
+/** Categorías de endpoints que pertenecen exclusivamente a una integración */
 const RESERVO_CATEGORIES = new Set(['reservo']);
+const GHL_CATEGORIES = new Set(['gohighlevel']);
+/** Categorías que pertenecen exclusivamente a Dentalink/MediLink */
+const DENTALINK_CATEGORIES = new Set(['clinic']);
 
 @Injectable()
 export class EndpointsService {
@@ -32,14 +35,43 @@ export class EndpointsService {
   getEndpointsForClient(clientId: string, integrationTypes: string[]): EndpointDefinition[] {
     const hasReservo = integrationTypes.includes('reservo');
     const hasDentalink =
-      integrationTypes.includes('dentalink') || integrationTypes.includes('dentalink_medilink');
+      integrationTypes.includes('dentalink') ||
+      integrationTypes.includes('dentalink_medilink') ||
+      integrationTypes.includes('medilink');
+    const hasGHL = integrationTypes.includes('gohighlevel');
 
     const filtered = AVAILABLE_ENDPOINTS.filter((endpoint) => {
       const isReservoEndpoint = RESERVO_CATEGORIES.has(endpoint.category);
+      const isGHLEndpoint = GHL_CATEGORIES.has(endpoint.category);
+      const isDentalinkEndpoint = DENTALINK_CATEGORIES.has(endpoint.category);
 
-      if (hasReservo && hasDentalink) return true;
-      if (hasReservo) return isReservoEndpoint;
-      return !isReservoEndpoint;
+      // GHL-only clients: show only GHL endpoints
+      if (hasGHL && !hasDentalink && !hasReservo) {
+        return isGHLEndpoint;
+      }
+
+      // Reservo-only clients: show only Reservo endpoints
+      if (hasReservo && !hasDentalink && !hasGHL) {
+        return isReservoEndpoint;
+      }
+
+      // Dentalink-only clients: show everything except Reservo and GHL
+      if (hasDentalink && !hasReservo && !hasGHL) {
+        return !isReservoEndpoint && !isGHLEndpoint;
+      }
+
+      // Mixed: show all applicable
+      if (hasReservo) {
+        if (isGHLEndpoint && !hasGHL) return false;
+        return true;
+      }
+      if (hasGHL) {
+        if (isReservoEndpoint && !hasReservo) return false;
+        return true;
+      }
+
+      // Default: show non-exclusive endpoints
+      return !isReservoEndpoint && !isGHLEndpoint && !isDentalinkEndpoint;
     });
 
     return filtered.map((endpoint) => ({

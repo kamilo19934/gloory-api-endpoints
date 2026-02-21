@@ -18,6 +18,7 @@ export enum IntegrationType {
   MEDILINK = 'medilink',
   DENTALINK_MEDILINK = 'dentalink_medilink',
   RESERVO = 'reservo',
+  GOHIGHLEVEL = 'gohighlevel',
 }
 
 export enum IntegrationCapability {
@@ -215,6 +216,11 @@ export const clientsApi = {
 
   testReservoConnection: async (clientId: string): Promise<{ connected: boolean; message: string }> => {
     const response = await api.post(`/clients/${clientId}/reservo/test-connection`);
+    return response.data;
+  },
+
+  testGHLConnection: async (clientId: string): Promise<{ connected: boolean; message: string; calendars?: number }> => {
+    const response = await api.post(`/clients/${clientId}/ghl/test-connection`);
     return response.data;
   },
 
@@ -422,6 +428,156 @@ export const clinicApi = {
     });
     return response.data;
   },
+
+};
+
+// ============================================
+// GHL TYPES & API (independiente de clinic)
+// ============================================
+
+export interface GHLCalendarResponse {
+  id: number;
+  nombre: string;
+  slotDuration: number;
+  especialidad?: string;
+  activo: boolean;
+  branches: number[];
+}
+
+export interface GHLBranchResponse {
+  id: number;
+  nombre: string;
+  direccion?: string;
+  telefono?: string;
+  ciudad?: string;
+  comuna?: string;
+  activa: boolean;
+}
+
+export interface GHLStats {
+  totalCalendarios: number;
+  calendariosActivos: number;
+  totalSedes: number;
+  sedesActivas: number;
+}
+
+export interface GHLSyncResult {
+  calendariosNuevos: number;
+  calendariosActualizados: number;
+  totalCalendariosAPI: number;
+  mensaje: string;
+}
+
+export const ghlApi = {
+  // Sedes
+  getBranches: async (clientId: string): Promise<GHLBranchResponse[]> => {
+    const response = await api.get(`/clients/${clientId}/ghl/branches`);
+    return response.data;
+  },
+
+  getAllBranches: async (clientId: string): Promise<GHLBranchResponse[]> => {
+    const response = await api.get(`/clients/${clientId}/ghl/branches/all`);
+    return response.data;
+  },
+
+  createBranch: async (
+    clientId: string,
+    data: { nombre: string; direccion?: string; telefono?: string; ciudad?: string; comuna?: string },
+  ): Promise<{ mensaje: string; sucursal: GHLBranchResponse }> => {
+    const response = await api.post(`/clients/${clientId}/ghl/branches`, data);
+    return response.data;
+  },
+
+  updateBranch: async (
+    clientId: string,
+    branchId: number,
+    data: { nombre?: string; direccion?: string; telefono?: string; ciudad?: string; comuna?: string },
+  ): Promise<{ mensaje: string; sucursal: GHLBranchResponse }> => {
+    const response = await api.put(`/clients/${clientId}/ghl/branches/${branchId}`, data);
+    return response.data;
+  },
+
+  deleteBranch: async (clientId: string, branchId: number): Promise<{ mensaje: string }> => {
+    const response = await api.delete(`/clients/${clientId}/ghl/branches/${branchId}`);
+    return response.data;
+  },
+
+  toggleBranch: async (clientId: string, branchId: number, activa: boolean): Promise<GHLBranchResponse> => {
+    const response = await api.patch(`/clients/${clientId}/ghl/branches/${branchId}/toggle`, { activa });
+    return response.data;
+  },
+
+  // Calendarios
+  getCalendars: async (clientId: string): Promise<GHLCalendarResponse[]> => {
+    const response = await api.get(`/clients/${clientId}/ghl/calendars`);
+    return response.data;
+  },
+
+  getAllCalendars: async (clientId: string): Promise<GHLCalendarResponse[]> => {
+    const response = await api.get(`/clients/${clientId}/ghl/calendars/all`);
+    return response.data;
+  },
+
+  toggleCalendar: async (clientId: string, calendarId: number, activo: boolean): Promise<GHLCalendarResponse> => {
+    const response = await api.patch(`/clients/${clientId}/ghl/calendars/${calendarId}/toggle`, { activo });
+    return response.data;
+  },
+
+  updateCalendarSpecialty: async (
+    clientId: string,
+    calendarId: number,
+    especialidad: string,
+  ): Promise<{ mensaje: string; calendario: GHLCalendarResponse }> => {
+    const response = await api.patch(`/clients/${clientId}/ghl/calendars/${calendarId}/specialty`, { especialidad });
+    return response.data;
+  },
+
+  assignCalendarToBranches: async (
+    clientId: string,
+    calendarId: number,
+    branchIds: number[],
+  ): Promise<{ mensaje: string; calendario: GHLCalendarResponse }> => {
+    const response = await api.put(`/clients/${clientId}/ghl/calendars/${calendarId}/branches`, { branchIds });
+    return response.data;
+  },
+
+  getCalendarsByBranch: async (clientId: string, branchId: number): Promise<GHLCalendarResponse[]> => {
+    const response = await api.post(`/clients/${clientId}/ghl/branches/calendars`, { branchId });
+    return response.data;
+  },
+
+  // Datos
+  getSpecialties: async (clientId: string): Promise<string[]> => {
+    const response = await api.get(`/clients/${clientId}/ghl/specialties`);
+    return response.data;
+  },
+
+  getCalendarsBySpecialty: async (
+    clientId: string,
+    especialidad: string,
+    id_sucursal?: number,
+  ): Promise<GHLCalendarResponse[]> => {
+    const response = await api.post(`/clients/${clientId}/ghl/specialties/calendars`, {
+      especialidad,
+      id_sucursal,
+    });
+    return response.data;
+  },
+
+  getStats: async (clientId: string): Promise<GHLStats> => {
+    const response = await api.get(`/clients/${clientId}/ghl/stats`);
+    return response.data;
+  },
+
+  sync: async (clientId: string, force?: boolean): Promise<GHLSyncResult> => {
+    const response = await api.post(`/clients/${clientId}/ghl/sync`, { force });
+    return response.data;
+  },
+
+  testConnection: async (clientId: string): Promise<{ connected: boolean; message: string; calendars?: number }> => {
+    const response = await api.post(`/clients/${clientId}/ghl/test-connection`);
+    return response.data;
+  },
 };
 
 // ============================================
@@ -437,6 +593,7 @@ export function getIntegrationDisplayName(type: IntegrationType): string {
     [IntegrationType.MEDILINK]: 'MediLink',
     [IntegrationType.DENTALINK_MEDILINK]: 'Dentalink + MediLink',
     [IntegrationType.RESERVO]: 'Reservo',
+    [IntegrationType.GOHIGHLEVEL]: 'GoHighLevel',
   };
   return names[type] || type;
 }
@@ -450,6 +607,7 @@ export function getIntegrationColor(type: IntegrationType): string {
     [IntegrationType.MEDILINK]: 'bg-green-500',
     [IntegrationType.DENTALINK_MEDILINK]: 'bg-gradient-to-r from-blue-500 to-green-500',
     [IntegrationType.RESERVO]: 'bg-purple-500',
+    [IntegrationType.GOHIGHLEVEL]: 'bg-orange-500',
   };
   return colors[type] || 'bg-gray-500';
 }

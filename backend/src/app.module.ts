@@ -10,6 +10,8 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { HealthAtomModule } from './integrations/healthatom/healthatom.module';
 import { ReservoModule } from './integrations/reservo/reservo.module';
 import { ReservoProxyModule } from './reservo/reservo-proxy.module';
+import { GoHighLevelModule } from './integrations/gohighlevel/gohighlevel.module';
+import { GoHighLevelProxyModule } from './gohighlevel/gohighlevel-proxy.module';
 import { AppointmentConfirmationsModule } from './appointment-confirmations/appointment-confirmations.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -98,6 +100,8 @@ import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-
     HealthAtomModule, // Unified HealthAtom service (Dentalink + MediLink)
     ReservoModule, // Reservo integration service (Global)
     ReservoProxyModule, // Reservo proxy controller for client routes
+    GoHighLevelModule, // GoHighLevel integration service (Global)
+    GoHighLevelProxyModule, // GoHighLevel proxy controller for client routes
     ClientsModule,
     EndpointsModule,
     DentalinkModule,
