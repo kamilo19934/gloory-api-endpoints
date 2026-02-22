@@ -46,6 +46,15 @@ export class GoHighLevelProxyService {
     private readonly branchRepository: Repository<GHLBranch>,
   ) {}
 
+  private async getNextCalendarId(clientId: string): Promise<number> {
+    const result = await this.calendarRepository
+      .createQueryBuilder('c')
+      .select('MAX(c.id)', 'maxId')
+      .where('c.clientId = :clientId', { clientId })
+      .getRawOne();
+    return (result?.maxId || 0) + 1;
+  }
+
   private async getGHLConfig(clientId: string): Promise<GoHighLevelConfig> {
     const client = await this.clientsService.findOne(clientId);
     const integration = client.getIntegration('gohighlevel');
@@ -257,7 +266,9 @@ export class GoHighLevelProxyService {
         calendariosActualizados++;
         this.logger.log(`Actualizado: ${profesionalNombre} (${calendar.id})`);
       } else {
+        const nextId = await this.getNextCalendarId(clientId);
         const ghlCalendar = this.calendarRepository.create({
+          id: nextId,
           clientId,
           calendarId: calendar.id,
           nombre: profesionalNombre,

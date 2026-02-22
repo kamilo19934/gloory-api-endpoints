@@ -1,6 +1,6 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   Column,
   ManyToOne,
   CreateDateColumn,
@@ -13,11 +13,11 @@ import { Client } from '../../clients/entities/client.entity';
 @Entity('ghl_calendars')
 @Index(['clientId', 'calendarId'], { unique: true })
 export class GHLCalendar {
-  @PrimaryGeneratedColumn('increment')
-  id: number;
-
-  @Column()
+  @PrimaryColumn()
   clientId: string;
+
+  @PrimaryColumn()
+  id: number;
 
   @ManyToOne(() => Client, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'clientId' })
