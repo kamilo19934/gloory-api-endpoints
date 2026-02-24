@@ -479,11 +479,23 @@ export class GoHighLevelProxyService {
     especialidad: string,
     branchId?: number,
   ): Promise<Partial<GHLCalendar>[]> {
-    const calendars = await this.calendarRepository.find({
-      select: ['id', 'nombre', 'slotDuration', 'especialidad', 'activo', 'branches'],
-      where: { clientId, activo: true, especialidad: Like(`%${especialidad}%`) },
-      order: { nombre: 'ASC' },
-    });
+    const calendars = await this.calendarRepository
+      .createQueryBuilder('calendar')
+      .select([
+        'calendar.id',
+        'calendar.nombre',
+        'calendar.slotDuration',
+        'calendar.especialidad',
+        'calendar.activo',
+        'calendar.branches',
+      ])
+      .where('calendar.clientId = :clientId', { clientId })
+      .andWhere('calendar.activo = :activo', { activo: true })
+      .andWhere('LOWER(calendar.especialidad) LIKE LOWER(:especialidad)', {
+        especialidad: `%${especialidad}%`,
+      })
+      .orderBy('calendar.nombre', 'ASC')
+      .getMany();
 
     if (branchId) {
       return calendars.filter((c) => c.branches && c.branches.includes(branchId));
