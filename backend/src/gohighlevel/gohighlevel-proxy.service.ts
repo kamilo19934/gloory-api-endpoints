@@ -70,27 +70,24 @@ export class GoHighLevelProxyService {
   }
 
   /**
-   * Resuelve un índice de calendario (1, 2, 3...) al GHLCalendar correspondiente
+   * Resuelve un ID de calendario al GHLCalendar correspondiente
    */
   private async resolveCalendar(
     clientId: string,
-    calendarIndex: number,
+    calendarId: number,
   ): Promise<GHLCalendar> {
-    // Buscar todos los calendarios activos ordenados por nombre
-    const calendars = await this.calendarRepository.find({
-      where: { clientId, activo: true },
-      order: { nombre: 'ASC' },
+    const calendar = await this.calendarRepository.findOne({
+      where: { clientId, id: calendarId },
     });
 
-    if (calendarIndex > 0 && calendarIndex <= calendars.length) {
-      return calendars[calendarIndex - 1];
+    if (!calendar) {
+      throw new HttpException(
+        `Calendario con ID ${calendarId} no encontrado para este cliente`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
-    const availableIds = calendars.map((c, i) => `${i + 1} (${c.nombre})`).join(', ');
-    throw new HttpException(
-      `Calendario con ID ${calendarIndex} no encontrado. Calendarios disponibles: ${availableIds}`,
-      HttpStatus.BAD_REQUEST,
-    );
+    return calendar;
   }
 
   private formatDateSpanish(dateStr: string): string {
