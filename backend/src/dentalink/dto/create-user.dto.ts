@@ -16,6 +16,9 @@ export class CreateUserDto {
 
   @IsString()
   @IsOptional()
+  @Matches(/^\+?\d[\d\s\-]{6,15}$/, {
+    message: 'Teléfono debe contener entre 7 y 16 dígitos',
+  })
   telefono?: string;
 
   @IsEmail({}, { message: 'Email debe ser válido' })

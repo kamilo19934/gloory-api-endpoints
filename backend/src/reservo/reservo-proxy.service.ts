@@ -1,5 +1,6 @@
 import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ClientsService } from '../clients/clients.service';
+import { formatearTelefono, obtenerPaisDesdeTimezone } from '../utils/phone.util';
 import { ReservoService } from '../integrations/reservo/reservo.service';
 import {
   ReservoConfig,
@@ -109,7 +110,18 @@ export class ReservoProxyService {
   }
 
   async createPatient(clientId: string, dto: ReservoCreatePatientDto) {
+    const client = await this.clientsService.findOne(clientId);
     const config = await this.getReservoConfig(clientId);
+
+    // Validar y formatear teléfono
+    const pais = obtenerPaisDesdeTimezone(client.timezone || 'America/Santiago');
+    const telefonoResult = formatearTelefono(dto.telefono, pais);
+    if (!telefonoResult.isValid) {
+      throw new HttpException(
+        `Teléfono inválido: ${telefonoResult.error}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
     // Mapear campos simplificados a los de Reservo
     // sexo: 0 = No especifica, 1 = Masculino, 2 = Femenino
@@ -117,7 +129,7 @@ export class ReservoProxyService {
       identificador: dto.identificador,
       nombre: dto.nombre,
       apellido_paterno: dto.apellido,
-      telefono_1: dto.telefono,
+      telefono_1: telefonoResult.formatted,
       mail: dto.mail,
       sexo: dto.sexo ?? 0,
       fecha_nacimiento: dto.fecha_nacimiento,

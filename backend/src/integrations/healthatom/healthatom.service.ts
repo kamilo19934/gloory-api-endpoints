@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
 import * as moment from 'moment-timezone';
+import { formatearTelefono, obtenerPaisDesdeTimezone } from '../../utils/phone.util';
 import {
   HealthAtomApi,
   HealthAtomConfig,
@@ -314,11 +315,22 @@ export class HealthAtomService {
       };
     }
 
+    // Validar y formatear teléfono
+    let telefonoFormateado = data.telefono;
+    if (data.telefono) {
+      const pais = obtenerPaisDesdeTimezone(config.timezone || 'America/Santiago');
+      const telefonoResult = formatearTelefono(data.telefono, pais);
+      if (!telefonoResult.isValid) {
+        return { success: false, error: `Teléfono inválido: ${telefonoResult.error}` };
+      }
+      telefonoFormateado = telefonoResult.formatted;
+    }
+
     const payload = {
       nombre: data.nombre,
       apellidos: data.apellidos,
       rut: rutFormateado,
-      celular: data.telefono,
+      celular: telefonoFormateado,
       email: data.email,
       fecha_nacimiento: data.fechaNacimiento,
     };

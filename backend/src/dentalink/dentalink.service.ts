@@ -4,6 +4,7 @@ import { ClientsService } from '../clients/clients.service';
 import { GHLService } from './ghl.service';
 import { HealthAtomService } from '../integrations/healthatom/healthatom.service';
 import { formatearRut } from '../utils/rut.util';
+import { formatearTelefono, obtenerPaisDesdeTimezone } from '../utils/phone.util';
 import { formatearFechaEspanol, normalizarHora } from '../utils/date.util';
 import {
   obtenerHoraActual,
@@ -546,6 +547,19 @@ export class DentalinkService {
     }
 
     const rutFormateado = formatearRut(params.rut);
+
+    // Validar y formatear teléfono
+    if (params.telefono) {
+      const pais = obtenerPaisDesdeTimezone(client.timezone || 'America/Santiago');
+      const telefonoResult = formatearTelefono(params.telefono, pais);
+      if (!telefonoResult.isValid) {
+        throw new HttpException(
+          `Teléfono inválido: ${telefonoResult.error}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      params.telefono = telefonoResult.formatted;
+    }
 
     const headers = {
       Authorization: `Token ${apiKey}`,
