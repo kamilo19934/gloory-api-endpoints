@@ -29,8 +29,11 @@ export class GHLCalendar {
   @Column()
   nombre: string; // Nombre del profesional/calendario
 
-  @Column({ default: 30 })
-  slotDuration: number; // Minutos por slot
+  @Column({ nullable: true })
+  slotDuration: number; // Duración de la cita en minutos (from GHL API)
+
+  @Column({ nullable: true })
+  slotInterval: number; // Minutos entre slots disponibles (from GHL API)
 
   @Column({ nullable: true })
   especialidad: string; // Editable por admin

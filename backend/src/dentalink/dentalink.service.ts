@@ -18,6 +18,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { ScheduleAppointmentDto } from './dto/schedule-appointment.dto';
 import { CancelAppointmentDto } from './dto/cancel-appointment.dto';
 import { GetTreatmentsDto } from './dto/get-treatments.dto';
+import { SearchSobrecupoAvailabilityDto } from './dto/search-sobrecupo-availability.dto';
+import { ScheduleSobrecupoAppointmentDto } from './dto/schedule-sobrecupo-appointment.dto';
 
 @Injectable()
 export class DentalinkService {
@@ -443,6 +445,255 @@ export class DentalinkService {
       mensaje: 'No se encontró disponibilidad en las próximas 4 semanas',
       disponibilidad: [],
     };
+  }
+
+  /**
+   * Busca disponibilidad de sobrecupo de profesionales en Dentalink/Medilink.
+   * Usa el endpoint de agendas por sucursal/profesional y filtra solo los horarios
+   * donde el sillón de sobrecupo está disponible.
+   */
+  async searchSobrecupoAvailability(
+    clientId: string,
+    params: SearchSobrecupoAvailabilityDto,
+  ): Promise<any> {
+    this.logger.log('🔍 Iniciando búsqueda de disponibilidad de SOBRECUPO');
+    this.logger.log(`📋 Parámetros recibidos: ${JSON.stringify(params)}`);
+
+    const client = await this.clientsService.findOne(clientId);
+    const apiKey = client.apiKey;
+    const timezone = client.timezone;
+    const apisToTry = this.getApisToUse(client);
+
+    // Validaciones
+    if (!params.ids_profesionales || params.ids_profesionales.length === 0) {
+      throw new HttpException('Se requiere al menos un ID de profesional', HttpStatus.BAD_REQUEST);
+    }
+
+    if (!params.id_sucursal) {
+      throw new HttpException('Se requiere ID de sucursal', HttpStatus.BAD_REQUEST);
+    }
+
+    const headers = {
+      Authorization: `Token ${apiKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    // Obtener información de profesionales (nombres e intervalos)
+    const profesionalesInfo: { [key: number]: string } = {};
+    const profesionalesIntervalos: { [key: number]: number } = {};
+
+    try {
+      this.logger.log('👨‍⚕️ Obteniendo información de profesionales...');
+
+      for (const idProf of params.ids_profesionales) {
+        for (const api of apisToTry) {
+          if (profesionalesInfo[idProf]) break;
+
+          try {
+            if (api.type === 'dentalink') {
+              const profResp = await axios.get(`${api.baseUrl}dentistas`, { headers });
+              if (profResp.status === 200) {
+                const profesionales = profResp.data?.data || [];
+                const profesional = profesionales.find((p: any) => p.id === idProf);
+                if (profesional) {
+                  const apellido = profesional.apellidos || profesional.apellido || '';
+                  profesionalesInfo[idProf] = `${profesional.nombre || 'Desconocido'} ${apellido}`.trim();
+                  profesionalesIntervalos[idProf] = profesional.intervalo;
+                }
+              }
+            } else {
+              const profResp = await axios.get(
+                `https://api.medilink2.healthatom.com/api/v6/profesionales/${idProf}`,
+                { headers },
+              );
+              if (profResp.status === 200) {
+                const profesional = profResp.data?.data;
+                if (profesional) {
+                  const apellido = profesional.apellidos || profesional.apellido || '';
+                  profesionalesInfo[idProf] = `${profesional.nombre || 'Desconocido'} ${apellido}`.trim();
+                  profesionalesIntervalos[idProf] = profesional.intervalo;
+                }
+              }
+            }
+          } catch (error) {
+            this.logger.warn(
+              `⚠️ Error obteniendo info de profesional ${idProf} en ${api.type}: ${error.message}`,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`⚠️ Error obteniendo información de profesionales: ${error.message}`);
+    }
+
+    // Obtener hora actual en el timezone del cliente
+    const horaActual = obtenerHoraActual(timezone);
+
+    // Establecer fecha de inicio
+    let fechaInicio: moment.Moment;
+    if (params.fecha_inicio) {
+      fechaInicio = moment.tz(params.fecha_inicio, timezone);
+    } else {
+      fechaInicio = horaActual.clone();
+    }
+
+    // Búsqueda iterativa hasta 4 semanas
+    const intentosMaximos = 4;
+    let intentoActual = 1;
+
+    while (intentoActual <= intentosMaximos) {
+      const fechaFin = fechaInicio.clone().add(6, 'days');
+
+      this.logger.log(
+        `🔄 Sobrecupo - Intento ${intentoActual} de ${intentosMaximos}: Buscando del ${fechaInicio.format('YYYY-MM-DD')} al ${fechaFin.format('YYYY-MM-DD')}`,
+      );
+
+      const queryParams = JSON.stringify({
+        fecha_inicio: { eq: fechaInicio.format('YYYY-MM-DD') },
+        fecha_fin: { eq: fechaFin.format('YYYY-MM-DD') },
+        mostrar_detalles: { eq: '0' },
+      });
+
+      // Consultar cada profesional en paralelo
+      const resultadosPorProfesional = await Promise.all(
+        params.ids_profesionales.map(async (idProf) => {
+          for (const api of apisToTry) {
+            try {
+              const profPath = api.type === 'dentalink' ? 'dentistas' : 'profesionales';
+              const url = `${api.baseUrl}sucursales/${params.id_sucursal}/${profPath}/${idProf}/agendas`;
+
+              this.logger.log(
+                `🌐 Sobrecupo - Consultando ${api.type.toUpperCase()} para profesional ${idProf}: ${url}`,
+              );
+
+              const response = await axios.get(url, {
+                headers,
+                params: { q: queryParams },
+              });
+
+              if (response.status === 200) {
+                const slotsAgrupados = this.extractSobrecupoSlots(response.data, api.type);
+                return { idProf, slots: slotsAgrupados, apiType: api.type };
+              }
+            } catch (error) {
+              this.logger.warn(
+                `⚠️ Sobrecupo - Error con profesional ${idProf} en ${api.type}: ${error.message}`,
+              );
+            }
+          }
+          return { idProf, slots: {} as Record<string, Array<{ hora_inicio: string }>>, apiType: null };
+        }),
+      );
+
+      // Procesar resultados y construir respuesta limpia
+      const disponibilidadFinal = [];
+
+      for (const resultado of resultadosPorProfesional) {
+        const { idProf, slots } = resultado;
+
+        if (Object.keys(slots).length === 0) continue;
+
+        const nombreProfesional = profesionalesInfo[idProf] || `Profesional ${idProf}`;
+        const intervaloProfesional = profesionalesIntervalos[idProf];
+
+        const disponibilidadProfesional: any = {
+          id_profesional: idProf,
+          nombre_profesional: nombreProfesional,
+          fechas: {},
+        };
+
+        for (const [fecha, horarios] of Object.entries(slots)) {
+          if (!Array.isArray(horarios) || horarios.length === 0) continue;
+
+          // Filtrar horarios futuros
+          const horariosFuturos = filtrarHorariosFuturos(horarios, fecha, horaActual);
+
+          if (horariosFuturos.length > 0) {
+            // Normalizar horas (HH:MM:SS → HH:MM)
+            let horariosNormalizados = horariosFuturos.map((h) =>
+              normalizarHora(h.hora_inicio),
+            );
+
+            // Validar bloques consecutivos si tenemos tiempo de cita e intervalo
+            const tiempoCitaEfectivo = params.tiempo_cita || intervaloProfesional;
+
+            if (tiempoCitaEfectivo && intervaloProfesional) {
+              this.logger.log(
+                `🔍 Sobrecupo - Validando bloques consecutivos para tiempo_cita=${tiempoCitaEfectivo} min`,
+              );
+              horariosNormalizados = validarBloquesConsecutivos(
+                horariosNormalizados,
+                tiempoCitaEfectivo,
+                intervaloProfesional,
+              );
+            }
+
+            if (horariosNormalizados.length > 0) {
+              const fechaFormateada = formatearFechaEspanol(fecha);
+              disponibilidadProfesional.fechas[fechaFormateada] = horariosNormalizados;
+            }
+          }
+        }
+
+        if (Object.keys(disponibilidadProfesional.fechas).length > 0) {
+          disponibilidadFinal.push(disponibilidadProfesional);
+        }
+      }
+
+      if (disponibilidadFinal.length > 0) {
+        return {
+          disponibilidad: disponibilidadFinal,
+          fecha_desde: fechaInicio.format('YYYY-MM-DD'),
+          fecha_hasta: fechaFin.format('YYYY-MM-DD'),
+        };
+      }
+
+      // Avanzar a la siguiente semana
+      fechaInicio.add(7, 'days');
+      intentoActual++;
+    }
+
+    return {
+      mensaje: 'No se encontró disponibilidad de sobrecupo en las próximas 4 semanas',
+      disponibilidad: [],
+    };
+  }
+
+  /**
+   * Extrae los horarios donde el sobrecupo está disponible de la respuesta de agendas.
+   * Dentalink usa key "7", MediLink usa key "Sobrecupo".
+   */
+  private extractSobrecupoSlots(
+    responseData: any,
+    apiType: string,
+  ): Record<string, Array<{ hora_inicio: string }>> {
+    const sobrecupoKey = apiType === 'medilink' ? 'Sobrecupo' : '7';
+    const result: Record<string, Array<{ hora_inicio: string }>> = {};
+
+    const fechas = responseData?.data?.fechas || {};
+
+    for (const [fecha, fechaData] of Object.entries<any>(fechas)) {
+      // Algunas fechas vienen como array vacío en vez de objeto
+      if (!fechaData || Array.isArray(fechaData) || !fechaData.horas) {
+        continue;
+      }
+
+      const horas = fechaData.horas || {};
+      const slotsDisponibles: Array<{ hora_inicio: string }> = [];
+
+      for (const [hora, horaData] of Object.entries<any>(horas)) {
+        const sillones = horaData?.sillones || {};
+        if (sillones[sobrecupoKey] === true) {
+          slotsDisponibles.push({ hora_inicio: hora });
+        }
+      }
+
+      if (slotsDisponibles.length > 0) {
+        result[fecha] = slotsDisponibles;
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -880,6 +1131,195 @@ export class DentalinkService {
 
     // Si llegamos aquí, falló en todas las APIs
     throw new HttpException(lastError || 'No se pudo agendar la cita', HttpStatus.BAD_REQUEST);
+  }
+
+  /**
+   * Agenda una cita de sobrecupo en Dentalink/Medilink (usa id_sillon: 7)
+   * y opcionalmente integra con GHL.
+   */
+  async scheduleSobrecupoAppointment(
+    clientId: string,
+    params: ScheduleSobrecupoAppointmentDto,
+  ): Promise<any> {
+    this.logger.log(
+      `📅 Agendando cita de SOBRECUPO para paciente ${params.id_paciente} con profesional ${params.id_profesional}`,
+    );
+
+    const client = await this.clientsService.findOne(clientId);
+    const apiKey = client.apiKey;
+    const timezone = client.timezone;
+    const apisToTry = this.getApisToUse(client);
+
+    const headers = {
+      Authorization: `Token ${apiKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    // Obtener intervalo del profesional
+    let duracion = params.tiempo_cita;
+    let intervaloProfesional: number | null = null;
+
+    for (const api of apisToTry) {
+      if (intervaloProfesional) break;
+
+      try {
+        if (api.type === 'dentalink') {
+          const profResp = await axios.get(`${api.baseUrl}dentistas`, { headers });
+          if (profResp.status === 200) {
+            const profesionales = profResp.data?.data || [];
+            const profesional = profesionales.find((p: any) => p.id === params.id_profesional);
+            if (profesional?.intervalo) {
+              intervaloProfesional = profesional.intervalo;
+              this.logger.log(`✅ Intervalo obtenido de ${api.type}: ${intervaloProfesional} min`);
+            }
+          }
+        } else {
+          const profResp = await axios.get(
+            `https://api.medilink2.healthatom.com/api/v6/profesionales/${params.id_profesional}`,
+            { headers },
+          );
+          if (profResp.status === 200) {
+            const profesional = profResp.data?.data;
+            if (profesional?.intervalo) {
+              intervaloProfesional = profesional.intervalo;
+              this.logger.log(`✅ Intervalo obtenido de ${api.type}: ${intervaloProfesional} min`);
+            }
+          }
+        }
+      } catch (error) {
+        this.logger.warn(
+          `⚠️ No se pudo obtener intervalo del profesional en ${api.type}: ${error.message}`,
+        );
+      }
+    }
+
+    // Determinar duración
+    if (!duracion) {
+      if (intervaloProfesional) {
+        duracion = intervaloProfesional;
+      } else {
+        throw new HttpException(
+          'No se pudo determinar la duración de la cita. Especifica tiempo_cita o verifica que el profesional tenga intervalo configurado.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    let lastError: string | null = null;
+
+    for (const api of apisToTry) {
+      try {
+        let payloadCita: any;
+
+        if (api.type === 'dentalink') {
+          payloadCita = {
+            id_dentista: params.id_profesional,
+            id_sucursal: params.id_sucursal,
+            id_estado: 7, // No confirmado
+            id_sillon: 7, // Sobrecupo
+            id_paciente: params.id_paciente,
+            fecha: params.fecha,
+            hora_inicio: params.hora_inicio,
+            duracion,
+            comentario: params.comentario || 'Agendado por IA (sobrecupo)',
+          };
+        } else {
+          payloadCita = {
+            id_profesional: params.id_profesional,
+            id_sucursal: params.id_sucursal,
+            id_estado: 7, // No confirmado
+            id_sillon: 7, // Sobrecupo
+            id_paciente: params.id_paciente,
+            fecha: params.fecha,
+            hora_inicio: params.hora_inicio,
+            duracion,
+            comentario: params.comentario || 'Agendado por IA (sobrecupo)',
+            videoconsulta: 0,
+          };
+        }
+
+        this.logger.log(
+          `📤 Intentando agendar sobrecupo en ${api.type.toUpperCase()}: ${JSON.stringify(payloadCita)}`,
+        );
+
+        const response = await axios.post(`${api.baseUrl}citas/`, payloadCita, { headers });
+
+        if (response.status === 201) {
+          const citaData = response.data?.data || {};
+          const idCita = citaData.id;
+
+          this.logger.log(
+            `✅ Cita de sobrecupo creada exitosamente en ${api.type.toUpperCase()} con ID ${idCita}`,
+          );
+
+          // Integración con GHL (si está habilitado y se proporcionó user_id)
+          if (client.ghlEnabled && params.user_id) {
+            this.logger.log('🔗 Iniciando integración con GHL en background...');
+
+            setImmediate(async () => {
+              try {
+                await this.ghlService.integrarCita(
+                  {
+                    accessToken: client.ghlAccessToken,
+                    calendarId: client.ghlCalendarId,
+                    locationId: client.ghlLocationId,
+                  },
+                  {
+                    userId: params.user_id,
+                    fecha: params.fecha,
+                    hora_inicio: params.hora_inicio,
+                    duracion,
+                    id_profesional: params.id_profesional,
+                    id_sucursal: params.id_sucursal,
+                    comentario: params.comentario,
+                  },
+                  api.baseUrl,
+                  headers,
+                  timezone,
+                );
+              } catch (error) {
+                this.logger.error(`Error integrando con GHL: ${error.message}`);
+              }
+            });
+          }
+
+          return {
+            id_cita: idCita,
+            mensaje: 'Cita de sobrecupo agendada exitosamente',
+          };
+        }
+      } catch (error) {
+        const errorStatus = error.response?.status;
+        const errorData = error.response?.data;
+        const apiErrorMessage = this.extractApiErrorMessage(error);
+
+        this.logger.error(`❌ Error al agendar sobrecupo en ${api.type}: ${apiErrorMessage}`);
+
+        if (error.response) {
+          this.logger.error(`📊 Status Code: ${errorStatus}`);
+          this.logger.error(`📄 Respuesta de ${api.type}: ${JSON.stringify(errorData)}`);
+        }
+
+        if (errorStatus === 412) {
+          this.logger.warn(
+            `⚠️ ${api.type} incompatible con esta sucursal (412), intentando siguiente API...`,
+          );
+          continue;
+        }
+
+        if (errorStatus === 400) {
+          lastError = apiErrorMessage;
+          break;
+        }
+
+        lastError = apiErrorMessage;
+      }
+    }
+
+    throw new HttpException(
+      lastError || 'No se pudo agendar la cita de sobrecupo',
+      HttpStatus.BAD_REQUEST,
+    );
   }
 
   /**

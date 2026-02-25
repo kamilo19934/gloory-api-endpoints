@@ -34,6 +34,8 @@ export interface GHLCalendar {
   calendarType?: string;
   slotDuration?: number;
   slotDurationUnit?: string; // 'mins' | 'hours'
+  slotInterval?: number;
+  slotIntervalUnit?: string; // 'mins' | 'hours'
   teamMembers?: GHLTeamMember[];
 }
 

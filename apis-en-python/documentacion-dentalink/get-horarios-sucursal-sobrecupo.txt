@@ -1,0 +1,272 @@
+GET sucursales/{id_sucursal}/dentistas/{id_dentista}/agendas
+Muestra la disponibilidad de agenda de un dentista para un rango de fechas y sucursal.
+
+Ejemplo de solicitud:
+
+const id_dentista = 31;
+const id_sucursal = 1;
+const params = {
+    fecha_inicio: { eq: '2018-05-02' },
+    fecha_fin: { eq: '2018-05-04' },
+    mostrar_detalles: { eq: '0' }
+};
+
+const url = `https://api.dentalink.healthatom.com/api/v1/sucursales/${id_sucursal}/dentistas/${id_dentista}/agendas?q=${JSON.stringify(params)}`;
+
+const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+        'Authorization': `Token ${token}`
+    }
+});
+
+const data = await response.json();
+console.log(data);
+Ejemplo de respuesta:
+
+{
+    "data": {
+        "fechas": {
+            "2018-05-02": {
+                "horas": {
+                    "06:30": {
+                        "sillones": {
+                            "1": {
+                                "tipo": "Bloqueo",
+                                "comentario": "Tramites odontólogo",
+                                "bloque": "1/4",
+                                "duracion_total": 60,
+                                "inicio": "06:30:00",
+                                "fin": "07:30:00"
+                            },
+                            "7": true
+                        }
+                    },
+                    "06:45": {
+                        "sillones": {
+                            "1": {
+                                "tipo": "Bloqueo",
+                                "comentario": "Tramites odontólogo",
+                                "bloque": "2/4",
+                                "duracion_total": 60,
+                                "inicio": "06:30:00",
+                                "fin": "07:30:00"
+                            },
+                            "7": true
+                        }
+                    },
+                    "07:00": {
+                        "sillones": {
+                            "1": {
+                                "tipo": "Bloqueo",
+                                "comentario": "Tramites odontólogo",
+                                "bloque": "3/4",
+                                "duracion_total": 60,
+                                "inicio": "06:30:00",
+                                "fin": "07:30:00"
+                            },
+                            "7": true
+                        }
+                    },
+                    "07:15": {
+                        "sillones": {
+                            "1": {
+                                "tipo": "Bloqueo",
+                                "comentario": "Tramites odontólogo",
+                                "bloque": "4/4",
+                                "duracion_total": 60,
+                                "inicio": "06:30:00",
+                                "fin": "07:30:00"
+                            },
+                            "7": true
+                        }
+                    },
+                    "07:30": {
+                        "sillones": {
+                            "1": true,
+                            "7": true
+                        }
+                    },
+                    "07:45": {
+                        "sillones": {
+                            "1": true,
+                            "7": true
+                        }
+                    },
+                    "08:00": {
+                        "sillones": {
+                            "1": true,
+                            "7": true
+                        }
+                    },
+                    "08:15": {
+                        "sillones": {
+                            "1": true,
+                            "7": true
+                        }
+                    },
+                    "08:30": {
+                        "sillones": {
+                            "1": true,
+                            "7": true
+                        }
+                    },
+                    "08:45": {
+                        "sillones": {
+                            "1": true,
+                            "7": true
+                        }
+                    },
+                    "09:00": {
+                        "sillones": {
+                            "1": true,
+                            "7": true
+                        }
+                    },
+                    "09:15": {
+                        "sillones": {
+                            "1": true,
+                            "7": true
+                        }
+                    },
+                    "09:30": {
+                        "sillones": {
+                            "1": true,
+                            "7": true
+                        }
+                    },
+                    "09:45": {
+                        "sillones": {
+                            "1": true,
+                            "7": true
+                        }
+                    }
+                }
+            },
+            "2018-05-03": {
+                "horas": {
+                    "08:00": {
+                        "sillones": {
+                            "1": {
+                                "tipo": "Cita",
+                                "id_cita": 631,
+                                "id_paciente": 17,
+                                "nombre_paciente": "Juan",
+                                "apellidos_paciente": "Castro Garcia",
+                                "comentario": "",
+                                "bloque": "1/2",
+                                "duracion_total": 30,
+                                "inicio": "08:00:00",
+                                "fin": "08:30:00"
+                            },
+                            "2": true,
+                            "7": true
+                        }
+                    },
+                    "08:15": {
+                        "sillones": {
+                            "1": {
+                                "tipo": "Cita",
+                                "id_cita": 631,
+                                "id_paciente": 17,
+                                "nombre_paciente": "Juan",
+                                "apellidos_paciente": "Castro Garcia",
+                                "comentario": "",
+                                "bloque": "2/2",
+                                "duracion_total": 30,
+                                "inicio": "08:00:00",
+                                "fin": "08:30:00"
+                            },
+                            "2": true,
+                            "7": true
+                        }
+                    },
+                    "08:30": {
+                        "sillones": {
+                            "1": true,
+                            "2": true,
+                            "7": true
+                        }
+                    },
+                    "08:45": {
+                        "sillones": {
+                            "1": true,
+                            "2": true,
+                            "7": true
+                        }
+                    },
+                    "09:00": {
+                        "sillones": {
+                            "1": true,
+                            "2": true,
+                            "7": true
+                        }
+                    },
+                    "09:15": {
+                        "sillones": {
+                            "1": true,
+                            "2": true,
+                            "7": true
+                        }
+                    },
+                    "09:30": {
+                        "sillones": {
+                            "1": true,
+                            "2": true,
+                            "7": true
+                        }
+                    },
+                    "09:45": {
+                        "sillones": {
+                            "1": true,
+                            "2": true,
+                            "7": true
+                        }
+                    }
+                }
+            },
+            "2018-05-04": []
+        }
+    }
+}
+HTTP/Request
+URI
+GET api/v1/sucursales/{id_sucursal}/dentistas/{id_dentista}/agendas
+
+Parametros búsqueda
+q={"columna1":{"operador1":"valor1"},"columna2":{"operador2":"valor2"},...,"columnaN":{"operadorN":"valorN"}}
+
+Columna	Tipo	Descripción
+fecha_inicio	Date	Fecha inicio de la agenda, formato AAAA-MM-DD (*)
+fecha_fin	Date	Fecha fin de la agenda, formato AAAA-MM-DD (*)
+mostar_detalles	Bool	Especifica si se muestran (1) o no (0) las citas y bloqueos en bloques no disponibles
+HTTP/Response
+Atributos	Tipo de dato	Descripción
+fechas	Array	Arreglo de días, en formato AAAA-MM-DD
+└ horas	Array	Arreglo de horas, en formato HH:MM
+└─ sillones	Array	Arreglo de sillones, identificados por su ID.*
+Cuando un sillon se encuentra disponible, se muestra el valor true.
+El sillón "7" representa el sobrecupo, y es adicional a los sillones asignados para ese horario. Funciona exactamente igual que un sillón regular.
+En el caso de especificar que se muestren los detalles, se muestran los sillones no disponibles con los datos de la cita o bloqueo correspondiente a ese horario.
+Se describe a continuación la información que contiene la cita:
+
+Atributos	Tipo de dato	Descripción
+tipo	String	Indica el tipo de indisponibilidad (Cita o Bloqueo)
+id_cita	Integer	ID de la cita
+id_paciente	Integer	ID del paciente de la cita
+nombre_paciente	String	Nombre del paciente
+apellidos_paciente	String	Apellidos del paciente
+comentario	String	Comentarios de la cita
+bloque	String	Bloque de la cita
+duracion_total	Integer	Duración en minutos
+inicio	String	Hora de inicio de la cita, en formato HH:MM:SS
+fin	String	Hora de término de la cita, en formato HH:MM:SS
+Se describe a continuación la información que contiene el bloqueo:
+
+Atributos	Tipo de dato	Descripción
+tipo	String	Indica el tipo de indisponibilidad (Cita o Bloqueo)
+comentario	String	Comentario del bloqueo
+bloque	String	Bloque
+duracion_total	Integer	Duración en minutos
+inicio	String	Hora de inicio del bloqueo, en formato HH:MM:SS
+fin	String	Hora de término del bloqueo, en formato HH:MM:SS

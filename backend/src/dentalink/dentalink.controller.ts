@@ -21,6 +21,8 @@ import { CancelAppointmentDto } from './dto/cancel-appointment.dto';
 import { ConfirmAppointmentDto } from './dto/confirm-appointment.dto';
 import { GetFutureAppointmentsDto } from './dto/get-future-appointments.dto';
 import { GetTreatmentsDto } from './dto/get-treatments.dto';
+import { SearchSobrecupoAvailabilityDto } from './dto/search-sobrecupo-availability.dto';
+import { ScheduleSobrecupoAppointmentDto } from './dto/schedule-sobrecupo-appointment.dto';
 
 @Public()
 @Controller('clients/:clientId')
@@ -56,6 +58,15 @@ export class DentalinkController {
     @Body() searchAvailabilityDto: SearchAvailabilityDto,
   ) {
     return await this.dentalinkService.searchAvailability(clientId, searchAvailabilityDto);
+  }
+
+  @Post('availability/sobrecupo')
+  @HttpCode(HttpStatus.OK)
+  async searchSobrecupoAvailability(
+    @Param('clientId') clientId: string,
+    @Body() searchSobrecupoDto: SearchSobrecupoAvailabilityDto,
+  ) {
+    return await this.dentalinkService.searchSobrecupoAvailability(clientId, searchSobrecupoDto);
   }
 
   // ============================
@@ -94,6 +105,15 @@ export class DentalinkController {
     @Body() scheduleAppointmentDto: ScheduleAppointmentDto,
   ) {
     return await this.dentalinkService.scheduleAppointment(clientId, scheduleAppointmentDto);
+  }
+
+  @Post('appointments/sobrecupo')
+  @HttpCode(HttpStatus.CREATED)
+  async scheduleSobrecupoAppointment(
+    @Param('clientId') clientId: string,
+    @Body() scheduleSobrecupoDto: ScheduleSobrecupoAppointmentDto,
+  ) {
+    return await this.dentalinkService.scheduleSobrecupoAppointment(clientId, scheduleSobrecupoDto);
   }
 
   @Post('appointments/confirm')

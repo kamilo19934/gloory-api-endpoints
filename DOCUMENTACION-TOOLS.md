@@ -20,6 +20,20 @@ Documentación de endpoints disponibles para el agente de IA. Todos los endpoint
 
 ---
 
+### POST /availability/sobrecupo
+- **Nombre:** Buscar Disponibilidad Sobrecupo
+- **Descripción:** Busca disponibilidad de sobrecupo (sobre-agenda) de profesionales. Retorna solo los horarios donde el sobrecupo está habilitado. Útil cuando la agenda regular está llena.
+
+**Args:**
+| Nombre | Requerido | Descripción |
+|--------|-----------|-------------|
+| `ids_profesionales` | ✅ | Lista de IDs de los profesionales a consultar |
+| `id_sucursal` | ✅ | ID de la sucursal donde buscar disponibilidad de sobrecupo |
+| `fecha_inicio` | ❌ | Fecha de inicio de búsqueda (formato YYYY-MM-DD). Si no se proporciona, se usa la fecha actual |
+| `tiempo_cita` | ❌ | Duración de la cita en minutos. Si no se proporciona, se usa el intervalo por defecto del profesional |
+
+---
+
 ## Pacientes
 
 ### POST /patients/search
@@ -76,6 +90,24 @@ Documentación de endpoints disponibles para el agente de IA. Todos los endpoint
 | `hora_inicio` | ✅ | Hora de inicio de la cita (formato HH:MM) |
 | `tiempo_cita` | ❌ | Duración de la cita en minutos. Si no se proporciona, se usa el intervalo del profesional |
 | `comentario` | ❌ | Comentario o notas adicionales sobre la cita. Si no se proporciona, se usa "Agendado por IA" |
+| `user_id` | ❌ | Contact ID de GHL (solo si GHL está habilitado. Se usa para sincronizar la cita con GoHighLevel) |
+
+---
+
+### POST /appointments/sobrecupo
+- **Nombre:** Crear Cita Sobrecupo
+- **Descripción:** Agenda una cita de sobrecupo (sobre-agenda) usando el sillón de sobrecupo. Usar cuando se quiere agendar en horarios de sobrecupo obtenidos del endpoint de disponibilidad de sobrecupo.
+
+**Args:**
+| Nombre | Requerido | Descripción |
+|--------|-----------|-------------|
+| `id_paciente` | ✅ | ID del paciente en Dentalink/Medilink (debe existir previamente) |
+| `id_profesional` | ✅ | ID del profesional que atenderá |
+| `id_sucursal` | ✅ | ID de la sucursal |
+| `fecha` | ✅ | Fecha de la cita (formato YYYY-MM-DD) |
+| `hora_inicio` | ✅ | Hora de inicio de la cita (formato HH:MM) |
+| `tiempo_cita` | ❌ | Duración de la cita en minutos. Si no se proporciona, se usa el intervalo del profesional |
+| `comentario` | ❌ | Comentario o notas adicionales sobre la cita. Si no se proporciona, se usa "Agendado por IA (sobrecupo)" |
 | `user_id` | ❌ | Contact ID de GHL (solo si GHL está habilitado. Se usa para sincronizar la cita con GoHighLevel) |
 
 ---

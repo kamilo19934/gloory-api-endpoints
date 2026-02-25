@@ -63,6 +63,49 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
     ],
   },
 
+  {
+    id: 'search-sobrecupo-availability',
+    name: 'Buscar Disponibilidad Sobrecupo',
+    description:
+      'Busca disponibilidad de sobrecupo (sobre-agenda) de profesionales. Retorna solo los horarios donde el sobrecupo está habilitado. Útil cuando la agenda regular está llena.',
+    method: 'POST',
+    path: '/availability/sobrecupo',
+    dentalinkPath: '/sucursales/:id/dentistas/:id/agendas',
+    category: 'availability',
+    arguments: [
+      {
+        name: 'ids_profesionales',
+        type: 'array',
+        description: 'Lista de IDs de los profesionales a consultar',
+        required: true,
+        example: [45, 43],
+      },
+      {
+        name: 'id_sucursal',
+        type: 'number',
+        description: 'ID de la sucursal donde buscar disponibilidad de sobrecupo',
+        required: true,
+        example: 3,
+      },
+      {
+        name: 'fecha_inicio',
+        type: 'string',
+        description:
+          'Fecha de inicio de búsqueda (formato YYYY-MM-DD). Si no se proporciona, se usa la fecha actual.',
+        required: false,
+        example: '2025-01-15',
+      },
+      {
+        name: 'tiempo_cita',
+        type: 'number',
+        description:
+          'Duración de la cita en minutos. Si no se proporciona, se usa el intervalo por defecto del profesional.',
+        required: false,
+        example: 15,
+      },
+    ],
+  },
+
   // Patients
   {
     id: 'search-patient',
@@ -215,6 +258,77 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
           'Comentario o notas adicionales sobre la cita. Si no se proporciona, se usa "Agendado por IA"',
         required: false,
         example: 'Paciente solicita limpieza dental',
+      },
+      {
+        name: 'user_id',
+        type: 'string',
+        description:
+          'Contact ID de GHL (opcional, solo si GHL está habilitado. Se usa para sincronizar la cita con GoHighLevel)',
+        required: false,
+        example: 'abc123xyz',
+      },
+    ],
+  },
+  {
+    id: 'create-sobrecupo-appointment',
+    name: 'Crear Cita Sobrecupo',
+    description:
+      'Agenda una cita de sobrecupo (sobre-agenda) usando el sillón de sobrecupo. Usar cuando se quiere agendar en horarios de sobrecupo obtenidos del endpoint de disponibilidad de sobrecupo.',
+    method: 'POST',
+    path: '/appointments/sobrecupo',
+    dentalinkPath: '/citas',
+    category: 'appointments',
+    arguments: [
+      {
+        name: 'id_paciente',
+        type: 'number',
+        description: 'ID del paciente en Dentalink/Medilink (debe existir previamente)',
+        required: true,
+        example: 123,
+      },
+      {
+        name: 'id_profesional',
+        type: 'number',
+        description: 'ID del profesional que atenderá',
+        required: true,
+        example: 45,
+      },
+      {
+        name: 'id_sucursal',
+        type: 'number',
+        description: 'ID de la sucursal',
+        required: true,
+        example: 3,
+      },
+      {
+        name: 'fecha',
+        type: 'string',
+        description: 'Fecha de la cita (formato YYYY-MM-DD)',
+        required: true,
+        example: '2025-01-20',
+      },
+      {
+        name: 'hora_inicio',
+        type: 'string',
+        description: 'Hora de inicio de la cita (formato HH:MM)',
+        required: true,
+        example: '10:30',
+      },
+      {
+        name: 'tiempo_cita',
+        type: 'number',
+        description:
+          'Duración de la cita en minutos. Si no se proporciona, se usa el intervalo del profesional',
+        required: false,
+        example: 30,
+      },
+      {
+        name: 'comentario',
+        type: 'string',
+        description:
+          'Comentario o notas adicionales sobre la cita. Si no se proporciona, se usa "Agendado por IA (sobrecupo)"',
+        required: false,
+        example: 'Paciente solicita atención urgente',
       },
       {
         name: 'user_id',

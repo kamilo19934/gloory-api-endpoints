@@ -1,0 +1,250 @@
+Get Calendar
+GET
+https://services.leadconnectorhq.com/calendars/:calendarId
+Get calendar by ID
+
+Requirements
+Scope(s)
+calendars.readonly
+Auth Method(s)
+OAuth Access Token
+Private Integration Token
+Token Type(s)
+Sub-Account Token
+Request
+Header Parameters
+Version
+string
+required
+Possible values: [2021-04-15]
+
+API Version
+
+Path Parameters
+calendarId
+string
+required
+Calendar Id
+
+Example: ocQHyuzHvysMo5N5VsXc
+Responses
+200
+400
+401
+Successful response
+application/json
+Schema
+Example (auto)
+Schema
+calendar
+object
+required
+isActive
+boolean
+Should the created calendar be active or draft
+
+Default value: true
+notifications
+object[]
+deprecated
+locationId
+string
+required
+Example:ocQHyuzHvysMo5N5VsXc
+groupId
+string
+Group Id
+
+Example:BqTwX8QFwXzpegMve9EQ
+teamMembers
+object[]
+eventType
+string
+Possible values: [RoundRobin_OptimizeForAvailability, RoundRobin_OptimizeForEqualDistribution]
+
+Default value: RoundRobin_OptimizeForAvailability
+name
+string
+required
+Example:test calendar
+description
+string
+Example:this is used for testing
+slug
+string
+Example:test1
+widgetSlug
+string
+Example:test1
+calendarType
+string
+Possible values: [round_robin, event, class_booking, collective, service_booking, personal]
+
+widgetType
+string
+Calendar widget type. Choose "default" for "neo" and "classic" for "classic" layout.
+
+Possible values: [default, classic]
+
+Default value: classic
+Example:classic
+eventTitle
+string
+Default value: {{contact.name}}
+eventColor
+string
+Default value: #039be5
+meetingLocation
+string
+deprecated
+🚨 Deprecated! Use locationConfigurations.location or teamMembers[].locationConfigurations.location instead.
+
+locationConfigurations
+object[]
+slotDuration
+number
+This controls the duration of the meeting
+
+Default value: 30
+slotDurationUnit
+string
+Unit for slot duration.
+
+Possible values: [mins, hours]
+
+slotInterval
+number
+Slot interval reflects the amount of time the between booking slots that will be shown in the calendar.
+
+Default value: 30
+slotIntervalUnit
+string
+Unit for slot interval.
+
+Possible values: [mins, hours]
+
+slotBuffer
+number
+Slot-Buffer is additional time that can be added after an appointment, allowing for extra time to wrap up
+
+slotBufferUnit
+string
+Unit for slot buffer.
+
+Possible values: [mins, hours]
+
+preBuffer
+number
+Pre-Buffer is additional time that can be added before an appointment, allowing for extra time to get ready
+
+preBufferUnit
+string
+Unit for pre-buffer.
+
+Possible values: [mins, hours]
+
+appoinmentPerSlot
+number
+Maximum bookings per slot (per user). Maximum seats per slot in case of Class Booking Calendar.
+
+Default value: 1
+appoinmentPerDay
+number
+Number of appointments that can be booked for a given day
+
+allowBookingAfter
+number
+Minimum scheduling notice for events
+
+allowBookingAfterUnit
+string
+Unit for minimum scheduling notice
+
+Possible values: [hours, days, weeks, months, mins]
+
+Example:days
+allowBookingFor
+number
+Minimum number of days/weeks/months for which to allow booking events
+
+allowBookingForUnit
+string
+Unit for controlling the duration for which booking would be allowed for
+
+Possible values: [days, weeks, months]
+
+Example:days
+openHours
+object[]
+deprecated
+enableRecurring
+boolean
+Enable recurring appointments for the calendars. Please note that only one member should be added in the calendar to enable this
+
+Default value: false
+recurring
+object
+formId
+string
+stickyContact
+boolean
+isLivePaymentMode
+boolean
+autoConfirm
+boolean
+Default value: true
+shouldSendAlertEmailsToAssignedMember
+boolean
+alertEmail
+string
+googleInvitationEmails
+boolean
+Default value: false
+allowReschedule
+boolean
+Default value: true
+allowCancellation
+boolean
+Default value: true
+shouldAssignContactToTeamMember
+boolean
+shouldSkipAssigningContactForExisting
+boolean
+notes
+string
+pixelId
+string
+formSubmitType
+string
+Possible values: [RedirectURL, ThankYouMessage]
+
+Default value: ThankYouMessage
+formSubmitRedirectURL
+string
+formSubmitThanksMessage
+string
+availabilityType
+number
+deprecated
+While we will support this property for backward compatibility, it is not required anymore.
+
+Possible values: [0, 1]
+
+availabilities
+object[]
+deprecated
+guestType
+string
+Possible values: [count_only, collect_detail]
+
+consentLabel
+string
+calendarCoverImage
+string
+Example:https://path-to-image.com
+lookBusyConfig
+object
+id
+string
+required
+Example:0TkCdp9PfvLeWKYRRvIz

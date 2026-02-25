@@ -96,30 +96,14 @@ export class GoHighLevelProxyService {
     return `${DIAS_SEMANA[date.getDay()]} ${day} ${MESES[date.getMonth()]} ${year}`;
   }
 
-  private calculateSlotDurationFromSlots(slotsData: GHLFreeSlots): number {
-    for (const [dateKey, dateData] of Object.entries(slotsData)) {
-      if (dateKey === 'traceId') continue;
-      const slots = (dateData as any)?.slots || [];
-      if (slots.length >= 2) {
-        try {
-          const first = new Date(slots[0]).getTime();
-          const second = new Date(slots[1]).getTime();
-          const durationMin = (second - first) / 60000;
-          if (durationMin > 0 && durationMin <= 120) {
-            return Math.round(durationMin);
-          }
-        } catch {
-          // ignore
-        }
-      }
-    }
-    return 30;
-  }
-
+  /**
+   * Busca secuencias de slots consecutivos separados exactamente por slotIntervalMin.
+   * Retorna solo los horarios de inicio de cada secuencia válida.
+   */
   private findConsecutiveSlots(
     slots: string[],
     requiredSlots: number,
-    slotDurationMin: number,
+    slotIntervalMin: number,
   ): string[] {
     if (requiredSlots <= 1) return slots;
 
@@ -133,7 +117,7 @@ export class GoHighLevelProxyService {
         const curr = new Date(slots[i + j]).getTime();
         const diffMin = (curr - prev) / 60000;
 
-        if (Math.abs(diffMin - slotDurationMin) > 1) {
+        if (Math.abs(diffMin - slotIntervalMin) > 1) {
           isConsecutive = false;
           break;
         }
@@ -147,16 +131,21 @@ export class GoHighLevelProxyService {
     return consecutiveStarts;
   }
 
+  /**
+   * Extrae y formatea los slots disponibles, filtrando por bloques consecutivos
+   * cuando el tiempo de cita requiere más de un slot.
+   * @param slotIntervalMin Intervalo entre slots del calendario (de la API de GHL)
+   */
   private extractFormattedSlots(
     slotsData: GHLFreeSlots,
     timezone: string,
-    tiempoCitaMin?: number,
-    slotDurationMin: number = 30,
+    tiempoCitaMin: number | undefined,
+    slotIntervalMin: number,
   ): Record<string, string[]> {
     const formatted: Record<string, string[]> = {};
 
     const requiredSlots = tiempoCitaMin
-      ? Math.max(1, Math.ceil(tiempoCitaMin / slotDurationMin))
+      ? Math.max(1, Math.ceil(tiempoCitaMin / slotIntervalMin))
       : 1;
 
     for (const [dateStr, dateData] of Object.entries(slotsData)) {
@@ -167,7 +156,7 @@ export class GoHighLevelProxyService {
 
       const validSlots =
         requiredSlots > 1
-          ? this.findConsecutiveSlots(slots, requiredSlots, slotDurationMin)
+          ? this.findConsecutiveSlots(slots, requiredSlots, slotIntervalMin)
           : slots;
 
       const times: string[] = [];
@@ -232,12 +221,20 @@ export class GoHighLevelProxyService {
       const calendarResult = await this.goHighLevelService.getCalendar(config, calendar.id);
       const calendarInfo = calendarResult.success ? calendarResult.data : calendar;
 
-      let slotDurationMinutes = 30;
+      let slotDurationMinutes: number | null = null;
       if (calendarInfo?.slotDuration) {
         slotDurationMinutes =
           calendarInfo.slotDurationUnit === 'hours'
             ? calendarInfo.slotDuration * 60
             : calendarInfo.slotDuration;
+      }
+
+      let slotIntervalMinutes: number | null = null;
+      if (calendarInfo?.slotInterval) {
+        slotIntervalMinutes =
+          calendarInfo.slotIntervalUnit === 'hours'
+            ? calendarInfo.slotInterval * 60
+            : calendarInfo.slotInterval;
       }
 
       let profesionalNombre = calendar.name || 'Profesional';
@@ -258,10 +255,11 @@ export class GoHighLevelProxyService {
           {
             nombre: profesionalNombre,
             slotDuration: slotDurationMinutes,
+            slotInterval: slotIntervalMinutes,
           },
         );
         calendariosActualizados++;
-        this.logger.log(`Actualizado: ${profesionalNombre} (${calendar.id})`);
+        this.logger.log(`Actualizado: ${profesionalNombre} (${calendar.id}) - slotDuration: ${slotDurationMinutes} min, slotInterval: ${slotIntervalMinutes} min`);
       } else {
         const nextId = await this.getNextCalendarId(clientId);
         const ghlCalendar = this.calendarRepository.create({
@@ -270,6 +268,7 @@ export class GoHighLevelProxyService {
           calendarId: calendar.id,
           nombre: profesionalNombre,
           slotDuration: slotDurationMinutes,
+          slotInterval: slotIntervalMinutes,
           especialidad: '',
           activo: true,
           branches: [],
@@ -537,8 +536,42 @@ export class GoHighLevelProxyService {
 
       const calendarId = calendar.calendarId;
 
+      // Obtener slotInterval y slotDuration directamente del API de GHL (fuente de verdad)
+      const calendarInfoResult = await this.goHighLevelService.getCalendar(config, calendarId);
+
+      if (!calendarInfoResult.success || !calendarInfoResult.data) {
+        throw new HttpException(
+          `No se pudo obtener info del calendario GHL para ${calendar.nombre}: ${calendarInfoResult.error}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const calendarInfo = calendarInfoResult.data;
+      const slotIntervalMinutos = calendarInfo.slotIntervalUnit === 'hours'
+        ? (calendarInfo.slotInterval ?? 0) * 60
+        : calendarInfo.slotInterval;
+      const slotDurationMinutos = calendarInfo.slotDurationUnit === 'hours'
+        ? (calendarInfo.slotDuration ?? 0) * 60
+        : calendarInfo.slotDuration;
+
+      if (!slotIntervalMinutos) {
+        throw new HttpException(
+          `El calendario "${calendar.nombre}" no tiene slotInterval configurado en GHL`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Si no se proporciona tiempo_cita, usar slotDuration del calendario
+      const tiempoCitaEfectivo = params.tiempo_cita || slotDurationMinutos;
+      const bloquesNecesarios = tiempoCitaEfectivo
+        ? Math.max(1, Math.ceil(tiempoCitaEfectivo / slotIntervalMinutos))
+        : 1;
+
+      this.logger.log(
+        `Calendario: ${calendar.nombre}, slotInterval: ${slotIntervalMinutos} min, slotDuration: ${slotDurationMinutos} min, tiempo_cita: ${params.tiempo_cita || 'no especificado'} min, bloques necesarios: ${bloquesNecesarios}`,
+      );
+
       let horariosDisponibles: Record<string, string[]> = {};
-      let slotDurationMinutos = calendar.slotDuration || 30;
       const maxWeeks = 4;
 
       const startDateStr = params.fecha_inicio || new Date().toISOString().split('T')[0];
@@ -562,19 +595,11 @@ export class GoHighLevelProxyService {
           break;
         }
 
-        if (week === 0 && slotDurationMinutos === 30) {
-          const calculated = this.calculateSlotDurationFromSlots(slotsResult.data);
-          if (calculated !== 30) {
-            slotDurationMinutos = calculated;
-            this.logger.log(`Slot duration calculado desde slots: ${slotDurationMinutos} min`);
-          }
-        }
-
         const formatted = this.extractFormattedSlots(
           slotsResult.data,
           timezone,
-          params.tiempo_cita,
-          slotDurationMinutos,
+          tiempoCitaEfectivo,
+          slotIntervalMinutos,
         );
 
         for (const [fecha, horas] of Object.entries(formatted)) {
