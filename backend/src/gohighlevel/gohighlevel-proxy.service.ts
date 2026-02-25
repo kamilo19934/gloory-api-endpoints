@@ -6,6 +6,7 @@ import { GoHighLevelService } from '../integrations/gohighlevel/gohighlevel.serv
 import { GoHighLevelConfig, GHLFreeSlots } from '../integrations/gohighlevel/gohighlevel.types';
 import { GHLCalendar } from './entities/ghl-calendar.entity';
 import { GHLBranch } from './entities/ghl-branch.entity';
+import * as moment from 'moment-timezone';
 
 // Diccionarios para formato español
 const DIAS_SEMANA: Record<number, string> = {
@@ -162,10 +163,8 @@ export class GoHighLevelProxyService {
       const times: string[] = [];
       for (const slot of validSlots) {
         try {
-          const dt = new Date(slot);
-          const hours = dt.getHours().toString().padStart(2, '0');
-          const minutes = dt.getMinutes().toString().padStart(2, '0');
-          times.push(`${hours}:${minutes}`);
+          const dt = moment.tz(slot, timezone);
+          times.push(dt.format('HH:mm'));
         } catch {
           continue;
         }
@@ -652,9 +651,14 @@ export class GoHighLevelProxyService {
     const calendar = await this.resolveCalendar(clientId, params.profesional);
 
     const calendarId = calendar.calendarId;
+    const timezone = config.timezone || 'America/Santiago';
 
-    const startTimeStr = `${params.fecha}T${params.hora_inicio}:00`;
-    const startTime = new Date(startTimeStr);
+    // Interpretar fecha y hora en el timezone del cliente (no como UTC)
+    const startTime = moment.tz(`${params.fecha} ${params.hora_inicio}`, timezone);
+
+    this.logger.log(
+      `Creando cita: ${params.fecha} ${params.hora_inicio} (${timezone}) -> UTC: ${startTime.toISOString()}`,
+    );
 
     if (params.nombre || params.comentario || params.telefono || params.email) {
       const contactPayload: any = {};
@@ -681,7 +685,7 @@ export class GoHighLevelProxyService {
     };
 
     if (params.tiempo_cita) {
-      const endTime = new Date(startTime.getTime() + params.tiempo_cita * 60000);
+      const endTime = startTime.clone().add(params.tiempo_cita, 'minutes');
       payload.endTime = endTime.toISOString();
     }
 
