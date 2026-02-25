@@ -195,7 +195,8 @@ export class ReservoService {
   }
 
   /**
-   * Obtiene las citas futuras (NC) de un paciente desde hoy en adelante
+   * Obtiene todas las citas futuras de un paciente desde hoy en adelante
+   * (incluye confirmadas y no confirmadas)
    */
   async getFutureAppointments(
     patientUuid: string,
@@ -209,7 +210,7 @@ export class ReservoService {
 
       const now = new Date();
       const futureCitas = result.data
-        .filter((c) => c.estado?.codigo === 'NC' && new Date(c.inicio) >= now)
+        .filter((c) => new Date(c.inicio) >= now)
         .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
 
       if (futureCitas.length === 0) {

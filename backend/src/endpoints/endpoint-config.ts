@@ -855,7 +855,7 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
   {
     id: 'reservo-get-future-appointments',
     name: 'Citas Futuras (Reservo)',
-    description: 'Obtiene las citas futuras (no confirmadas) de un paciente desde hoy en adelante',
+    description: 'Obtiene todas las citas futuras de un paciente desde hoy en adelante (confirmadas y no confirmadas)',
     method: 'POST',
     path: '/reservo/appointments/future',
     dentalinkPath: '',
