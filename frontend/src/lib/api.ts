@@ -937,3 +937,52 @@ export function getStatusCategoryIcon(category: StatusCategory): string {
   };
   return icons[category] || '❓';
 }
+
+// ============================================
+// DASHBOARD
+// ============================================
+
+export interface RecentError {
+  id: string;
+  clientId: string;
+  clientName: string;
+  method: string;
+  endpoint: string;
+  statusCode: number;
+  statusCategory: StatusCategory;
+  errorMessage: string | null;
+  duration: number;
+  createdAt: string;
+}
+
+export interface TopEndpoint {
+  endpoint: string;
+  count: number;
+}
+
+export interface TopClient {
+  clientId: string;
+  clientName: string;
+  count: number;
+}
+
+export interface DashboardStats {
+  connectedClients: number;
+  totalClients: number;
+  totalToday: number;
+  successToday: number;
+  clientErrorToday: number;
+  serverErrorToday: number;
+  successRate: number;
+  avgResponseTime: number;
+  topEndpoints: TopEndpoint[];
+  topClients: TopClient[];
+  recentErrors: RecentError[];
+}
+
+export const dashboardApi = {
+  getStats: async (): Promise<DashboardStats> => {
+    const response = await api.get('/dashboard/stats');
+    return response.data;
+  },
+};

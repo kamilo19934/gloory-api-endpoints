@@ -18,6 +18,7 @@ import { UsersModule } from './users/users.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { ClientApiLogsModule } from './client-api-logs/client-api-logs.module';
 import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-logging.interceptor';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -108,6 +109,7 @@ import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-
     ClinicModule,
     AppointmentConfirmationsModule,
     ClientApiLogsModule, // API Logs module (with cron cleanup)
+    DashboardModule, // Dashboard de monitoreo para ingeniería
   ],
   providers: [
     // Aplicar JwtAuthGuard globalmente
