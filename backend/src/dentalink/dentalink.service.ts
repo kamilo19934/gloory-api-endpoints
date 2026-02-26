@@ -765,7 +765,11 @@ export class DentalinkService {
               `✅ Paciente encontrado en ${api.type.toUpperCase()} con ID ${paciente.id}`,
             );
             return {
-              paciente,
+              id_paciente: paciente.id,
+              nombre: `${paciente.nombre || ''} ${paciente.apellidos || ''}`.trim(),
+              rut: paciente.rut,
+              email: paciente.email || null,
+              celular: paciente.celular || null,
             };
           }
         }
@@ -776,10 +780,7 @@ export class DentalinkService {
       }
     }
 
-    throw new HttpException(
-      `Paciente con RUT ${rutFormateado} no encontrado`,
-      HttpStatus.NOT_FOUND,
-    );
+    return { message: `No se encontró un paciente con el RUT "${rutFormateado}"` };
   }
 
   /**
@@ -818,17 +819,14 @@ export class DentalinkService {
     };
 
     // Verificar si el paciente ya existe
-    try {
-      const pacienteExistente = await this.searchUser(clientId, { rut: rutFormateado });
-      if (pacienteExistente.paciente) {
-        return {
-          id_paciente: pacienteExistente.paciente.id,
-          mensaje: 'Paciente ya existe',
-        };
-      }
-    } catch (error) {
-      // Paciente no existe, continuar con la creación
+    const pacienteExistente = await this.searchUser(clientId, { rut: rutFormateado });
+    if (pacienteExistente.id_paciente) {
+      return {
+        id_paciente: pacienteExistente.id_paciente,
+        mensaje: 'Paciente ya existe',
+      };
     }
+    // Si retorna { message } (no encontrado), continuar con la creación
 
     // Crear nuevo paciente
     const payloadPaciente: any = {
@@ -876,9 +874,9 @@ export class DentalinkService {
           this.logger.log(`⚠️ Paciente ya existe en ${api.type}, buscando...`);
           try {
             const pacienteExistente = await this.searchUser(clientId, { rut: rutFormateado });
-            if (pacienteExistente.paciente) {
+            if (pacienteExistente.id_paciente) {
               return {
-                id_paciente: pacienteExistente.paciente.id,
+                id_paciente: pacienteExistente.id_paciente,
                 mensaje: 'Paciente ya existía',
               };
             }
@@ -1675,10 +1673,7 @@ export class DentalinkService {
     }
 
     // Si llegamos aquí, no se encontró en ninguna API
-    throw new HttpException(
-      `Paciente con RUT ${rutFormateado} no encontrado o sin tratamientos`,
-      HttpStatus.NOT_FOUND,
-    );
+    return { message: `No se encontró un paciente con el RUT "${rutFormateado}" o no tiene tratamientos registrados` };
   }
 
   /**
@@ -1695,10 +1690,7 @@ export class DentalinkService {
     });
 
     if (!result.success) {
-      throw new HttpException(
-        result.error || 'Error al obtener citas futuras',
-        HttpStatus.BAD_REQUEST,
-      );
+      return { message: result.error || `No se encontraron citas futuras para el paciente con RUT "${params.rut}"` };
     }
 
     this.logger.log(`✅ ${result.data.total_citas} citas futuras obtenidas para RUT ${params.rut}`);

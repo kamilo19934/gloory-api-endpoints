@@ -92,7 +92,18 @@ export class ReservoProxyService {
       throw new HttpException(result.error || 'Error buscando paciente', HttpStatus.BAD_REQUEST);
     }
 
-    return result.data;
+    if (!result.data || result.data.length === 0) {
+      return { message: `No se encontró un paciente con el identificador "${dto.identificador}"` };
+    }
+
+    const paciente = result.data[0];
+    return {
+      uuid: paciente.uuid,
+      nombre: `${paciente.nombre || ''} ${paciente.apellido_paterno || ''}`.trim(),
+      identificador: paciente.identificador,
+      telefono: paciente.telefono_1 || null,
+      mail: paciente.mail || null,
+    };
   }
 
   async getPatientByUuid(clientId: string, uuid: string) {
@@ -173,7 +184,13 @@ export class ReservoProxyService {
       );
     }
 
-    return this.transformAvailability(result.data || []);
+    const transformed = this.transformAvailability(result.data || []);
+
+    if (transformed.length === 0) {
+      return { message: `No se encontró disponibilidad para la fecha ${dto.fecha}. Intenta con otra fecha o profesional.` };
+    }
+
+    return transformed;
   }
 
   private transformAvailability(data: any[]) {
@@ -381,7 +398,11 @@ export class ReservoProxyService {
       throw new HttpException(result.error || 'Error obteniendo citas', HttpStatus.BAD_REQUEST);
     }
 
-    return (result.data || []).map(this.transformCita);
+    if (!result.data || result.data.length === 0) {
+      return { message: `No se encontraron citas para el paciente "${dto.id_paciente}"` };
+    }
+
+    return result.data.map(this.transformCita);
   }
 
   async getFutureAppointments(clientId: string, dto: ReservoGetAppointmentsDto) {
@@ -389,7 +410,7 @@ export class ReservoProxyService {
     const result = await this.reservoService.getFutureAppointments(dto.id_paciente, config);
 
     if (!result.success) {
-      throw new HttpException(result.error || 'No hay citas futuras', HttpStatus.NOT_FOUND);
+      return { message: result.error || 'No se encontraron citas futuras para este paciente' };
     }
 
     return (result.data || []).map(this.transformCita);
