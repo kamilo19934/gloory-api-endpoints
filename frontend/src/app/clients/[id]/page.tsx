@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import EndpointCard from '@/components/EndpointCard';
 import { clientsApi, Client, EndpointDefinition, IntegrationType } from '@/lib/api';
-import { FiArrowLeft, FiLoader, FiCheckCircle, FiXCircle, FiSettings, FiFileText } from 'react-icons/fi';
+import { FiArrowLeft, FiLoader, FiCheckCircle, FiXCircle, FiSettings, FiFileText, FiEye, FiEyeOff } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 export default function ClientDetailPage() {
@@ -18,6 +18,7 @@ export default function ClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const loadClientData = useCallback(async () => {
     try {
@@ -149,30 +150,42 @@ export default function ClientDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <p className="text-sm text-gray-500 mb-1">API Key/Token</p>
-              <code className="text-sm bg-gray-100 px-3 py-2 rounded block">
-                {(() => {
-                  const ghlIntegration = client.integrations?.find(
-                    (i) => i.integrationType === IntegrationType.GOHIGHLEVEL
-                  );
-                  if (ghlIntegration) {
-                    const token = ghlIntegration.config?.ghlAccessToken;
-                    return token ? `${token.substring(0, 30)}...` : 'No configurada';
-                  }
-                  const reservoIntegration = client.integrations?.find(
-                    (i) => i.integrationType === IntegrationType.RESERVO
-                  );
-                  if (reservoIntegration) {
-                    const token = reservoIntegration.config?.apiToken;
-                    return token ? `${token.substring(0, 30)}...` : 'No configurada';
-                  }
-                  const dentalinkIntegration = client.integrations?.find(
-                    (i) => i.integrationType === IntegrationType.DENTALINK ||
-                           i.integrationType === IntegrationType.DENTALINK_MEDILINK
-                  );
-                  const apiKey = dentalinkIntegration?.config?.apiKey || client.apiKey;
-                  return apiKey ? `${apiKey.substring(0, 30)}...` : 'No configurada';
-                })()}
-              </code>
+              <div className="flex items-center gap-2">
+                <code className="text-sm bg-gray-100 px-3 py-2 rounded block flex-1 break-all">
+                  {(() => {
+                    const ghlIntegration = client.integrations?.find(
+                      (i) => i.integrationType === IntegrationType.GOHIGHLEVEL
+                    );
+                    if (ghlIntegration) {
+                      const token = ghlIntegration.config?.ghlAccessToken;
+                      if (!token) return 'No configurada';
+                      return showApiKey ? token : `${token.substring(0, 30)}...`;
+                    }
+                    const reservoIntegration = client.integrations?.find(
+                      (i) => i.integrationType === IntegrationType.RESERVO
+                    );
+                    if (reservoIntegration) {
+                      const token = reservoIntegration.config?.apiToken;
+                      if (!token) return 'No configurada';
+                      return showApiKey ? token : `${token.substring(0, 30)}...`;
+                    }
+                    const dentalinkIntegration = client.integrations?.find(
+                      (i) => i.integrationType === IntegrationType.DENTALINK ||
+                             i.integrationType === IntegrationType.DENTALINK_MEDILINK
+                    );
+                    const apiKey = dentalinkIntegration?.config?.apiKey || client.apiKey;
+                    if (!apiKey) return 'No configurada';
+                    return showApiKey ? apiKey : `${apiKey.substring(0, 30)}...`;
+                  })()}
+                </code>
+                <button
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                  title={showApiKey ? 'Ocultar API Key' : 'Mostrar API Key'}
+                >
+                  {showApiKey ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                </button>
+              </div>
             </div>
             <div>
               <p className="text-sm text-gray-500 mb-1">Creado</p>
