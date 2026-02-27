@@ -222,6 +222,7 @@ export default function Home() {
                           <th className="px-4 py-3">Hora</th>
                           <th className="px-4 py-3">Cliente</th>
                           <th className="px-4 py-3">Request</th>
+                          <th className="px-4 py-3"></th>
                           <th className="px-4 py-3">Código</th>
                           <th className="px-4 py-3">Error</th>
                         </tr>
@@ -248,6 +249,15 @@ export default function Home() {
                               <span className="text-gray-700 text-xs">
                                 {error.endpoint}
                               </span>
+                            </td>
+                            <td className="px-4 py-2">
+                              <Link
+                                href={`/clients/${error.clientId}/logs?logId=${error.id}`}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-900 text-green-400 text-xs font-mono rounded hover:bg-black transition-colors"
+                                title="Ver log completo"
+                              >
+                                <span className="text-green-500">&gt;_</span> log
+                              </Link>
                             </td>
                             <td className="px-4 py-3">
                               <StatusBadge

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import {
@@ -32,7 +32,9 @@ import toast from 'react-hot-toast';
 
 export default function ClientLogsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const clientId = params?.id as string;
+  const logIdFromUrl = searchParams.get('logId');
 
   const [client, setClient] = useState<Client | null>(null);
   const [logs, setLogs] = useState<ClientApiLog[]>([]);
@@ -121,6 +123,18 @@ export default function ClientLogsPage() {
         .finally(() => setLoading(false));
     }
   }, [clientId, loadClient, loadStats]);
+
+  // Auto-abrir log específico desde query param
+  useEffect(() => {
+    if (logIdFromUrl && clientId) {
+      clientApiLogsApi.getLogDetail(clientId, logIdFromUrl).then((log) => {
+        setSelectedLog(log);
+        setShowDetail(true);
+      }).catch(() => {
+        toast.error('No se pudo cargar el log solicitado');
+      });
+    }
+  }, [logIdFromUrl, clientId]);
 
   useEffect(() => {
     if (clientId) {
