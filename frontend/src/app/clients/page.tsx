@@ -161,7 +161,7 @@ export default function ClientsPage() {
                           </span>
                         </td>
                         <td className="hidden md:table-cell px-6 py-4">
-                          <IntegrationBadges integrations={client.integrations} size="sm" showStatus={false} />
+                          <IntegrationBadges integrations={client.integrations} client={client} size="sm" showStatus={false} />
                         </td>
                         <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(client.createdAt).toLocaleDateString()}
