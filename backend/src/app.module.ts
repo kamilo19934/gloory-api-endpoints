@@ -13,6 +13,7 @@ import { ReservoProxyModule } from './reservo/reservo-proxy.module';
 import { GoHighLevelModule } from './integrations/gohighlevel/gohighlevel.module';
 import { GoHighLevelProxyModule } from './gohighlevel/gohighlevel-proxy.module';
 import { AppointmentConfirmationsModule } from './appointment-confirmations/appointment-confirmations.module';
+import { ReservoConfirmationsModule } from './reservo-confirmations/reservo-confirmations.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -108,6 +109,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     DentalinkModule,
     ClinicModule,
     AppointmentConfirmationsModule,
+    ReservoConfirmationsModule, // Reservo confirmations (independent from Dentalink)
     ClientApiLogsModule, // API Logs module (with cron cleanup)
     DashboardModule, // Dashboard de monitoreo para ingeniería
   ],

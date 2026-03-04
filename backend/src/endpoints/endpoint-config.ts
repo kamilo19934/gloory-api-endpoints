@@ -126,6 +126,39 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
     ],
   },
   {
+    id: 'search-patient-by-data',
+    name: 'Buscar Paciente por Datos',
+    description:
+      'Busca un paciente por nombre, teléfono o correo electrónico. Al menos uno de los campos es requerido.',
+    method: 'POST',
+    path: '/patients/search-by-data',
+    dentalinkPath: '/pacientes',
+    category: 'patients',
+    arguments: [
+      {
+        name: 'nombre',
+        type: 'string',
+        description: 'Nombre del paciente a buscar (búsqueda parcial)',
+        required: false,
+        example: 'Juan',
+      },
+      {
+        name: 'telefono',
+        type: 'string',
+        description: 'Teléfono del paciente a buscar',
+        required: false,
+        example: '+56912345678',
+      },
+      {
+        name: 'correo',
+        type: 'string',
+        description: 'Correo electrónico del paciente a buscar',
+        required: false,
+        example: 'juan.perez@email.com',
+      },
+    ],
+  },
+  {
     id: 'create-patient',
     name: 'Crear Paciente',
     description: 'Crea un nuevo paciente en Dentalink',

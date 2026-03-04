@@ -939,6 +939,190 @@ export function getStatusCategoryIcon(category: StatusCategory): string {
 }
 
 // ============================================
+// RESERVO CONFIRMATIONS TYPES & API
+// ============================================
+
+export interface ReservoConfirmationConfig {
+  id: string;
+  clientId: string;
+  name: string;
+  daysBeforeAppointment: number;
+  timeToSend: string; // HH:mm format
+  ghlCalendarId: string;
+  isEnabled: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReservoNormalizedAppointment {
+  id_paciente: string;
+  nombre_paciente: string;
+  rut_paciente?: string;
+  email_paciente?: string;
+  telefono_paciente?: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  duracion: number;
+  id_profesional: string;
+  nombre_profesional: string;
+  id_tratamiento: string;
+  nombre_tratamiento: string;
+  id_sucursal: string;
+  nombre_sucursal: string;
+  estado_codigo: string;
+  estado_descripcion: string;
+  comentarios?: string;
+}
+
+export enum ReservoConfirmationStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
+
+export interface ReservoPendingConfirmation {
+  id: string;
+  clientId: string;
+  configId: string;
+  reservoAppointmentUuid: string;
+  appointmentData: ReservoNormalizedAppointment;
+  status: ReservoConfirmationStatus;
+  scheduledFor: string;
+  ghlContactId?: string;
+  errorMessage?: string;
+  attempts: number;
+  processedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  config?: ReservoConfirmationConfig;
+}
+
+export interface CreateReservoConfirmationConfigDto {
+  name: string;
+  daysBeforeAppointment: number;
+  timeToSend: string;
+  ghlCalendarId: string;
+  isEnabled?: boolean;
+  order: number;
+}
+
+export interface UpdateReservoConfirmationConfigDto {
+  name?: string;
+  daysBeforeAppointment?: number;
+  timeToSend?: string;
+  ghlCalendarId?: string;
+  isEnabled?: boolean;
+  order?: number;
+}
+
+export const reservoConfirmationsApi = {
+  // Configuraciones
+  getConfigs: async (clientId: string): Promise<ReservoConfirmationConfig[]> => {
+    const response = await api.get(`/clients/${clientId}/reservo-confirmations/configs`);
+    return response.data;
+  },
+
+  getConfig: async (clientId: string, configId: string): Promise<ReservoConfirmationConfig> => {
+    const response = await api.get(`/clients/${clientId}/reservo-confirmations/configs/${configId}`);
+    return response.data;
+  },
+
+  createConfig: async (
+    clientId: string,
+    data: CreateReservoConfirmationConfigDto,
+  ): Promise<ReservoConfirmationConfig> => {
+    const response = await api.post(`/clients/${clientId}/reservo-confirmations/configs`, data);
+    return response.data;
+  },
+
+  updateConfig: async (
+    clientId: string,
+    configId: string,
+    data: UpdateReservoConfirmationConfigDto,
+  ): Promise<ReservoConfirmationConfig> => {
+    const response = await api.put(
+      `/clients/${clientId}/reservo-confirmations/configs/${configId}`,
+      data,
+    );
+    return response.data;
+  },
+
+  deleteConfig: async (clientId: string, configId: string): Promise<void> => {
+    await api.delete(`/clients/${clientId}/reservo-confirmations/configs/${configId}`);
+  },
+
+  // Procesamiento
+  trigger: async (
+    clientId: string,
+    params?: { configId?: string; targetDate?: string },
+  ): Promise<{ message: string; stored: number; totalAppointments: number }> => {
+    const response = await api.post(
+      `/clients/${clientId}/reservo-confirmations/trigger`,
+      params || {},
+    );
+    return response.data;
+  },
+
+  process: async (
+    clientId: string,
+  ): Promise<{ message: string; processed: number; completed: number; failed: number }> => {
+    const response = await api.post(`/clients/${clientId}/reservo-confirmations/process`);
+    return response.data;
+  },
+
+  processSelected: async (
+    clientId: string,
+    confirmationIds: string[],
+  ): Promise<{ message: string; processed: number; completed: number; failed: number }> => {
+    const response = await api.post(`/clients/${clientId}/reservo-confirmations/process-selected`, {
+      confirmationIds,
+    });
+    return response.data;
+  },
+
+  processAll: async (
+    clientId: string,
+  ): Promise<{ message: string; processed: number; completed: number; failed: number }> => {
+    const response = await api.post(`/clients/${clientId}/reservo-confirmations/process-all`);
+    return response.data;
+  },
+
+  // Setup de GHL
+  setupGHL: async (
+    clientId: string,
+  ): Promise<{ success: boolean; message: string; created: string[]; existing: string[]; errors: string[] }> => {
+    const response = await api.post(`/clients/${clientId}/reservo-confirmations/setup-ghl`);
+    return response.data;
+  },
+
+  validateGHL: async (
+    clientId: string,
+  ): Promise<{ valid: boolean; message: string; missing: string[]; required: string[] }> => {
+    const response = await api.get(`/clients/${clientId}/reservo-confirmations/validate-ghl`);
+    return response.data;
+  },
+
+  // Consultas
+  getPending: async (clientId: string): Promise<ReservoPendingConfirmation[]> => {
+    const response = await api.get(`/clients/${clientId}/reservo-confirmations/pending`);
+    return response.data;
+  },
+
+  getPendingByStatus: async (
+    clientId: string,
+    status: ReservoConfirmationStatus,
+  ): Promise<ReservoPendingConfirmation[]> => {
+    const response = await api.get(
+      `/clients/${clientId}/reservo-confirmations/pending/status/${status}`,
+    );
+    return response.data;
+  },
+};
+
+// ============================================
 // DASHBOARD
 // ============================================
 

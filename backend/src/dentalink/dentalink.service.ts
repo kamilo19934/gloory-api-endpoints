@@ -20,6 +20,7 @@ import { CancelAppointmentDto } from './dto/cancel-appointment.dto';
 import { GetTreatmentsDto } from './dto/get-treatments.dto';
 import { SearchSobrecupoAvailabilityDto } from './dto/search-sobrecupo-availability.dto';
 import { ScheduleSobrecupoAppointmentDto } from './dto/schedule-sobrecupo-appointment.dto';
+import { SearchPatientByDataDto } from './dto/search-patient-by-data.dto';
 
 @Injectable()
 export class DentalinkService {
@@ -781,6 +782,88 @@ export class DentalinkService {
     }
 
     return { message: `No se encontró un paciente con el RUT "${rutFormateado}"` };
+  }
+
+  /**
+   * Busca pacientes por nombre, teléfono o correo en Dentalink/Medilink
+   */
+  async searchPatientByData(clientId: string, params: SearchPatientByDataDto): Promise<any> {
+    const { nombre, telefono, correo } = params;
+
+    if (!nombre && !telefono && !correo) {
+      throw new HttpException(
+        'Es necesario al menos un campo de búsqueda (nombre, telefono o correo)',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    this.logger.log(
+      `🔍 Buscando paciente por datos: nombre=${nombre || '-'}, telefono=${telefono || '-'}, correo=${correo || '-'}`,
+    );
+
+    const client = await this.clientsService.findOne(clientId);
+    const apiKey = client.apiKey;
+    const apisToTry = this.getApisToUse(client);
+
+    const headers = {
+      Authorization: `Token ${apiKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    // Construir filtro con los campos proporcionados
+    const filtro: Record<string, any> = {};
+    if (nombre) {
+      filtro.nombre = { like: `%${nombre}%` };
+    }
+    if (telefono) {
+      filtro.celular = { like: `%${telefono}%` };
+    }
+    if (correo) {
+      filtro.email = { like: `%${correo}%` };
+    }
+
+    const filtroStr = JSON.stringify(filtro);
+    const errors: string[] = [];
+
+    for (const api of apisToTry) {
+      try {
+        this.logger.log(`🔍 Buscando paciente por datos en ${api.type.toUpperCase()}`);
+
+        const response = await axios.get(`${api.baseUrl}pacientes`, {
+          headers,
+          params: { q: filtroStr },
+        });
+
+        if (response.status === 200) {
+          const pacientes = response.data?.data || [];
+          if (pacientes.length > 0) {
+            this.logger.log(
+              `✅ ${pacientes.length} paciente(s) encontrado(s) en ${api.type.toUpperCase()}`,
+            );
+            return {
+              total: pacientes.length,
+              pacientes: pacientes.map((p: any) => ({
+                id_paciente: p.id,
+                nombre: `${p.nombre || ''} ${p.apellidos || ''}`.trim(),
+                rut: p.rut,
+                email: p.email || null,
+                celular: p.celular || null,
+              })),
+            };
+          }
+        }
+      } catch (error) {
+        const errorMsg = `${api.type}: ${error.response?.status || error.message}`;
+        this.logger.warn(`⚠️ Error al buscar paciente en ${api.type}: ${error.message}`);
+        errors.push(errorMsg);
+      }
+    }
+
+    return {
+      total: 0,
+      pacientes: [],
+      message: 'No se encontraron pacientes con los datos proporcionados',
+    };
   }
 
   /**

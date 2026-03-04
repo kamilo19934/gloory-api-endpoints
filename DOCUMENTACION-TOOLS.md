@@ -47,6 +47,19 @@ Documentación de endpoints disponibles para el agente de IA. Todos los endpoint
 
 ---
 
+### POST /patients/search-by-data
+- **Nombre:** Buscar Paciente por Datos
+- **Descripción:** Busca un paciente por nombre, teléfono o correo electrónico. Al menos uno de los campos es requerido.
+
+**Args:**
+| Nombre | Requerido | Descripción |
+|--------|-----------|-------------|
+| `nombre` | ❌ | Nombre del paciente a buscar (búsqueda parcial) |
+| `telefono` | ❌ | Teléfono del paciente a buscar |
+| `correo` | ❌ | Correo electrónico del paciente a buscar |
+
+---
+
 ### POST /patients
 - **Nombre:** Crear Paciente
 - **Descripción:** Crea un nuevo paciente en Dentalink

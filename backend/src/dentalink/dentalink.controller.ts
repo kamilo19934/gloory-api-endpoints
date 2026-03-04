@@ -23,6 +23,7 @@ import { GetFutureAppointmentsDto } from './dto/get-future-appointments.dto';
 import { GetTreatmentsDto } from './dto/get-treatments.dto';
 import { SearchSobrecupoAvailabilityDto } from './dto/search-sobrecupo-availability.dto';
 import { ScheduleSobrecupoAppointmentDto } from './dto/schedule-sobrecupo-appointment.dto';
+import { SearchPatientByDataDto } from './dto/search-patient-by-data.dto';
 
 @Public()
 @Controller('clients/:clientId')
@@ -77,6 +78,15 @@ export class DentalinkController {
   @HttpCode(HttpStatus.OK)
   async searchUser(@Param('clientId') clientId: string, @Body() searchUserDto: SearchUserDto) {
     return await this.dentalinkService.searchUser(clientId, searchUserDto);
+  }
+
+  @Post('patients/search-by-data')
+  @HttpCode(HttpStatus.OK)
+  async searchPatientByData(
+    @Param('clientId') clientId: string,
+    @Body() searchPatientByDataDto: SearchPatientByDataDto,
+  ) {
+    return await this.dentalinkService.searchPatientByData(clientId, searchPatientByDataDto);
   }
 
   @Post('patients')
