@@ -36,6 +36,7 @@ interface ProfessionalResponse {
   sucursales: number[];
   habilitado?: boolean; // Solo para panel admin
   activo?: boolean; // Solo para panel admin
+  agendaOnline?: boolean; // Solo para panel admin
 }
 
 @Public()
@@ -95,6 +96,7 @@ export class ClinicController {
     if (includeStatus) {
       response.habilitado = prof.habilitado;
       response.activo = prof.activo;
+      response.agendaOnline = prof.agendaOnline;
     }
 
     return response;

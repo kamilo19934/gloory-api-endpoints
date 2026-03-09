@@ -249,7 +249,7 @@ export default function ClinicConfigPage() {
                 Sucursales y profesionales de <strong>{client.name}</strong>
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                Solo se muestran profesionales habilitados con agenda online
+                Se muestran todos los profesionales habilitados en Dentalink
               </p>
             </div>
             <button
@@ -493,6 +493,7 @@ function ProfessionalCard({
           <h4 className={`font-semibold ${(professional.activo ?? true) ? 'text-gray-900' : 'text-gray-400'}`}>
             {professional.nombre} {professional.apellidos || ''}
             {professional.activo === false && <span className="ml-2 text-xs text-red-500">(Desactivado)</span>}
+            {professional.agendaOnline === false && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Sin agenda online</span>}
           </h4>
 
           {isEditing ? (

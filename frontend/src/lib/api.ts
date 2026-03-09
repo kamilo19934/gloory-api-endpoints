@@ -305,6 +305,7 @@ export interface Professional {
   sucursales: number[];
   habilitado?: boolean;  // Solo presente en panel admin
   activo?: boolean;      // Solo presente en panel admin
+  agendaOnline?: boolean; // Solo presente en panel admin
 }
 
 export interface ClinicStats {

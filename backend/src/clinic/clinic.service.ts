@@ -782,11 +782,11 @@ export class ClinicService {
   /**
    * Obtiene todos los profesionales habilitados en Dentalink (para panel admin)
    * Incluye activos e inactivos localmente para poder hacer toggle
-   * Solo muestra los que están habilitados en Dentalink con agenda online
+   * Incluye profesionales sin agenda online para que el admin vea el estado completo
    */
   async getAllProfessionals(clientId: string): Promise<Professional[]> {
     return this.professionalRepository.find({
-      where: { clientId, habilitado: true, agendaOnline: true },
+      where: { clientId, habilitado: true },
       order: { nombre: 'ASC' },
     });
   }
