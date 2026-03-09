@@ -10,7 +10,9 @@ import { ReservoConfig } from '../integrations/reservo/reservo.types';
 
 interface DentalinkResponse<T> {
   data: T[];
-  links?: { rel: string; href: string; method: string }[] | { next?: string; prev?: string };
+  links?:
+    | { rel: string; href: string; method: string }[]
+    | Record<string, string | null>;
 }
 
 @Injectable()
@@ -64,9 +66,15 @@ export class ClinicService {
 
         // Buscar el link a la siguiente página
         const nextUrl = this.getNextPageUrl(response.data);
+        this.logger.log(
+          `🔗 ${entityName}: Página ${pageCount} - nextUrl: ${nextUrl ? nextUrl.substring(0, 80) + '...' : 'null'}`,
+        );
 
         if (!nextUrl || nextUrl === currentUrl) {
           // No hay más páginas o es la misma URL (evitar loop)
+          if (!nextUrl) {
+            this.logger.log(`📄 ${entityName}: No hay más páginas (nextUrl es null)`);
+          }
           break;
         }
 
@@ -91,25 +99,42 @@ export class ClinicService {
 
   /**
    * Extrae la URL de la siguiente página de la respuesta de Dentalink
+   * Soporta múltiples formatos de links:
+   *   - Array: [{ rel: "next", href: "..." }]
+   *   - Objeto: { next: "..." } o { current: "...", next: "..." }
    */
   private getNextPageUrl<T>(response: DentalinkResponse<T>): string | null {
     if (!response.links) {
+      this.logger.debug('🔗 No hay campo links en la respuesta');
       return null;
     }
+
+    this.logger.debug(`🔗 Links recibidos: ${JSON.stringify(response.links)}`);
 
     // Formato 1: links es un array de objetos con rel/href
     if (Array.isArray(response.links)) {
       const nextLink = response.links.find(
         (link) => link.rel === 'next' || link.rel === 'siguiente',
       );
-      return nextLink?.href || null;
+      const url = nextLink?.href || null;
+      this.logger.debug(`🔗 Formato array - next URL: ${url}`);
+      return url;
     }
 
-    // Formato 2: links es un objeto con propiedades next/prev
+    // Formato 2: links es un objeto con propiedades (ej: { current, next })
     if (typeof response.links === 'object') {
-      return (response.links as { next?: string }).next || null;
+      const linksObj = response.links as Record<string, string | null>;
+      // Buscar 'next', 'siguiente', o 'Next' (case-insensitive)
+      const nextUrl =
+        linksObj.next ||
+        linksObj.siguiente ||
+        linksObj.Next ||
+        null;
+      this.logger.debug(`🔗 Formato objeto - next URL: ${nextUrl}`);
+      return nextUrl;
     }
 
+    this.logger.debug('🔗 Formato de links no reconocido');
     return null;
   }
 
