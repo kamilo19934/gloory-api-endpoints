@@ -200,6 +200,27 @@ export default function ClinicConfigPage() {
     }
   };
 
+  const handleActivateAgenda = async (professional: Professional) => {
+    try {
+      await clinicApi.activateAgendaOnline(clientId, professional.id);
+      toast.success(`Agenda online activada para ${professional.nombre}`);
+
+      // Actualizar estado local
+      setProfessionals((prev) =>
+        prev.map((p) =>
+          p.id === professional.id ? { ...p, agendaOnline: true } : p
+        )
+      );
+
+      // Recargar stats
+      const statsData = await clinicApi.getStats(clientId);
+      setStats(statsData);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Error al activar agenda online');
+      console.error(error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -422,21 +443,43 @@ export default function ClinicConfigPage() {
           </div>
         )}
 
-        {professionals.length > 0 && (
-          <div>
+        {professionals.filter((p) => p.agendaOnline !== false).length > 0 && (
+          <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
               <FiUser className="mr-2 text-primary-600" />
-              Todos los Profesionales Activos ({professionals.length})
+              Profesionales Activos ({professionals.filter((p) => p.agendaOnline !== false).length})
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {professionals.map((prof) => (
+              {professionals.filter((p) => p.agendaOnline !== false).map((prof) => (
                 <ProfessionalCard
                   key={prof.id}
                   professional={prof}
                   showBranches
                   onUpdateSpecialty={handleSpecialtyUpdate}
                   onToggle={handleToggleProfessional}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {professionals.filter((p) => p.agendaOnline === false).length > 0 && (
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+              <FiUser className="mr-2 text-amber-600" />
+              Profesionales sin Agenda Online ({professionals.filter((p) => p.agendaOnline === false).length})
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Estos profesionales est&aacute;n habilitados en Dentalink pero no tienen agenda online. Act&iacute;valos para que aparezcan en el sistema de reservas.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {professionals.filter((p) => p.agendaOnline === false).map((prof) => (
+                <NoAgendaCard
+                  key={prof.id}
+                  professional={prof}
+                  onActivate={handleActivateAgenda}
                 />
               ))}
             </div>
@@ -493,7 +536,6 @@ function ProfessionalCard({
           <h4 className={`font-semibold ${(professional.activo ?? true) ? 'text-gray-900' : 'text-gray-400'}`}>
             {professional.nombre} {professional.apellidos || ''}
             {professional.activo === false && <span className="ml-2 text-xs text-red-500">(Desactivado)</span>}
-            {professional.agendaOnline === false && <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Sin agenda online</span>}
           </h4>
 
           {isEditing ? (
@@ -584,6 +626,59 @@ function ProfessionalCard({
                 (professional.activo ?? true) ? 'translate-x-5' : 'translate-x-1'
               }`}
             />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NoAgendaCard({
+  professional,
+  onActivate,
+}: {
+  professional: Professional;
+  onActivate: (professional: Professional) => Promise<void>;
+}) {
+  const [activating, setActivating] = useState(false);
+
+  const handleActivate = async () => {
+    setActivating(true);
+    try {
+      await onActivate(professional);
+    } catch (error) {
+      // Error handled in parent
+    } finally {
+      setActivating(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-amber-200 p-4 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <h4 className="font-semibold text-gray-900">
+            {professional.nombre} {professional.apellidos || ''}
+          </h4>
+          <p className="text-sm text-primary-600 font-medium mt-1">
+            {professional.especialidad || <span className="text-gray-400 italic">Sin especialidad</span>}
+          </p>
+        </div>
+        <div className="flex flex-col items-end space-y-2">
+          <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+            ID: {professional.id}
+          </span>
+          <button
+            onClick={handleActivate}
+            disabled={activating}
+            className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 transition-colors"
+          >
+            {activating ? (
+              <FiLoader className="animate-spin mr-1" />
+            ) : (
+              <FiToggleRight className="mr-1" />
+            )}
+            Activar Agenda
           </button>
         </div>
       </div>

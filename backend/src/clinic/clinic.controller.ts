@@ -287,6 +287,24 @@ export class ClinicController {
   }
 
   /**
+   * Activa la agenda online de un profesional en Dentalink (usa ID de Dentalink)
+   */
+  @Patch('professionals/:professionalId/agenda-online')
+  async activateAgendaOnline(
+    @Param('clientId') clientId: string,
+    @Param('professionalId') professionalId: string,
+  ): Promise<{ mensaje: string; profesional: ProfessionalResponse }> {
+    const professional = await this.clinicService.activateAgendaOnline(
+      clientId,
+      parseInt(professionalId, 10),
+    );
+    return {
+      mensaje: 'Agenda online activada en Dentalink',
+      profesional: this.transformProfessional(professional, true),
+    };
+  }
+
+  /**
    * Obtiene lista de especialidades únicas del cliente
    * Solo de profesionales habilitados con agenda online
    */

@@ -722,6 +722,58 @@ export class ClinicService {
   }
 
   /**
+   * Activa la agenda online de un profesional en Dentalink y actualiza el caché local
+   * Hace PUT a la API de Dentalink para modificar el campo agenda_online
+   */
+  async activateAgendaOnline(
+    clientId: string,
+    professionalDentalinkId: number,
+  ): Promise<Professional> {
+    const professional = await this.professionalRepository.findOne({
+      where: { dentalinkId: professionalDentalinkId, clientId },
+    });
+
+    if (!professional) {
+      throw new HttpException('Profesional no encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    const client = await this.clientsService.findOne(clientId);
+    const apiKey = client.apiKey;
+    const baseUrl = process.env.DENTALINK_BASE_URL || this.DENTALINK_BASE_URL;
+
+    try {
+      const response = await axios.put(
+        `${baseUrl}dentistas/${professionalDentalinkId}`,
+        { agenda_online: 1 },
+        {
+          headers: {
+            Authorization: `Token ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      if (response.status === 200) {
+        professional.agendaOnline = true;
+        await this.professionalRepository.save(professional);
+        this.logger.log(
+          `✅ Agenda online activada para ${professional.nombre} en Dentalink y caché local`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `❌ Error activando agenda online para ${professional.nombre}: ${error.message}`,
+      );
+      throw new HttpException(
+        `Error al activar agenda online en Dentalink: ${error.response?.data?.message || error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return professional;
+  }
+
+  /**
    * Activa/desactiva un profesional localmente por su ID de Dentalink
    * No afecta Dentalink, solo el caché local
    */

@@ -390,6 +390,11 @@ export const clinicApi = {
     return response.data;
   },
 
+  activateAgendaOnline: async (clientId: string, professionalDentalinkId: number): Promise<{ mensaje: string; profesional: Professional }> => {
+    const response = await api.patch(`/clients/${clientId}/clinic/professionals/${professionalDentalinkId}/agenda-online`);
+    return response.data;
+  },
+
   // Stats y sync
   getStats: async (clientId: string): Promise<ClinicStats> => {
     const response = await api.get(`/clients/${clientId}/clinic/stats`);
