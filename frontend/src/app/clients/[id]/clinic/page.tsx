@@ -270,7 +270,7 @@ export default function ClinicConfigPage() {
                 Sucursales y profesionales de <strong>{client.name}</strong>
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                Se muestran todos los profesionales habilitados en Dentalink
+                Se muestran todos los profesionales habilitados
               </p>
             </div>
             <button
@@ -286,7 +286,7 @@ export default function ClinicConfigPage() {
               ) : (
                 <>
                   <FiRefreshCw className="mr-2" />
-                  Actualizar desde Dentalink
+                  Sincronizar datos
                 </>
               )}
             </button>
@@ -329,7 +329,7 @@ export default function ClinicConfigPage() {
               No hay datos sincronizados
             </h3>
             <p className="text-amber-700 mb-4">
-              Haz clic en &quot;Actualizar desde Dentalink&quot; para cargar las sucursales y profesionales.
+              Haz clic en &quot;Sincronizar datos&quot; para cargar las sucursales y profesionales.
             </p>
           </div>
         )}
@@ -471,7 +471,7 @@ export default function ClinicConfigPage() {
               Profesionales sin Agenda Online ({professionals.filter((p) => p.agendaOnline === false).length})
             </h2>
             <p className="text-sm text-gray-500 mb-4">
-              Estos profesionales est&aacute;n habilitados en Dentalink pero no tienen agenda online. Act&iacute;valos para que aparezcan en el sistema de reservas.
+              Estos profesionales est&aacute;n habilitados pero no tienen agenda online. Act&iacute;valos para que aparezcan en el sistema de reservas.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

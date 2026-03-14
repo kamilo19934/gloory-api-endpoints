@@ -307,6 +307,24 @@ export class ClinicService {
     'https://api.medilink2.healthatom.com/api/v6/profesionales';
 
   /**
+   * Obtiene el API key del cliente desde la integración correcta
+   * Busca en orden: dentalink_medilink, medilink, dentalink, legacy
+   */
+  private getApiKeyForClient(client: any): string {
+    const dualIntegration = client.getIntegration('dentalink_medilink');
+    if (dualIntegration?.config?.apiKey) return dualIntegration.config.apiKey;
+
+    const medilinkIntegration = client.getIntegration('medilink');
+    if (medilinkIntegration?.config?.apiKey) return medilinkIntegration.config.apiKey;
+
+    const dentalinkIntegration = client.getIntegration('dentalink');
+    if (dentalinkIntegration?.config?.apiKey) return dentalinkIntegration.config.apiKey;
+
+    // Fallback: legacy apiKey
+    return client.apiKey;
+  }
+
+  /**
    * Determina qué APIs usar según el tipo de integración del cliente
    */
   private getApisToUse(client: any): Array<{ type: 'dentalink' | 'medilink'; baseUrl: string }> {
@@ -362,7 +380,7 @@ export class ClinicService {
     }
 
     const client = await this.clientsService.findOne(clientId);
-    const apiKey = client.apiKey;
+    const apiKey = this.getApiKeyForClient(client);
     const apisToUse = this.getApisToUse(client);
 
     const headers = {
@@ -469,19 +487,60 @@ export class ClinicService {
         let profesionalesData: any[] = [];
 
         if (api.type === 'dentalink') {
-          // Dentalink usa endpoint /dentistas
+          // Dentalink usa endpoint /dentistas (incluye contratos_sucursal inline)
           profesionalesData = await this.fetchAllPaginated<any>(
             `${api.baseUrl}dentistas/`,
             headers,
             `Profesionales-${api.type}`,
           );
         } else {
-          // Medilink usa endpoint v6/profesionales
+          // Medilink usa endpoint v6/profesionales (no incluye contratos_sucursal)
           profesionalesData = await this.fetchAllPaginated<any>(
             `${this.MEDILINK_PROFESSIONALS_V6_URL}`,
             headers,
             `Profesionales-${api.type}`,
           );
+
+          // MediLink v6 no retorna contratos_sucursal, obtenerlos desde v5/profesionales/{id}/contratos
+          this.logger.log(
+            `📋 Obteniendo contratos por profesional desde MediLink v5...`,
+          );
+          const BATCH_CONTRATOS = 5; // Llamadas paralelas por lote
+          for (let i = 0; i < profesionalesData.length; i += BATCH_CONTRATOS) {
+            const batch = profesionalesData.slice(i, i + BATCH_CONTRATOS);
+            const contratosResults = await Promise.allSettled(
+              batch.map((prof) =>
+                axios.get(
+                  `${this.MEDILINK_BASE_URL}profesionales/${prof.id}/contratos`,
+                  { headers },
+                ),
+              ),
+            );
+
+            contratosResults.forEach((result, index) => {
+              const prof = batch[index];
+              if (result.status === 'fulfilled') {
+                const contratos = result.value.data?.data || [];
+                const sucursalIds = [
+                  ...new Set(
+                    contratos
+                      .filter((c: any) => c.habilitado === 1)
+                      .map((c: any) => c.id_sucursal),
+                  ),
+                ];
+                prof.contratos_sucursal = sucursalIds;
+              } else {
+                this.logger.warn(
+                  `⚠️ No se pudieron obtener contratos para profesional ${prof.id}: ${result.reason?.message}`,
+                );
+                prof.contratos_sucursal = [];
+              }
+            });
+
+            this.logger.log(
+              `📋 Contratos obtenidos: ${Math.min(i + BATCH_CONTRATOS, profesionalesData.length)}/${profesionalesData.length} profesionales`,
+            );
+          }
         }
 
         const profesFromApi = profesionalesData.length;
@@ -738,34 +797,52 @@ export class ClinicService {
     }
 
     const client = await this.clientsService.findOne(clientId);
-    const apiKey = client.apiKey;
-    const baseUrl = process.env.DENTALINK_BASE_URL || this.DENTALINK_BASE_URL;
+    const apiKey = this.getApiKeyForClient(client);
+    const apisToUse = this.getApisToUse(client);
 
-    try {
-      const response = await axios.put(
-        `${baseUrl}dentistas/${professionalDentalinkId}`,
-        { agenda_online: 1 },
-        {
-          headers: {
-            Authorization: `Token ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
+    const headers = {
+      Authorization: `Token ${apiKey}`,
+      'Content-Type': 'application/json',
+    };
 
-      if (response.status === 200) {
-        professional.agendaOnline = true;
-        await this.professionalRepository.save(professional);
-        this.logger.log(
-          `✅ Agenda online activada para ${professional.nombre} en Dentalink y caché local`,
+    // Intentar activar en cada API configurada
+    let activated = false;
+    for (const api of apisToUse) {
+      const url =
+        api.type === 'dentalink'
+          ? `${api.baseUrl}dentistas/${professionalDentalinkId}`
+          : `${this.MEDILINK_PROFESSIONALS_V6_URL}/${professionalDentalinkId}`;
+
+      try {
+        const response = await axios.put(url, { agenda_online: 1 }, { headers });
+
+        if (response.status === 200) {
+          activated = true;
+          this.logger.log(
+            `✅ Agenda online activada para ${professional.nombre} en ${api.type.toUpperCase()} y caché local`,
+          );
+          break; // Activado exitosamente, no seguir intentando
+        }
+      } catch (error) {
+        this.logger.warn(
+          `⚠️ Error activando agenda online en ${api.type.toUpperCase()}: ${error.message}`,
         );
+        // En modo dual, seguir con la otra API
+        if (apisToUse.length === 1) {
+          throw new HttpException(
+            `Error al activar agenda online: ${error.response?.data?.message || error.message}`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
       }
-    } catch (error) {
-      this.logger.error(
-        `❌ Error activando agenda online para ${professional.nombre}: ${error.message}`,
-      );
+    }
+
+    if (activated) {
+      professional.agendaOnline = true;
+      await this.professionalRepository.save(professional);
+    } else {
       throw new HttpException(
-        `Error al activar agenda online en Dentalink: ${error.response?.data?.message || error.message}`,
+        'No se pudo activar la agenda online en ninguna API',
         HttpStatus.BAD_REQUEST,
       );
     }
