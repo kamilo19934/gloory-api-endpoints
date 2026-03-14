@@ -6,6 +6,7 @@
 export interface GoHighLevelConfig {
   ghlAccessToken: string;
   ghlLocationId: string;
+  ghlOAuthMode?: boolean; // true = usar OAuth Marketplace, false/undefined = usar PIT token (default)
   timezone?: string; // default 'America/Santiago'
 }
 

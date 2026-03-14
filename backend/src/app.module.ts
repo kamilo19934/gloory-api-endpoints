@@ -12,6 +12,7 @@ import { ReservoModule } from './integrations/reservo/reservo.module';
 import { ReservoProxyModule } from './reservo/reservo-proxy.module';
 import { GoHighLevelModule } from './integrations/gohighlevel/gohighlevel.module';
 import { GoHighLevelProxyModule } from './gohighlevel/gohighlevel-proxy.module';
+import { GHLOAuthModule } from './gohighlevel/oauth/ghl-oauth.module';
 import { AppointmentConfirmationsModule } from './appointment-confirmations/appointment-confirmations.module';
 import { ReservoConfirmationsModule } from './reservo-confirmations/reservo-confirmations.module';
 import { AuthModule } from './auth/auth.module';
@@ -104,6 +105,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     ReservoProxyModule, // Reservo proxy controller for client routes
     GoHighLevelModule, // GoHighLevel integration service (Global)
     GoHighLevelProxyModule, // GoHighLevel proxy controller for client routes
+    GHLOAuthModule, // GoHighLevel OAuth Marketplace (migración gradual)
     ClientsModule,
     EndpointsModule,
     DentalinkModule,

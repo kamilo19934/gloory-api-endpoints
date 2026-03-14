@@ -329,6 +329,14 @@ export class IntegrationRegistryService {
             { value: 'America/Buenos_Aires', label: 'Argentina (Buenos Aires)' },
           ],
         },
+        {
+          key: 'ghlOAuthMode',
+          label: 'Usar OAuth Marketplace',
+          type: 'boolean',
+          description:
+            'Activar para usar tokens OAuth del Marketplace en lugar del Private Integration Token (PIT). Requiere conectar la app via GET /api/hl/connect.',
+          defaultValue: false,
+        },
       ],
     });
 

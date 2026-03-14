@@ -6,6 +6,7 @@ import { GoHighLevelService } from '../integrations/gohighlevel/gohighlevel.serv
 import { GoHighLevelConfig, GHLFreeSlots } from '../integrations/gohighlevel/gohighlevel.types';
 import { GHLCalendar } from './entities/ghl-calendar.entity';
 import { GHLBranch } from './entities/ghl-branch.entity';
+import { GHLOAuthService } from './oauth/ghl-oauth.service';
 import * as moment from 'moment-timezone';
 
 // Diccionarios para formato español
@@ -41,6 +42,7 @@ export class GoHighLevelProxyService {
   constructor(
     private readonly clientsService: ClientsService,
     private readonly goHighLevelService: GoHighLevelService,
+    private readonly ghlOAuthService: GHLOAuthService,
     @InjectRepository(GHLCalendar)
     private readonly calendarRepository: Repository<GHLCalendar>,
     @InjectRepository(GHLBranch)
@@ -67,7 +69,22 @@ export class GoHighLevelProxyService {
       );
     }
 
-    return integration.config as GoHighLevelConfig;
+    const config = integration.config as GoHighLevelConfig;
+
+    // Si el cliente usa OAuth Marketplace, resolver el token desde la BD OAuth
+    if (config.ghlOAuthMode) {
+      const oauthToken = await this.ghlOAuthService.getLocationAccessToken(config.ghlLocationId);
+      if (!oauthToken) {
+        throw new HttpException(
+          `No hay token OAuth para la location ${config.ghlLocationId}. Conectar via GET /api/hl/connect`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      return { ...config, ghlAccessToken: oauthToken };
+    }
+
+    // Clientes actuales con PIT token — sin cambios
+    return config;
   }
 
   /**
