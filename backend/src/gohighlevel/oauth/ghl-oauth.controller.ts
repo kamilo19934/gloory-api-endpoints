@@ -36,7 +36,7 @@ export class GHLOAuthController {
       await this.ghlOAuthService.handleCallback(code);
       res.redirect(process.env.CLIENT_HOST || 'http://localhost:3000');
     } catch (error) {
-      this.logger.error('Error en callback OAuth:', error?.message);
+      this.logger.error(`Error en callback OAuth: ${error?.message} | GHL response: ${JSON.stringify(error?.response?.data)}`);
       res.redirect(
         `${process.env.CLIENT_HOST || 'http://localhost:3000'}?ghl_oauth_error=true`,
       );
