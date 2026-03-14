@@ -1,0 +1,190 @@
+{
+    client_id: '1e9510ec-afbf-4e75-ad0a-7c206610b9d4',
+    location: 'PFC CIGARROS',
+    platformName: null
+  },
+  {
+    client_id: '541bf787-dbc3-4a08-960d-b897c9919744',
+    location: 'Clínica Sabioncello Dental',
+    platformName: null
+  },
+  {
+    client_id: '7accc874-e93b-41bd-9f45-194ddd0bfb19',
+    location: 'Bookys',
+    platformName: 'gohighlevel'
+  },
+  {
+    client_id: 'cc126454-7407-45be-ba51-e700b54db26e',
+    location: 'Bookys',
+    platformName: 'gohighlevel'
+  },
+  {
+    client_id: '8662636f-feea-4a06-a7ba-5b3ff69e2b22',
+    location: 'Clinica Austral',
+    platformName: null
+  },
+  {
+    client_id: 'e32a7af3-1556-48bd-a8cc-1a436a282806',
+    location: 'Clínica Médico Dental ELPIS',
+    platformName: null
+  },
+  {
+    client_id: 'e21b5196-7851-4c81-9599-b8020b960645',
+    location: 'OyE Dental La Reina',
+    platformName: null
+  },
+  {
+    client_id: 'e05c81d5-bdd7-4308-bded-608ed1d53363',
+    location: 'Moana Dental',
+    platformName: null
+  },
+  {
+    client_id: '77683d2e-300b-4327-b4fd-3ebc5a8c53bf',
+    location: 'The New Smile',
+    platformName: null
+  },
+  {
+    client_id: 'c8fa4418-3ada-4576-bd5a-591c31aa1837',
+    location: 'Clinica Dental Irisdent',
+    platformName: 'dentalink'
+  },
+  {
+    client_id: '4954adfe-180a-45f2-be9c-29fca0fcdf9f',
+    location: 'Clinica Dental y Estetica MyP',
+    platformName: null
+  },
+  {
+    client_id: 'a16d53d6-b805-402f-85bb-ef519a30ab0f',
+    location: 'Clinica Dental Bocca',
+    platformName: null
+  },
+  {
+    client_id: 'cc8d8f44-0870-4641-a4ba-e5c9256e3345',
+    location: 'Coe Aires',
+    platformName: null
+  },
+  {
+    client_id: '2946b91c-166a-421a-b62b-a47ebe5c1a9d',
+    location: 'Clinica Quiropro',
+    platformName: null
+  },
+  {
+    client_id: '6eaffb74-821a-43a8-82f1-8fd27f5a1907',
+    location: 'Centro Arbol',
+    platformName: 'reservo'
+  },
+  {
+    client_id: '3f12ee68-1695-4c7e-b7f2-0bd7920e702c',
+    location: 'Clinica Sonrie Salud',
+    platformName: null
+  },
+  {
+    client_id: '6f1d39c0-e5e1-4590-a1e9-27d8aa9e59f6',
+    location: 'Centro Estetica Antu',
+    platformName: 'gohighlevel'
+  },
+  {
+    client_id: '622f8d1c-32c6-4c3d-ad51-f401267a3743',
+    location: 'Clinica Bless ',
+    platformName: null
+  },
+  {
+    client_id: '1631faa8-50a3-46ee-a2ed-0987df645cee',
+    location: 'Centro Medico Y Odontologico Mana',
+    platformName: 'dentalink'
+  },
+  {
+    client_id: 'fb72c0fb-2e7a-4231-b368-df4634277b49',
+    location: 'Clinica Las Rocas',
+    platformName: null
+  },
+  {
+    client_id: 'a12420dd-da40-4efa-a4c1-2d0c1554fcdb',
+    location: 'Quiroykine',
+    platformName: null
+  },
+  {
+    client_id: '628830ff-5691-48c0-8254-d7fdf602d5a5',
+    location: 'Centro Medico Y Odontologico Mana',
+    platformName: 'reservo'
+  },
+  {
+    client_id: '9ee9f641-4e4b-420b-a4d0-a1065746cac1',
+    location: 'Ceox especialidades odontológicas y de salud',
+    platformName: null
+  },
+  {
+    client_id: '97b54580-c31b-4dbb-809a-1f5566ec7472',
+    location: 'Clinica Dental Dali',
+    platformName: null
+  },
+  {
+    client_id: '6c3205e9-171f-4ac5-9d6d-8dfaac4af55c',
+    location: 'CIMO Salud | Centro Integral Médico Odontológico',
+    platformName: null
+  },
+  {
+    client_id: '6059bffb-9ee9-4086-948f-5459e303cd15',
+    location: 'Culmen Odontología',
+    platformName: null
+  },
+  {
+    client_id: 'a35cd3eb-77de-43cf-a563-7af020b53665',
+    location: 'Clinica Lion Dent',
+    platformName: 'dentalink'
+  },
+  {
+    client_id: '4fe4e01f-73d3-4f69-b0b2-6a8aa33782fa',
+    location: 'Clinica Surbrackets',
+    platformName: null
+  },
+  {
+    client_id: 'b167d040-ea04-4963-b826-dfd2beeccf73',
+    location: 'Malc Aesthetics',
+    platformName: null
+  },
+  {
+    client_id: '4d6293cc-5505-4f11-97be-5e9b3ad928fb',
+    location: 'Dental Mege',
+    platformName: null
+  },
+  {
+    client_id: 'd3d37d6c-1b8b-49d6-b89a-024ec89854ae',
+    location: 'Clinica Viena',
+    platformName: null
+  },
+  {
+    client_id: 'd296e3bd-0189-4797-91ef-bc6a6d42895b',
+    location: 'Clinica Santa Apolonia',
+    platformName: 'gohighlevel'
+  },
+  {
+    client_id: 'cc29171f-4225-4e3c-ae85-da4af8320ebf',
+    location: 'Clinica Dental Quintamar',
+    platformName: 'dentalink'
+  },
+  {
+    client_id: '09229abb-7703-4b41-9194-2ae72fa33688',
+    location: 'Clinica Damu',
+    platformName: null
+  },
+  {
+    client_id: '39e184da-a760-448c-93cc-0b8017d19fbf',
+    location: 'Clinica Delta',
+    platformName: null
+  },
+  {
+    client_id: '8717a5d4-4958-4c8a-bbb6-df33b1f0f0f3',
+    location: 'Proteccion Ahorro',
+    platformName: 'gohighlevel'
+  },
+  {
+    client_id: '23911fc9-9164-4918-893e-4355e9f07778',
+    location: 'Vivamed Chile',
+    platformName: 'reservo'
+  },
+  {
+    client_id: '57254c78-dc2b-47cd-be76-e6319f2cab32',
+    location: 'Clinica Altos Del Desierto',
+    platformName: null
+  }

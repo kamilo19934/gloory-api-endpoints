@@ -148,6 +148,17 @@ Documentación de endpoints disponibles para el agente de IA (integración Reser
 
 ---
 
+### POST /reservo/sucursales
+- **Nombre:** Obtener Sucursales (Reservo)
+- **Descripción:** Obtiene las sucursales disponibles para una agenda en Reservo
+
+**Args:**
+| Nombre | Requerido | Descripción |
+|--------|-----------|-------------|
+| `agenda_id` | ✅ | ID asignado de la agenda (ej: 1, 2). Se configura al conectar el cliente con Reservo |
+
+---
+
 ### POST /reservo/prevision
 - **Nombre:** Obtener Previsiones (Reservo)
 - **Descripción:** Obtiene las opciones de previsión de salud disponibles en Reservo

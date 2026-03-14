@@ -740,6 +740,27 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
     ],
   },
 
+  // Reservo - Sucursales
+  {
+    id: 'reservo-get-sucursales',
+    name: 'Obtener Sucursales (Reservo)',
+    description: 'Obtiene las sucursales disponibles para una agenda en Reservo',
+    method: 'POST',
+    path: '/reservo/sucursales',
+    dentalinkPath: '',
+    category: 'reservo',
+    arguments: [
+      {
+        name: 'agenda_id',
+        type: 'number',
+        description:
+          'ID asignado de la agenda (ej: 1, 2). Se configura al conectar el cliente con Reservo.',
+        required: true,
+        example: 1,
+      },
+    ],
+  },
+
   // Reservo - Previsionales
   {
     id: 'reservo-get-prevision',
