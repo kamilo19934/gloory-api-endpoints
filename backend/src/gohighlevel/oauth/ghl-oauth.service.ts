@@ -96,6 +96,8 @@ export class GHLOAuthService implements OnModuleInit {
   // PASO 3 — Intercambia el código por tokens y guarda en BD
   // ══════════════════════════════════════════════════════════════════════════
   private async exchangeCodeForToken(code: string): Promise<void> {
+    this.logger.log(`Intercambiando código OAuth — redirect_uri: ${this.REDIRECT_URL}, client_id: ${this.CLIENT_ID}`);
+
     const params = new URLSearchParams({
       client_id: this.CLIENT_ID,
       client_secret: this.CLIENT_SECRET,
@@ -105,12 +107,19 @@ export class GHLOAuthService implements OnModuleInit {
       redirect_uri: this.REDIRECT_URL,
     });
 
-    const { data } = await axios.post(`${this.BASE_URL}/oauth/token`, params, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Accept: 'application/json',
-      },
-    });
+    let data: any;
+    try {
+      const response = await axios.post(`${this.BASE_URL}/oauth/token`, params, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json',
+        },
+      });
+      data = response.data;
+    } catch (err) {
+      this.logger.error(`Error intercambiando token — status: ${err?.response?.status}, body: ${JSON.stringify(err?.response?.data)}`);
+      throw err;
+    }
 
     const { access_token, refresh_token, expires_in, scope, companyId } = data;
 
