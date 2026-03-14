@@ -1176,3 +1176,36 @@ export const dashboardApi = {
     return response.data;
   },
 };
+
+// ============================================
+// GHL OAUTH API
+// ============================================
+
+export interface GHLOAuthStatus {
+  valid: boolean;
+  companies: number;
+}
+
+export interface GHLOAuthLocation {
+  locationId: string;
+  locationName: string;
+  companyId: string;
+  tokenExpiry: Date;
+}
+
+export const ghlOAuthApi = {
+  getConnectUrl: async (): Promise<{ authUrl: string }> => {
+    const response = await api.get('/hl/connect');
+    return response.data;
+  },
+
+  checkStatus: async (): Promise<GHLOAuthStatus> => {
+    const response = await api.get('/hl/check-oauth');
+    return response.data;
+  },
+
+  getLocations: async (): Promise<GHLOAuthLocation[]> => {
+    const response = await api.get('/hl/locations');
+    return response.data;
+  },
+};
