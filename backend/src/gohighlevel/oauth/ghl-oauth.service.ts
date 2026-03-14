@@ -117,7 +117,7 @@ export class GHLOAuthService implements OnModuleInit {
       });
       data = response.data;
     } catch (err) {
-      this.logger.error(`Error intercambiando token — status: ${err?.response?.status}, body: ${JSON.stringify(err?.response?.data)}`);
+      console.error('GHL token exchange error:', err?.response?.status, JSON.stringify(err?.response?.data));
       throw err;
     }
 
