@@ -50,31 +50,36 @@ export class GHLOAuthService implements OnModuleInit {
     const scopes = [
       'contacts.readonly',
       'contacts.write',
-      'conversations.readonly',
-      'conversations.write',
-      'conversations/message.readonly',
-      'conversations/message.write',
-      'conversations/livechat.write',
-      'locations/tags.write',
-      'locations/tags.readonly',
-      'locations/customFields.write',
-      'locations/customFields.readonly',
-      'locations.readonly',
-      'companies.readonly',
       'opportunities.readonly',
       'opportunities.write',
+      'businesses.readonly',
+      'businesses.write',
       'calendars.readonly',
       'calendars.write',
       'calendars/events.readonly',
       'calendars/events.write',
+      'calendars/groups.readonly',
+      'calendars/groups.write',
+      'calendars/resources.readonly',
+      'calendars/resources.write',
+      'conversations.readonly',
+      'conversations.write',
+      'conversations/message.readonly',
+      'conversations/message.write',
+      'conversations/reports.readonly',
+      'conversations/livechat.write',
+      'locations/customFields.readonly',
+      'locations/customFields.write',
       'users.readonly',
+      'users.write',
     ].join(' ');
 
     const authUrl = new URL('https://marketplace.gohighlevel.com/oauth/chooselocation');
     authUrl.searchParams.append('response_type', 'code');
-    authUrl.searchParams.append('client_id', this.CLIENT_ID);
     authUrl.searchParams.append('redirect_uri', this.REDIRECT_URL);
+    authUrl.searchParams.append('client_id', this.CLIENT_ID);
     authUrl.searchParams.append('scope', scopes);
+    authUrl.searchParams.append('version_id', '69b5d439e65bf1b150e68001');
 
     return authUrl.toString();
   }
