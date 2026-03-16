@@ -48,6 +48,9 @@ export class GHLOAuthService implements OnModuleInit {
   // ══════════════════════════════════════════════════════════════════════════
   async connect(): Promise<string> {
     const scopes = [
+      'oauth.write',         // requerido para getLocationToken
+      'locations.readonly',  // requerido para getAllLocations
+      'companies.readonly',  // requerido para getCompany
       'contacts.readonly',
       'contacts.write',
       'opportunities.readonly',
