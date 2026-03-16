@@ -372,6 +372,17 @@ export class GHLOAuthService implements OnModuleInit {
   }
 
   /**
+   * Elimina todos los tokens OAuth de BD y limpia el cache en memoria.
+   */
+  async disconnect(): Promise<void> {
+    await this.locationRepo.clear();
+    await this.companyRepo.clear();
+    this.tokenCache.clear();
+    this.oauthInvalid = false;
+    this.logger.log('🔌 OAuth GHL desconectado — todos los tokens eliminados');
+  }
+
+  /**
    * Retorna true si hay al menos una empresa conectada con token válido.
    */
   async checkOauth(): Promise<{ valid: boolean; companies: number }> {

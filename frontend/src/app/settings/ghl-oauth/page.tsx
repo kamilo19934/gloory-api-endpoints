@@ -3,14 +3,15 @@
 import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import { ghlOAuthApi, GHLOAuthStatus, GHLOAuthLocation } from '@/lib/api';
-import { FiCheckCircle, FiXCircle, FiRefreshCw, FiExternalLink, FiCopy, FiZap } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { FiCheckCircle, FiXCircle, FiRefreshCw, FiExternalLink, FiCopy, FiZap, FiTrash2 } from 'react-icons/fi';
 
 export default function GHLOAuthPage() {
   const [status, setStatus] = useState<GHLOAuthStatus | null>(null);
   const [locations, setLocations] = useState<GHLOAuthLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   useEffect(() => {
     // Detectar si volvemos del callback de GHL con error
@@ -37,6 +38,20 @@ export default function GHLOAuthPage() {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm('¿Seguro que quieres desconectar GHL OAuth? Se eliminarán todos los tokens.')) return;
+    try {
+      setDisconnecting(true);
+      await ghlOAuthApi.disconnect();
+      toast.success('GHL OAuth desconectado');
+      await loadData();
+    } catch (error) {
+      toast.error('Error al desconectar');
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -117,13 +132,23 @@ export default function GHLOAuthPage() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={handleConnect}
-                disabled={connecting}
-                className="text-sm text-orange-600 hover:text-orange-700 font-medium border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-50"
-              >
-                Re-conectar
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleConnect}
+                  disabled={connecting || disconnecting}
+                  className="text-sm text-orange-600 hover:text-orange-700 font-medium border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-50"
+                >
+                  Re-conectar
+                </button>
+                <button
+                  onClick={handleDisconnect}
+                  disabled={disconnecting || connecting}
+                  className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 font-medium border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50"
+                >
+                  {disconnecting ? <FiRefreshCw className="animate-spin" /> : <FiTrash2 />}
+                  Desconectar
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-between">

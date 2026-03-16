@@ -1208,4 +1208,8 @@ export const ghlOAuthApi = {
     const response = await api.get('/hl/locations');
     return response.data;
   },
+
+  disconnect: async (): Promise<void> => {
+    await api.delete('/hl/disconnect');
+  },
 };

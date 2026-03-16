@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res, HttpCode, Logger } from '@nestjs/common';
+import { Controller, Get, Delete, Query, Res, HttpCode, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { Public } from '../../auth/decorators/public.decorator';
 import { GHLOAuthService } from './ghl-oauth.service';
@@ -50,6 +50,16 @@ export class GHLOAuthController {
   @Get('check-oauth')
   async checkOauth(): Promise<{ valid: boolean; companies: number }> {
     return this.ghlOAuthService.checkOauth();
+  }
+
+  /**
+   * Desconecta GHL OAuth — elimina todos los tokens de BD.
+   * DELETE /api/hl/disconnect
+   */
+  @Delete('disconnect')
+  async disconnect(): Promise<{ success: boolean }> {
+    await this.ghlOAuthService.disconnect();
+    return { success: true };
   }
 
   /**
