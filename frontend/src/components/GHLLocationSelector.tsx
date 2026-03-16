@@ -21,18 +21,15 @@ interface GHLLocationSelectorProps {
   locationId: string;
   accessToken: string;
   oauthMode: boolean;
-  onLocationChange: (locationId: string) => void;
-  onAccessTokenChange: (token: string) => void;
-  onOAuthModeChange: (isOAuth: boolean) => void;
+  /** Aplica multiples cambios de config en una sola llamada (evita batching issues) */
+  onConfigChange: (changes: Record<string, any>) => void;
 }
 
 export default function GHLLocationSelector({
   locationId,
   accessToken,
   oauthMode,
-  onLocationChange,
-  onAccessTokenChange,
-  onOAuthModeChange,
+  onConfigChange,
 }: GHLLocationSelectorProps) {
   const [oauthConnected, setOauthConnected] = useState(false);
   const [locations, setLocations] = useState<GHLOAuthLocation[]>([]);
@@ -75,9 +72,12 @@ export default function GHLLocationSelector({
   };
 
   const handleLocationSelect = async (selectedLocationId: string) => {
-    onLocationChange(selectedLocationId);
-    onOAuthModeChange(true);
-    onAccessTokenChange('');
+    // Un solo onChange con todos los campos — evita que React batching pierda valores
+    onConfigChange({
+      ghlLocationId: selectedLocationId,
+      ghlOAuthMode: true,
+      ghlAccessToken: '',
+    });
 
     // Cargar preview de calendarios
     if (selectedLocationId) {
@@ -99,11 +99,10 @@ export default function GHLLocationSelector({
     const newManual = !manualMode;
     setManualMode(newManual);
     if (newManual) {
-      onOAuthModeChange(false);
+      onConfigChange({ ghlOAuthMode: false });
       setCalendars([]);
     } else {
-      onOAuthModeChange(true);
-      onAccessTokenChange('');
+      onConfigChange({ ghlOAuthMode: true, ghlAccessToken: '' });
     }
   };
 
@@ -291,7 +290,7 @@ export default function GHLLocationSelector({
             <input
               type="text"
               value={locationId || ''}
-              onChange={(e) => onLocationChange(e.target.value)}
+              onChange={(e) => onConfigChange({ ghlLocationId: e.target.value })}
               placeholder="Ingresa el Location ID"
               className="block w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-colors text-sm bg-white hover:border-gray-300"
             />
@@ -304,7 +303,7 @@ export default function GHLLocationSelector({
             <input
               type="password"
               value={accessToken || ''}
-              onChange={(e) => onAccessTokenChange(e.target.value)}
+              onChange={(e) => onConfigChange({ ghlAccessToken: e.target.value })}
               placeholder="pit-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
               className="block w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-colors text-sm font-mono bg-white hover:border-gray-300"
             />

@@ -413,9 +413,16 @@ export default function IntegrationSelector({
         locationId={integration.config.ghlLocationId || ''}
         accessToken={integration.config.ghlAccessToken || ''}
         oauthMode={integration.config.ghlOAuthMode ?? false}
-        onLocationChange={(val) => updateConfig(integration.type, 'ghlLocationId', val)}
-        onAccessTokenChange={(val) => updateConfig(integration.type, 'ghlAccessToken', val)}
-        onOAuthModeChange={(val) => updateConfig(integration.type, 'ghlOAuthMode', val)}
+        onConfigChange={(changes) => {
+          // Aplica multiples campos en un solo onChange para evitar batching issues
+          onChange(
+            selectedIntegrations.map((i) =>
+              i.type === integration.type
+                ? { ...i, config: { ...i.config, ...changes } }
+                : i
+            )
+          );
+        }}
       />
     );
   };
