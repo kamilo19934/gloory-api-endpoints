@@ -9,6 +9,7 @@ import {
   getIntegrationColor,
 } from '@/lib/api';
 import { FiCheck, FiPlus, FiX, FiSettings, FiAlertCircle, FiTrash2 } from 'react-icons/fi';
+import GHLLocationSelector from './GHLLocationSelector';
 
 interface IntegrationConfig {
   type: IntegrationType;
@@ -394,6 +395,31 @@ export default function IntegrationSelector({
     }
   };
 
+  // Campos GHL que se agrupan en la sección GoHighLevel
+  const GHL_SELECTOR_FIELDS = ['ghlLocationId', 'ghlAccessToken', 'ghlOAuthMode', 'ghlCalendarId'];
+
+  const hasGHLFields = (fields: IntegrationFieldDefinition[]) => {
+    return fields.some((f) => f.key === 'ghlLocationId');
+  };
+
+  const filterGHLFields = (fields: IntegrationFieldDefinition[]) => {
+    return fields.filter((f) => !GHL_SELECTOR_FIELDS.includes(f.key));
+  };
+
+  const renderGHLSelector = (integration: IntegrationConfig) => {
+    return (
+      <GHLLocationSelector
+        key="ghl-location-selector"
+        locationId={integration.config.ghlLocationId || ''}
+        accessToken={integration.config.ghlAccessToken || ''}
+        oauthMode={integration.config.ghlOAuthMode ?? false}
+        onLocationChange={(val) => updateConfig(integration.type, 'ghlLocationId', val)}
+        onAccessTokenChange={(val) => updateConfig(integration.type, 'ghlAccessToken', val)}
+        onOAuthModeChange={(val) => updateConfig(integration.type, 'ghlOAuthMode', val)}
+      />
+    );
+  };
+
   if (loading) {
     return (
       <div className="animate-pulse space-y-3">
@@ -505,33 +531,72 @@ export default function IntegrationSelector({
                 </h5>
               </div>
 
-              {integration.requiredFields.length > 0 && (
-                <div className="mb-5">
-                  <div className="flex items-center space-x-2 mb-3">
-                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Campos Requeridos</span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      Obligatorio
-                    </span>
-                  </div>
-                  <div className="space-y-3">
-                    {integration.requiredFields.map((field) => renderField(field, config))}
-                  </div>
-                </div>
-              )}
+              {(() => {
+                const allFields = [...integration.requiredFields, ...integration.optionalFields];
+                const showGHLSelector = hasGHLFields(allFields);
+                const requiredFiltered = showGHLSelector
+                  ? filterGHLFields(integration.requiredFields)
+                  : integration.requiredFields;
+                const optionalFiltered = showGHLSelector
+                  ? filterGHLFields(integration.optionalFields)
+                  : integration.optionalFields;
 
-              {integration.optionalFields.length > 0 && (
-                <div>
-                  <div className="flex items-center space-x-2 mb-3">
-                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Campos Opcionales</span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                      Opcional
-                    </span>
-                  </div>
-                  <div className="space-y-3">
-                    {integration.optionalFields.map((field) => renderField(field, config))}
-                  </div>
-                </div>
-              )}
+                return (
+                  <>
+                    {requiredFiltered.length > 0 && (
+                      <div className="mb-5">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Campos Requeridos</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Obligatorio
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          {requiredFiltered.map((field) => renderField(field, config))}
+                        </div>
+                      </div>
+                    )}
+
+                    {optionalFiltered.length > 0 && (
+                      <div className="mb-5">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Campos Opcionales</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            Opcional
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          {optionalFiltered.map((field) => renderField(field, config))}
+                        </div>
+                      </div>
+                    )}
+
+                    {showGHLSelector && (() => {
+                      // Para sub-integraciones (HealthAtom/Reservo), solo mostrar si ghlEnabled está activo
+                      const hasGhlEnabledField = allFields.some((f) => f.key === 'ghlEnabled');
+                      const ghlActive = hasGhlEnabledField ? config.config.ghlEnabled : true;
+                      if (!ghlActive) return null;
+
+                      const ghlCalendarField = allFields.find((f) => f.key === 'ghlCalendarId');
+
+                      return (
+                        <div className="mb-5">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">GoHighLevel</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              Conexion
+                            </span>
+                          </div>
+                          <div className="space-y-3">
+                            {renderGHLSelector(config)}
+                            {ghlCalendarField && renderField(ghlCalendarField, config)}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}

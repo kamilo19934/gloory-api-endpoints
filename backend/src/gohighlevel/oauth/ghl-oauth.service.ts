@@ -404,4 +404,36 @@ export class GHLOAuthService implements OnModuleInit {
     });
     return locations;
   }
+
+  /**
+   * Obtiene los calendarios de una location usando su token OAuth.
+   * Útil para preview en el formulario de creación de clientes.
+   */
+  async getCalendarsForLocation(
+    locationId: string,
+  ): Promise<{ id: string; name: string; calendarType?: string }[]> {
+    const location = await this.locationRepo.findOne({ where: { locationId } });
+    if (!location?.accessToken) {
+      throw new BadRequestException(
+        `No hay token OAuth para la location ${locationId}. Conecta via GET /api/hl/connect`,
+      );
+    }
+
+    const { data } = await axios.get(`${this.BASE_URL}/calendars/`, {
+      params: { locationId },
+      headers: {
+        Authorization: `Bearer ${location.accessToken}`,
+        Version: '2021-07-28',
+        Accept: 'application/json',
+      },
+      timeout: 15000,
+    });
+
+    const calendars = data?.calendars || [];
+    return calendars.map((cal: any) => ({
+      id: cal.id,
+      name: cal.name,
+      calendarType: cal.calendarType,
+    }));
+  }
 }

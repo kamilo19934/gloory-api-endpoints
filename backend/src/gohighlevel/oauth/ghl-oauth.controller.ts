@@ -1,4 +1,4 @@
-import { Controller, Get, Delete, Query, Res, HttpCode, Logger } from '@nestjs/common';
+import { Controller, Get, Delete, Param, Query, Res, HttpCode, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { Public } from '../../auth/decorators/public.decorator';
 import { GHLOAuthService } from './ghl-oauth.service';
@@ -72,5 +72,17 @@ export class GHLOAuthController {
     { locationId: string; locationName: string; companyId: string; tokenExpiry: Date }[]
   > {
     return this.ghlOAuthService.getConnectedLocations();
+  }
+
+  /**
+   * Obtiene los calendarios de una location OAuth conectada.
+   * Útil para preview al crear/editar clientes.
+   * GET /api/hl/locations/:locationId/calendars
+   */
+  @Get('locations/:locationId/calendars')
+  async getLocationCalendars(
+    @Param('locationId') locationId: string,
+  ): Promise<{ id: string; name: string; calendarType?: string }[]> {
+    return this.ghlOAuthService.getCalendarsForLocation(locationId);
   }
 }

@@ -1193,6 +1193,12 @@ export interface GHLOAuthLocation {
   tokenExpiry: Date;
 }
 
+export interface GHLCalendarPreview {
+  id: string;
+  name: string;
+  calendarType?: string;
+}
+
 export const ghlOAuthApi = {
   getConnectUrl: async (): Promise<{ authUrl: string }> => {
     const response = await api.get('/hl/connect');
@@ -1211,5 +1217,10 @@ export const ghlOAuthApi = {
 
   disconnect: async (): Promise<void> => {
     await api.delete('/hl/disconnect');
+  },
+
+  getCalendarsForLocation: async (locationId: string): Promise<GHLCalendarPreview[]> => {
+    const response = await api.get(`/hl/locations/${locationId}/calendars`);
+    return response.data;
   },
 };
