@@ -617,6 +617,12 @@ export class AppointmentConfirmationsService {
   /**
    * Busca un contacto en GHL por email o teléfono, o lo crea si no existe
    */
+  private isValidEmail(email: string): boolean {
+    if (!email) return false;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email.trim());
+  }
+
   private async findOrCreateContact(
     locationId: string,
     appointmentData: NormalizedAppointmentData,
@@ -626,7 +632,7 @@ export class AppointmentConfirmationsService {
     const searchUrl = 'https://services.leadconnectorhq.com/contacts/search';
 
     // 1. Buscar por email
-    if (appointmentData.email_paciente) {
+    if (this.isValidEmail(appointmentData.email_paciente)) {
       try {
         this.logger.log(`🔍 Buscando contacto por email: ${appointmentData.email_paciente}`);
 
@@ -709,8 +715,8 @@ export class AppointmentConfirmationsService {
       source: `${platform} Confirmation`,
     };
 
-    if (appointmentData.email_paciente) {
-      createPayload.email = appointmentData.email_paciente;
+    if (this.isValidEmail(appointmentData.email_paciente)) {
+      createPayload.email = appointmentData.email_paciente.trim();
     }
 
     if (appointmentData.telefono_paciente) {
