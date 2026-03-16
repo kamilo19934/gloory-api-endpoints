@@ -413,6 +413,7 @@ export default function IntegrationSelector({
         locationId={integration.config.ghlLocationId || ''}
         accessToken={integration.config.ghlAccessToken || ''}
         oauthMode={integration.config.ghlOAuthMode ?? false}
+        calendarId={integration.config.ghlCalendarId || ''}
         onConfigChange={(changes) => {
           // Aplica multiples campos en un solo onChange para evitar batching issues
           onChange(
@@ -584,8 +585,6 @@ export default function IntegrationSelector({
                       const ghlActive = hasGhlEnabledField ? config.config.ghlEnabled : true;
                       if (!ghlActive) return null;
 
-                      const ghlCalendarField = allFields.find((f) => f.key === 'ghlCalendarId');
-
                       return (
                         <div className="mb-5">
                           <div className="flex items-center space-x-2 mb-3">
@@ -596,7 +595,6 @@ export default function IntegrationSelector({
                           </div>
                           <div className="space-y-3">
                             {renderGHLSelector(config)}
-                            {ghlCalendarField && renderField(ghlCalendarField, config)}
                           </div>
                         </div>
                       );

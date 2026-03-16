@@ -21,6 +21,7 @@ interface GHLLocationSelectorProps {
   locationId: string;
   accessToken: string;
   oauthMode: boolean;
+  calendarId: string;
   /** Aplica multiples cambios de config en una sola llamada (evita batching issues) */
   onConfigChange: (changes: Record<string, any>) => void;
 }
@@ -29,6 +30,7 @@ export default function GHLLocationSelector({
   locationId,
   accessToken,
   oauthMode,
+  calendarId,
   onConfigChange,
 }: GHLLocationSelectorProps) {
   const [oauthConnected, setOauthConnected] = useState(false);
@@ -191,58 +193,35 @@ export default function GHLLocationSelector({
                 </div>
               )}
 
-              {/* Preview de calendarios */}
+              {/* Selector de calendario GHL */}
               {selectedLocation && (
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setCalendarsOpen(!calendarsOpen)}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors text-sm"
-                  >
-                    <span className="text-gray-700 font-medium">
-                      Calendarios disponibles
-                      {!loadingCalendars && (
-                        <span className="ml-1.5 text-gray-400 font-normal">
-                          ({calendars.length})
-                        </span>
-                      )}
-                    </span>
-                    {calendarsOpen ? (
-                      <FiChevronUp className="text-gray-400" size={16} />
-                    ) : (
-                      <FiChevronDown className="text-gray-400" size={16} />
-                    )}
-                  </button>
-
-                  {calendarsOpen && (
-                    <div className="p-3 border-t border-gray-200 bg-white">
-                      {loadingCalendars ? (
-                        <div className="flex items-center gap-2 text-gray-400 py-2">
-                          <FiRefreshCw className="animate-spin" size={14} />
-                          <span className="text-xs">Cargando calendarios...</span>
-                        </div>
-                      ) : calendars.length > 0 ? (
-                        <div className="space-y-1.5">
-                          {calendars.map((cal) => (
-                            <div
-                              key={cal.id}
-                              className="flex items-center justify-between px-2.5 py-1.5 bg-gray-50 rounded text-xs"
-                            >
-                              <span className="text-gray-700 font-medium">{cal.name}</span>
-                              {cal.calendarType && (
-                                <span className="text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                                  {cal.calendarType}
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-400 py-1">
-                          No se encontraron calendarios en esta ubicacion
-                        </p>
-                      )}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-gray-600">
+                    Calendario para clonar citas
+                    <span className="text-gray-400 ml-1">(las citas se crean aqui en GHL)</span>
+                  </label>
+                  {loadingCalendars ? (
+                    <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg border border-gray-200">
+                      <FiRefreshCw className="animate-spin text-gray-400" size={14} />
+                      <span className="text-xs text-gray-500">Cargando calendarios...</span>
                     </div>
+                  ) : calendars.length > 0 ? (
+                    <select
+                      value={calendarId || ''}
+                      onChange={(e) => onConfigChange({ ghlCalendarId: e.target.value })}
+                      className="block w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-colors text-sm bg-white hover:border-gray-300"
+                    >
+                      <option value="">Seleccionar calendario...</option>
+                      {calendars.map((cal) => (
+                        <option key={cal.id} value={cal.id}>
+                          {cal.name}{cal.calendarType ? ` (${cal.calendarType})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-xs text-gray-400 py-1">
+                      No se encontraron calendarios en esta ubicacion
+                    </p>
                   )}
                 </div>
               )}
