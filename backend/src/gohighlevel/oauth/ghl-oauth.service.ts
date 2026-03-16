@@ -48,9 +48,6 @@ export class GHLOAuthService implements OnModuleInit {
   // ══════════════════════════════════════════════════════════════════════════
   async connect(): Promise<string> {
     const scopes = [
-      'oauth.write',         // requerido para getLocationToken
-      'locations.readonly',  // requerido para getAllLocations
-      'companies.readonly',  // requerido para getCompany
       'contacts.readonly',
       'contacts.write',
       'opportunities.readonly',
@@ -65,6 +62,9 @@ export class GHLOAuthService implements OnModuleInit {
       'calendars/resources.write',
       'locations/customFields.readonly',
       'locations/customFields.write',
+      'companies.readonly',
+      'locations.readonly',
+      'oauth.write',
     ].join(' ');
 
     const authUrl = new URL('https://marketplace.gohighlevel.com/oauth/chooselocation');
@@ -72,7 +72,7 @@ export class GHLOAuthService implements OnModuleInit {
     authUrl.searchParams.append('redirect_uri', this.REDIRECT_URL);
     authUrl.searchParams.append('client_id', this.CLIENT_ID);
     authUrl.searchParams.append('scope', scopes);
-    authUrl.searchParams.append('version_id', '69b5d439e65bf1b150e68001');
+    authUrl.searchParams.append('version_id', '69b77c0dd898d3315150de43');
 
     return authUrl.toString();
   }
