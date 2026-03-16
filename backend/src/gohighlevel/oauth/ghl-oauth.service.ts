@@ -93,7 +93,6 @@ export class GHLOAuthService implements OnModuleInit {
       client_secret: this.CLIENT_SECRET,
       grant_type: 'authorization_code',
       code,
-      user_type: 'Company',
       redirect_uri: this.REDIRECT_URL,
     });
 
