@@ -93,6 +93,7 @@ export class GHLOAuthService implements OnModuleInit {
       client_secret: this.CLIENT_SECRET,
       grant_type: 'authorization_code',
       code,
+      user_type: 'Company',
       redirect_uri: this.REDIRECT_URL,
     });
 
@@ -118,14 +119,20 @@ export class GHLOAuthService implements OnModuleInit {
     this.tokenCache.set(companyId, access_token);
     this.oauthInvalid = false;
 
-    // Obtener nombre de la empresa
-    const companyData = await this.getCompany(companyId, access_token);
+    // Obtener nombre de la empresa (opcional — necesita companies.readonly)
+    let companyName = companyId;
+    try {
+      const companyData = await this.getCompany(companyId, access_token);
+      companyName = companyData.company?.name || companyId;
+    } catch (err) {
+      this.logger.warn(`No se pudo obtener nombre de empresa (¿falta companies.readonly?): ${JSON.stringify(err?.response?.data)}`);
+    }
 
     // Guardar/actualizar company en BD
     await this.companyRepo.upsert(
       {
         companyId,
-        companyName: companyData.company?.name || companyId,
+        companyName,
         accessToken: access_token,
         refreshToken: refresh_token,
         tokenExpiry,
@@ -170,7 +177,7 @@ export class GHLOAuthService implements OnModuleInit {
     }
 
     this.logger.log(
-      `✅ OAuth GHL completado — Empresa: ${companyData.company?.name}, Locations: ${locationCount}/${locations.length}`,
+      `✅ OAuth GHL completado — Empresa: ${companyName}, Locations: ${locationCount}/${locations.length}`,
     );
   }
 
