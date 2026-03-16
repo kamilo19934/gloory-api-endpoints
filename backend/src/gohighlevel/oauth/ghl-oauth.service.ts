@@ -50,14 +50,20 @@ export class GHLOAuthService implements OnModuleInit {
     const scopes = [
       'contacts.readonly',
       'contacts.write',
+      'opportunities.readonly',
+      'opportunities.write',
       'calendars.readonly',
       'calendars.write',
       'calendars/events.readonly',
       'calendars/events.write',
+      'calendars/groups.readonly',
+      'calendars/groups.write',
+      'calendars/resources.readonly',
+      'calendars/resources.write',
       'locations/customFields.readonly',
       'locations/customFields.write',
-      'locations.readonly',
-      'companies.readonly',
+      'users.readonly',
+      'users.write',
     ].join(' ');
 
     const authUrl = new URL('https://marketplace.gohighlevel.com/oauth/chooselocation');
