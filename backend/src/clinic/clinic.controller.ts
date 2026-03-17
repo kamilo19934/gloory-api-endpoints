@@ -39,6 +39,11 @@ interface ProfessionalResponse {
   agendaOnline?: boolean; // Solo para panel admin
 }
 
+interface SpecialtyNotFoundResponse {
+  mensaje: string;
+  especialidades_disponibles: string[];
+}
+
 @Public()
 @Controller('clients/:clientId/clinic')
 export class ClinicController {
@@ -322,7 +327,7 @@ export class ClinicController {
   async getProfessionalsBySpecialty(
     @Param('clientId') clientId: string,
     @Body() body: { especialidad: string; id_sucursal?: number },
-  ): Promise<ProfessionalResponse[]> {
+  ): Promise<ProfessionalResponse[] | SpecialtyNotFoundResponse> {
     let professionals;
 
     if (body.id_sucursal) {
@@ -338,6 +343,14 @@ export class ClinicController {
         clientId,
         body.especialidad,
       );
+    }
+
+    if (professionals.length === 0) {
+      const especialidades = await this.clinicService.getSpecialties(clientId);
+      return {
+        mensaje: `Búsqueda sin éxito. Especialidades disponibles: ${especialidades.join(', ')}`,
+        especialidades_disponibles: especialidades,
+      };
     }
 
     // No incluir estados para agentes IA

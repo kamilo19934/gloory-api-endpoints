@@ -179,6 +179,9 @@ Documentación de endpoints disponibles para el agente de IA. Todos los endpoint
 | `especialidad` | ✅ | Nombre de la especialidad a filtrar |
 | `id_sucursal` | ❌ | ID de la sucursal para filtrar adicionalmente |
 
+**Nota:** Si no se encuentran profesionales con la especialidad indicada, retorna:
+`{ "mensaje": "Búsqueda sin éxito. Especialidades disponibles: ...", "especialidades_disponibles": [...] }`
+
 ---
 
 ## Testing
