@@ -1219,6 +1219,11 @@ export const ghlOAuthApi = {
     await api.delete('/hl/disconnect');
   },
 
+  syncLocations: async (): Promise<{ newLocations: number; totalLocations: number }> => {
+    const response = await api.post('/hl/sync-locations');
+    return response.data;
+  },
+
   getCalendarsForLocation: async (locationId: string): Promise<GHLCalendarPreview[]> => {
     const response = await api.get(`/hl/locations/${locationId}/calendars`);
     return response.data;

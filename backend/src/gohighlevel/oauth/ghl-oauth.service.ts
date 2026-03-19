@@ -394,6 +394,70 @@ export class GHLOAuthService implements OnModuleInit {
   }
 
   /**
+   * Re-sincroniza locations desde GHL: descubre nuevas sub-cuentas y genera sus tokens.
+   * Retorna cuántas locations nuevas se encontraron.
+   */
+  async syncLocations(): Promise<{ newLocations: number; totalLocations: number }> {
+    const companies = await this.companyRepo.find();
+    if (companies.length === 0) {
+      throw new BadRequestException('No hay empresa OAuth conectada. Conecta primero via GET /api/hl/connect');
+    }
+
+    let totalNew = 0;
+    let totalLocations = 0;
+
+    for (const company of companies) {
+      if (!company.accessToken) continue;
+
+      const remoteLocations = await this.getAllLocations(company.companyId, company.accessToken);
+      totalLocations += remoteLocations.length;
+
+      for (const location of remoteLocations) {
+        const existing = await this.locationRepo.findOne({
+          where: { locationId: location.id },
+        });
+
+        if (!existing) {
+          try {
+            const locationToken = await this.getLocationToken(
+              company.companyId,
+              location.id,
+              company.accessToken,
+            );
+
+            const locationExpiry = new Date();
+            locationExpiry.setSeconds(locationExpiry.getSeconds() + locationToken.expires_in);
+
+            await this.locationRepo.upsert(
+              {
+                locationId: location.id,
+                locationName: location.name,
+                companyId: company.companyId,
+                accessToken: locationToken.access_token,
+                refreshToken: locationToken.refresh_token,
+                tokenExpiry: locationExpiry,
+                scopes: (locationToken.scope as string).split(' '),
+              },
+              ['locationId'],
+            );
+            totalNew++;
+            this.logger.log(`➕ Nueva location sincronizada: ${location.name} (${location.id})`);
+          } catch (err) {
+            this.logger.warn(
+              `No se pudo obtener token para nueva location ${location.id}: ${err?.message}`,
+            );
+          }
+        }
+      }
+    }
+
+    this.logger.log(
+      `🔄 Sincronización completada — ${totalNew} nuevas locations, ${totalLocations} total`,
+    );
+    return { newLocations: totalNew, totalLocations };
+  }
+
+  /**
    * Lista todas las locations OAuth conectadas (para panel admin).
    */
   async getConnectedLocations(): Promise<

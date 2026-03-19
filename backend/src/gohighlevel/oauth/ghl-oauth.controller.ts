@@ -1,4 +1,4 @@
-import { Controller, Get, Delete, Param, Query, Res, HttpCode, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Query, Res, HttpCode, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { Public } from '../../auth/decorators/public.decorator';
 import { GHLOAuthService } from './ghl-oauth.service';
@@ -72,6 +72,15 @@ export class GHLOAuthController {
     { locationId: string; locationName: string; companyId: string; tokenExpiry: Date }[]
   > {
     return this.ghlOAuthService.getConnectedLocations();
+  }
+
+  /**
+   * Re-sincroniza locations desde GHL: descubre nuevas sub-cuentas instaladas.
+   * POST /api/hl/sync-locations
+   */
+  @Post('sync-locations')
+  async syncLocations(): Promise<{ newLocations: number; totalLocations: number }> {
+    return this.ghlOAuthService.syncLocations();
   }
 
   /**

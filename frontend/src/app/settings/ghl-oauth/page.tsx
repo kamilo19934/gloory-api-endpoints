@@ -12,6 +12,7 @@ export default function GHLOAuthPage() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     // Detectar si volvemos del callback de GHL con error
@@ -63,6 +64,24 @@ export default function GHLOAuthPage() {
     } catch (error) {
       toast.error('Error al obtener URL de autorización');
       setConnecting(false);
+    }
+  };
+
+  const handleSyncLocations = async () => {
+    try {
+      setSyncing(true);
+      const result = await ghlOAuthApi.syncLocations();
+      if (result.newLocations > 0) {
+        toast.success(`${result.newLocations} nueva${result.newLocations !== 1 ? 's' : ''} sub-cuenta${result.newLocations !== 1 ? 's' : ''} encontrada${result.newLocations !== 1 ? 's' : ''}`);
+      } else {
+        toast.success('No se encontraron sub-cuentas nuevas');
+      }
+      await loadData();
+    } catch (error) {
+      toast.error('Error al sincronizar sub-cuentas');
+      console.error(error);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -134,15 +153,23 @@ export default function GHLOAuthPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={handleSyncLocations}
+                  disabled={syncing || connecting || disconnecting}
+                  className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 disabled:opacity-50"
+                >
+                  <FiRefreshCw className={syncing ? 'animate-spin' : ''} />
+                  {syncing ? 'Sincronizando...' : 'Sincronizar Sub-cuentas'}
+                </button>
+                <button
                   onClick={handleConnect}
-                  disabled={connecting || disconnecting}
+                  disabled={connecting || disconnecting || syncing}
                   className="text-sm text-orange-600 hover:text-orange-700 font-medium border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-50"
                 >
                   Re-conectar
                 </button>
                 <button
                   onClick={handleDisconnect}
-                  disabled={disconnecting || connecting}
+                  disabled={disconnecting || connecting || syncing}
                   className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 font-medium border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50"
                 >
                   {disconnecting ? <FiRefreshCw className="animate-spin" /> : <FiTrash2 />}
