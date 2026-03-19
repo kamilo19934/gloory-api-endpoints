@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ghlOAuthApi,
   GHLOAuthLocation,
@@ -15,6 +15,7 @@ import {
   FiExternalLink,
   FiSettings,
   FiRefreshCw,
+  FiSearch,
 } from 'react-icons/fi';
 
 interface GHLLocationSelectorProps {
@@ -40,6 +41,11 @@ export default function GHLLocationSelector({
   const [calendars, setCalendars] = useState<GHLCalendarPreview[]>([]);
   const [calendarsOpen, setCalendarsOpen] = useState(false);
   const [loadingCalendars, setLoadingCalendars] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadOAuthData();
@@ -125,6 +131,94 @@ export default function GHLLocationSelector({
 
   const selectedLocation = locations.find((l) => l.locationId === locationId);
 
+  const filteredLocations = useMemo(() => {
+    const sorted = [...locations].sort((a, b) =>
+      a.locationName.localeCompare(b.locationName, 'es', { sensitivity: 'base' })
+    );
+    if (!searchTerm.trim()) return sorted;
+    const term = searchTerm.toLowerCase();
+    return sorted.filter((loc) =>
+      loc.locationName.toLowerCase().includes(term)
+    );
+  }, [locations, searchTerm]);
+
+  // Cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+        setSearchTerm('');
+      }
+    };
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  // Reset highlight cuando cambia la lista filtrada
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [filteredLocations.length, searchTerm]);
+
+  // Scroll al item resaltado
+  useEffect(() => {
+    if (highlightedIndex >= 0 && isDropdownOpen) {
+      const item = dropdownRef.current?.querySelector(
+        `[data-index="${highlightedIndex}"]`
+      );
+      item?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIndex, isDropdownOpen]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isDropdownOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        setIsDropdownOpen(true);
+        e.preventDefault();
+      }
+      return;
+    }
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex((prev) =>
+          prev < filteredLocations.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex((prev) =>
+          prev > 0 ? prev - 1 : filteredLocations.length - 1
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < filteredLocations.length) {
+          selectLocation(filteredLocations[highlightedIndex].locationId);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setIsDropdownOpen(false);
+        setSearchTerm('');
+        inputRef.current?.blur();
+        break;
+    }
+  };
+
+  const selectLocation = (selectedLocationId: string) => {
+    handleLocationSelect(selectedLocationId);
+    setIsDropdownOpen(false);
+    setSearchTerm('');
+    inputRef.current?.blur();
+  };
+
   if (loading) {
     return (
       <div className="space-y-2">
@@ -160,24 +254,68 @@ export default function GHLLocationSelector({
         <div className="space-y-3">
           {oauthConnected && locations.length > 0 ? (
             <>
-              {/* Dropdown de locations */}
-              <div className="relative">
-                <select
-                  value={locationId || ''}
-                  onChange={(e) => handleLocationSelect(e.target.value)}
-                  className="block w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-colors text-sm bg-white hover:border-gray-300 appearance-none pr-10"
-                >
-                  <option value="">Seleccionar ubicacion...</option>
-                  {locations.map((loc) => (
-                    <option key={loc.locationId} value={loc.locationId}>
-                      {loc.locationName}
-                    </option>
-                  ))}
-                </select>
-                <FiMapPin
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                  size={16}
-                />
+              {/* Combobox de locations con busqueda */}
+              <div className="relative" ref={dropdownRef}>
+                <div className="relative">
+                  <FiSearch
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                    size={16}
+                  />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={isDropdownOpen ? searchTerm : (selectedLocation?.locationName || '')}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      if (!isDropdownOpen) setIsDropdownOpen(true);
+                    }}
+                    onFocus={() => {
+                      setIsDropdownOpen(true);
+                      setSearchTerm('');
+                    }}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Buscar ubicacion..."
+                    className="block w-full pl-10 pr-10 py-2.5 rounded-lg border-2 border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-colors text-sm bg-white hover:border-gray-300"
+                    autoComplete="off"
+                  />
+                  <FiChevronDown
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none transition-transform ${
+                      isDropdownOpen ? 'rotate-180' : ''
+                    }`}
+                    size={16}
+                  />
+                </div>
+
+                {isDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {filteredLocations.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                        No se encontraron ubicaciones
+                      </div>
+                    ) : (
+                      filteredLocations.map((loc, index) => (
+                        <button
+                          key={loc.locationId}
+                          type="button"
+                          data-index={index}
+                          onClick={() => selectLocation(loc.locationId)}
+                          className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center justify-between ${
+                            index === highlightedIndex
+                              ? 'bg-orange-50 text-orange-900'
+                              : loc.locationId === locationId
+                                ? 'bg-gray-50 text-gray-900 font-medium'
+                                : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="truncate">{loc.locationName}</span>
+                          {loc.locationId === locationId && (
+                            <FiCheckCircle className="text-orange-500 shrink-0 ml-2" size={14} />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Badge OAuth activo */}
