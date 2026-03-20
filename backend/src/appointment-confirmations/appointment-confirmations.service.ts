@@ -17,6 +17,8 @@ import { UpdateConfirmationConfigDto } from './dto/update-confirmation-config.dt
 import { ClientsService } from '../clients/clients.service';
 import { ConfirmationAdapterFactory } from './adapters/confirmation-adapter.factory';
 import { NormalizedAppointmentData } from './adapters/confirmation-adapter.interface';
+import { GHLOAuthService } from '../gohighlevel/oauth/ghl-oauth.service';
+import { GoHighLevelConfig } from '../integrations/gohighlevel/gohighlevel.types';
 
 @Injectable()
 export class AppointmentConfirmationsService {
@@ -28,6 +30,7 @@ export class AppointmentConfirmationsService {
     @InjectRepository(PendingConfirmation)
     private pendingRepository: Repository<PendingConfirmation>,
     private clientsService: ClientsService,
+    private ghlOAuthService: GHLOAuthService,
     private adapterFactory: ConfirmationAdapterFactory,
   ) {}
 
@@ -36,6 +39,36 @@ export class AppointmentConfirmationsService {
    */
   private async sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Resuelve las credenciales GHL del cliente (OAuth o PIT/legacy)
+   */
+  private async resolveGHLCredentials(client: any): Promise<{ ghlAccessToken: string; ghlLocationId: string } | null> {
+    // 1. Intentar desde integración gohighlevel (nuevo sistema)
+    const ghlIntegration = client.getIntegration('gohighlevel');
+    if (ghlIntegration) {
+      const config = ghlIntegration.config as GoHighLevelConfig;
+      if (config.ghlLocationId) {
+        if (config.ghlOAuthMode) {
+          const oauthToken = await this.ghlOAuthService.getLocationAccessToken(config.ghlLocationId);
+          if (oauthToken) {
+            return { ghlAccessToken: oauthToken, ghlLocationId: config.ghlLocationId };
+          }
+          return null;
+        }
+        if (config.ghlAccessToken) {
+          return { ghlAccessToken: config.ghlAccessToken, ghlLocationId: config.ghlLocationId };
+        }
+      }
+    }
+
+    // 2. Fallback a campos legacy del cliente
+    if (client.ghlEnabled && client.ghlAccessToken && client.ghlLocationId) {
+      return { ghlAccessToken: client.ghlAccessToken, ghlLocationId: client.ghlLocationId };
+    }
+
+    return null;
   }
 
   /**
@@ -521,20 +554,21 @@ export class AppointmentConfirmationsService {
       const client = confirmation.client;
       const appointmentData = confirmation.appointmentData;
 
-      // Verificar que el cliente tiene GHL configurado
-      if (!client.ghlEnabled || !client.ghlAccessToken || !client.ghlLocationId) {
+      // Resolver credenciales GHL (OAuth o PIT/legacy)
+      const ghlCredentials = await this.resolveGHLCredentials(client);
+      if (!ghlCredentials) {
         throw new Error('Cliente no tiene GoHighLevel configurado');
       }
 
       const ghlHeaders = {
-        Authorization: `Bearer ${client.ghlAccessToken}`,
+        Authorization: `Bearer ${ghlCredentials.ghlAccessToken}`,
         'Content-Type': 'application/json',
         Version: '2021-07-28',
       };
 
       // 1. Buscar o crear contacto en GHL
       const contactId = await this.findOrCreateContact(
-        client.ghlLocationId,
+        ghlCredentials.ghlLocationId,
         appointmentData,
         ghlHeaders,
         confirmation.platform,

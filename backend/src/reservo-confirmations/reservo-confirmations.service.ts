@@ -21,6 +21,8 @@ import { UpdateReservoConfigDto } from './dto/update-reservo-config.dto';
 import { ClientsService } from '../clients/clients.service';
 import { ReservoService } from '../integrations/reservo/reservo.service';
 import { ReservoConfig } from '../integrations/reservo/reservo.types';
+import { GHLOAuthService } from '../gohighlevel/oauth/ghl-oauth.service';
+import { GoHighLevelConfig } from '../integrations/gohighlevel/gohighlevel.types';
 
 @Injectable()
 export class ReservoConfirmationsService {
@@ -33,6 +35,7 @@ export class ReservoConfirmationsService {
     private pendingRepository: Repository<ReservoPendingConfirmation>,
     private clientsService: ClientsService,
     private reservoService: ReservoService,
+    private ghlOAuthService: GHLOAuthService,
   ) {}
 
   // ============================================
@@ -41,6 +44,31 @@ export class ReservoConfirmationsService {
 
   private async sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Resuelve las credenciales GHL para Reservo (OAuth, PIT en reservo config, o PIT en GHL integration)
+   */
+  private async resolveGHLCredentials(client: any, reservoConfig: ReservoConfig): Promise<{ ghlAccessToken: string; ghlLocationId: string } | null> {
+    // 1. Intentar desde integración gohighlevel (OAuth mode)
+    const ghlIntegration = client.getIntegration('gohighlevel');
+    if (ghlIntegration) {
+      const ghlConfig = ghlIntegration.config as GoHighLevelConfig;
+      if (ghlConfig.ghlOAuthMode && ghlConfig.ghlLocationId) {
+        const oauthToken = await this.ghlOAuthService.getLocationAccessToken(ghlConfig.ghlLocationId);
+        if (oauthToken) {
+          return { ghlAccessToken: oauthToken, ghlLocationId: ghlConfig.ghlLocationId };
+        }
+        return null;
+      }
+    }
+
+    // 2. Usar campos GHL dentro de la configuración Reservo (PIT mode)
+    if (reservoConfig.ghlEnabled && reservoConfig.ghlAccessToken && reservoConfig.ghlLocationId) {
+      return { ghlAccessToken: reservoConfig.ghlAccessToken, ghlLocationId: reservoConfig.ghlLocationId };
+    }
+
+    return null;
   }
 
   private async makeGHLRequest<T>(requestFn: () => Promise<T>, maxRetries: number = 3): Promise<T> {
@@ -512,20 +540,21 @@ export class ReservoConfirmationsService {
       const reservoConfig = this.getReservoConfig(client);
       const appointmentData = confirmation.appointmentData;
 
-      // Verificar que GHL está configurado en la integración Reservo
-      if (!reservoConfig.ghlEnabled || !reservoConfig.ghlAccessToken || !reservoConfig.ghlLocationId) {
+      // Resolver credenciales GHL (OAuth o PIT)
+      const ghlCredentials = await this.resolveGHLCredentials(client, reservoConfig);
+      if (!ghlCredentials) {
         throw new Error('La integración Reservo no tiene GoHighLevel configurado');
       }
 
       const ghlHeaders = {
-        Authorization: `Bearer ${reservoConfig.ghlAccessToken}`,
+        Authorization: `Bearer ${ghlCredentials.ghlAccessToken}`,
         'Content-Type': 'application/json',
         Version: '2021-07-28',
       };
 
       // 1. Buscar o crear contacto en GHL
       const contactId = await this.findOrCreateContact(
-        reservoConfig.ghlLocationId,
+        ghlCredentials.ghlLocationId,
         appointmentData,
         ghlHeaders,
       );

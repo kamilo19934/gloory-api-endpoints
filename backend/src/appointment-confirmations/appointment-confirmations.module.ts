@@ -11,6 +11,7 @@ import { HealthAtomModule } from '../integrations/healthatom/healthatom.module';
 import { DentalinkConfirmationAdapter } from './adapters/dentalink-confirmation.adapter';
 import { ReservoConfirmationAdapter } from './adapters/reservo-confirmation.adapter';
 import { ConfirmationAdapterFactory } from './adapters/confirmation-adapter.factory';
+import { GHLOAuthModule } from '../gohighlevel/oauth/ghl-oauth.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ConfirmationAdapterFactory } from './adapters/confirmation-adapter.fact
     ScheduleModule.forRoot(),
     ClientsModule,
     HealthAtomModule,
+    GHLOAuthModule,
     // ReservoModule is @Global() so no explicit import needed
   ],
   controllers: [AppointmentConfirmationsController],
