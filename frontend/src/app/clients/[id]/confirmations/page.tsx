@@ -466,7 +466,7 @@ export default function AppointmentConfirmationsPage() {
             </div>
           </div>
 
-          {client.ghlEnabled && (
+          {(client.ghlEnabled || client.integrations?.some(i => i.integrationType === 'gohighlevel' && i.isEnabled)) && (
             <div className="bg-purple-50 border border-purple-200 rounded-md p-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-start flex-1">
