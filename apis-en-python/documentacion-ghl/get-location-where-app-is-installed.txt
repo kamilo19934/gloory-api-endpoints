@@ -1,0 +1,98 @@
+Get Location where app is installed
+GET
+https://services.leadconnectorhq.com/oauth/installedLocations
+This API allows you fetch location where app is installed upon
+
+Requirements
+Scope(s)
+oauth.readonly
+Auth Method(s)
+OAuth Access Token
+Token Type(s)
+Agency Token
+Request
+Header Parameters
+Version
+string
+required
+Possible values: [2021-07-28]
+
+API Version
+
+Query Parameters
+skip
+string
+Parameter to skip the number installed locations
+
+Default value:0
+Example: 1
+limit
+string
+Parameter to limit the number installed locations
+
+Default value:20
+Example: 10
+query
+string
+Parameter to search for the installed location by name
+
+Example: location name
+isInstalled
+boolean
+Filters out location which are installed for specified app under the specified company
+
+Example:
+companyId
+string
+required
+Parameter to search by the companyId
+
+Example: tDtDnQdgm2LXpyiqYvZ6
+appId
+string
+required
+Parameter to search by the appId
+
+Example: tDtDnQdgm2LXpyiqYvZ6
+versionId
+string
+VersionId of the app
+
+Example: tDtDnQdgm2LXpyiqYvZ6
+onTrial
+boolean
+Filters out locations which are installed for specified app in trial mode
+
+Example:
+planId
+string
+Filters out location which are installed for specified app under the specified planId
+
+Example:
+locationId
+string
+locationId
+
+Example: 1245
+Responses
+200
+400
+401
+422
+Successful response
+application/json
+Schema
+Example (auto)
+Schema
+locations
+object[]
+count
+number
+Total location count under the company
+
+Example:1231
+installToFutureLocations
+boolean
+Boolean to control if user wants app to be automatically installed to future locations
+
+Example:true

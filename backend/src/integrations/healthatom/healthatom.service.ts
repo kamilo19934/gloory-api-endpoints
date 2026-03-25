@@ -294,7 +294,7 @@ export class HealthAtomService {
     data: {
       nombre: string;
       apellidos: string;
-      rut: string;
+      rut?: string;
       telefono?: string;
       email?: string;
       fechaNacimiento?: string;
@@ -303,16 +303,18 @@ export class HealthAtomService {
     branchId?: number,
   ): Promise<DualApiOperationResult<NormalizedPatient>> {
     const apisToTry = this.getApisToTry();
-    const rutFormateado = this.formatRut(data.rut);
+    const rutFormateado = data.rut ? this.formatRut(data.rut) : '';
     let lastError: string | null = null;
 
-    // Verificar si ya existe
-    const existente = await this.searchPatientByRut(rutFormateado, config, branchId);
-    if (existente.success && existente.data) {
-      return {
-        success: true,
-        data: existente.data,
-      };
+    // Verificar si ya existe (solo si se proporcionó RUT)
+    if (rutFormateado) {
+      const existente = await this.searchPatientByRut(rutFormateado, config, branchId);
+      if (existente.success && existente.data) {
+        return {
+          success: true,
+          data: existente.data,
+        };
+      }
     }
 
     // Validar y formatear teléfono
@@ -326,14 +328,17 @@ export class HealthAtomService {
       telefonoFormateado = telefonoResult.formatted;
     }
 
-    const payload = {
+    const payload: any = {
       nombre: data.nombre,
       apellidos: data.apellidos,
-      rut: rutFormateado,
       celular: telefonoFormateado,
       email: data.email,
       fecha_nacimiento: data.fechaNacimiento,
     };
+
+    if (rutFormateado) {
+      payload.rut = rutFormateado;
+    }
 
     for (const api of apisToTry) {
       try {
@@ -355,10 +360,10 @@ export class HealthAtomService {
         const apiErrorMessage = this.extractApiErrorMessage(error);
         this.logger.warn(`⚠️ Error en ${api}: ${apiErrorMessage}`);
 
-        // Si es duplicado, buscar de nuevo
+        // Si es duplicado, buscar de nuevo (solo si hay RUT)
         if (error.response?.status === 400) {
           const errorStr = JSON.stringify(error.response?.data || '').toLowerCase();
-          if (errorStr.includes('existe') || errorStr.includes('duplicate')) {
+          if ((errorStr.includes('existe') || errorStr.includes('duplicate')) && rutFormateado) {
             const existente = await this.searchPatientByRut(rutFormateado, config, branchId);
             if (existente.success && existente.data) {
               return existente;
@@ -787,6 +792,7 @@ export class HealthAtomService {
         if (getResponse.status !== 200) continue;
 
         // Cancelar
+        const citaData = getResponse.data?.data || {};
         const payload =
           api === HealthAtomApi.DENTALINK
             ? {
@@ -795,6 +801,12 @@ export class HealthAtomService {
                 flag_notificar_anulacion: 1,
               }
             : { id_estado: 1, comentario: 'Cita cancelada por sistema' };
+
+        // Si la cita está en sobrecupo (sillón 7), moverla al sillón 1 para que desaparezca visualmente
+        if (citaData.id_sillon === 7) {
+          (payload as any).id_sillon = 1;
+          this.logger.log(`🔄 Cita en sobrecupo (sillón 7), moviendo a sillón 1 al anular`);
+        }
 
         const cancelResponse = await client.put(
           `${endpoints.appointments}/${appointmentId}`,

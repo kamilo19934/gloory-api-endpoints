@@ -117,6 +117,15 @@ export class DentalinkController {
     return await this.dentalinkService.scheduleAppointment(clientId, scheduleAppointmentDto);
   }
 
+  @Post('appointments/videoconsulta')
+  @HttpCode(HttpStatus.CREATED)
+  async scheduleVideoconsultaAppointment(
+    @Param('clientId') clientId: string,
+    @Body() scheduleAppointmentDto: ScheduleAppointmentDto,
+  ) {
+    return await this.dentalinkService.scheduleVideoconsultaAppointment(clientId, scheduleAppointmentDto);
+  }
+
   @Post('appointments/sobrecupo')
   @HttpCode(HttpStatus.CREATED)
   async scheduleSobrecupoAppointment(

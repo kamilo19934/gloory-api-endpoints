@@ -11,8 +11,8 @@ export class CreateUserDto {
   apellidos: string;
 
   @IsString()
-  @IsNotEmpty()
-  rut: string;
+  @IsOptional()
+  rut?: string;
 
   @IsString()
   @IsOptional()

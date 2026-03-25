@@ -170,8 +170,8 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
       {
         name: 'rut',
         type: 'string',
-        description: 'RUT del paciente',
-        required: true,
+        description: 'RUT del paciente (opcional)',
+        required: false,
         example: '12345678-9',
       },
       {
@@ -291,6 +291,77 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
           'Comentario o notas adicionales sobre la cita. Si no se proporciona, se usa "Agendado por IA"',
         required: false,
         example: 'Paciente solicita limpieza dental',
+      },
+      {
+        name: 'user_id',
+        type: 'string',
+        description:
+          'Contact ID de GHL (opcional, solo si GHL está habilitado. Se usa para sincronizar la cita con GoHighLevel)',
+        required: false,
+        example: 'abc123xyz',
+      },
+    ],
+  },
+  {
+    id: 'create-videoconsulta-appointment',
+    name: 'Agendar Cita Videoconsulta',
+    description:
+      'Agenda una nueva cita de videoconsulta (modalidad remota) en Dentalink/Medilink. Envía videoconsulta=1 automáticamente. Si el cliente tiene GHL habilitado, también sincroniza con GoHighLevel.',
+    method: 'POST',
+    path: '/appointments/videoconsulta',
+    dentalinkPath: '/citas',
+    category: 'appointments',
+    arguments: [
+      {
+        name: 'id_paciente',
+        type: 'number',
+        description: 'ID del paciente en Dentalink/Medilink (debe existir previamente)',
+        required: true,
+        example: 123,
+      },
+      {
+        name: 'id_profesional',
+        type: 'number',
+        description: 'ID del profesional que atenderá',
+        required: true,
+        example: 45,
+      },
+      {
+        name: 'id_sucursal',
+        type: 'number',
+        description: 'ID de la sucursal',
+        required: true,
+        example: 3,
+      },
+      {
+        name: 'fecha',
+        type: 'string',
+        description: 'Fecha de la cita (formato YYYY-MM-DD)',
+        required: true,
+        example: '2025-01-20',
+      },
+      {
+        name: 'hora_inicio',
+        type: 'string',
+        description: 'Hora de inicio de la cita (formato HH:MM)',
+        required: true,
+        example: '10:30',
+      },
+      {
+        name: 'tiempo_cita',
+        type: 'number',
+        description:
+          'Duración de la cita en minutos. Si no se proporciona, se usa el intervalo del profesional',
+        required: false,
+        example: 30,
+      },
+      {
+        name: 'comentario',
+        type: 'string',
+        description:
+          'Comentario o notas adicionales sobre la cita. Si no se proporciona, se usa "Agendado por IA (videoconsulta)"',
+        required: false,
+        example: 'Paciente solicita consulta remota',
       },
       {
         name: 'user_id',

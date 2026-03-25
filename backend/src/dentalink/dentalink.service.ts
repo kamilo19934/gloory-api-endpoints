@@ -877,11 +877,11 @@ export class DentalinkService {
     const apisToTry = this.getApisToUse(client);
 
     // Validaciones
-    if (!params.nombre || !params.apellidos || !params.rut) {
-      throw new HttpException('Nombre, apellidos y RUT son requeridos', HttpStatus.BAD_REQUEST);
+    if (!params.nombre || !params.apellidos) {
+      throw new HttpException('Nombre y apellidos son requeridos', HttpStatus.BAD_REQUEST);
     }
 
-    const rutFormateado = formatearRut(params.rut);
+    const rutFormateado = params.rut ? formatearRut(params.rut) : '';
 
     // Validar y formatear teléfono
     if (params.telefono) {
@@ -901,24 +901,28 @@ export class DentalinkService {
       'Content-Type': 'application/json',
     };
 
-    // Verificar si el paciente ya existe
-    const pacienteExistente = await this.searchUser(clientId, { rut: rutFormateado });
-    if (pacienteExistente.id_paciente) {
-      return {
-        id_paciente: pacienteExistente.id_paciente,
-        mensaje: 'Paciente ya existe',
-      };
+    // Verificar si el paciente ya existe (solo si se proporcionó RUT)
+    if (rutFormateado) {
+      const pacienteExistente = await this.searchUser(clientId, { rut: rutFormateado });
+      if (pacienteExistente.id_paciente) {
+        return {
+          id_paciente: pacienteExistente.id_paciente,
+          mensaje: 'Paciente ya existe',
+        };
+      }
     }
-    // Si retorna { message } (no encontrado), continuar con la creación
 
     // Crear nuevo paciente
     const payloadPaciente: any = {
       nombre: params.nombre,
       apellidos: params.apellidos,
-      rut: rutFormateado,
       celular: params.telefono || '',
       email: params.email || '',
     };
+
+    if (rutFormateado) {
+      payloadPaciente.rut = rutFormateado;
+    }
 
     if (params.fecha_nacimiento) {
       payloadPaciente.fecha_nacimiento = params.fecha_nacimiento;
@@ -953,7 +957,7 @@ export class DentalinkService {
         this.logger.warn(`⚠️ Error al crear paciente en ${api.type}: ${apiErrorMessage}`);
 
         // Si es error 400 con mensaje de "existe", buscar el paciente
-        if (errorStatus === 400 && errorData?.message?.toLowerCase().includes('existe')) {
+        if (errorStatus === 400 && errorData?.message?.toLowerCase().includes('existe') && rutFormateado) {
           this.logger.log(`⚠️ Paciente ya existe en ${api.type}, buscando...`);
           try {
             const pacienteExistente = await this.searchUser(clientId, { rut: rutFormateado });
@@ -1212,6 +1216,197 @@ export class DentalinkService {
 
     // Si llegamos aquí, falló en todas las APIs
     throw new HttpException(lastError || 'No se pudo agendar la cita', HttpStatus.BAD_REQUEST);
+  }
+
+  /**
+   * Agenda una cita de videoconsulta en Dentalink/Medilink (videoconsulta=1)
+   * y opcionalmente integra con GHL.
+   */
+  async scheduleVideoconsultaAppointment(
+    clientId: string,
+    params: ScheduleAppointmentDto,
+  ): Promise<any> {
+    this.logger.log(
+      `📹 Agendando cita de VIDEOCONSULTA para paciente ${params.id_paciente} con profesional ${params.id_profesional}`,
+    );
+
+    const client = await this.clientsService.findOne(clientId);
+    const apiKey = client.apiKey;
+    const timezone = client.timezone;
+    const apisToTry = this.getApisToUse(client);
+
+    const headers = {
+      Authorization: `Token ${apiKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    // Obtener intervalo del profesional
+    let duracion = params.tiempo_cita;
+    let intervaloProfesional: number | null = null;
+
+    for (const api of apisToTry) {
+      if (intervaloProfesional) break;
+
+      try {
+        if (api.type === 'dentalink') {
+          const profResp = await axios.get(`${api.baseUrl}dentistas`, { headers });
+          if (profResp.status === 200) {
+            const profesionales = profResp.data?.data || [];
+            const profesional = profesionales.find((p: any) => p.id === params.id_profesional);
+            if (profesional?.intervalo) {
+              intervaloProfesional = profesional.intervalo;
+              this.logger.log(`✅ Intervalo obtenido de ${api.type}: ${intervaloProfesional} min`);
+            }
+          }
+        } else {
+          const profResp = await axios.get(
+            `https://api.medilink2.healthatom.com/api/v6/profesionales/${params.id_profesional}`,
+            { headers },
+          );
+          if (profResp.status === 200) {
+            const profesional = profResp.data?.data;
+            if (profesional?.intervalo) {
+              intervaloProfesional = profesional.intervalo;
+              this.logger.log(`✅ Intervalo obtenido de ${api.type}: ${intervaloProfesional} min`);
+            }
+          }
+        }
+      } catch (error) {
+        this.logger.warn(
+          `⚠️ No se pudo obtener intervalo del profesional en ${api.type}: ${error.message}`,
+        );
+      }
+    }
+
+    // Determinar duración
+    if (!duracion) {
+      if (intervaloProfesional) {
+        duracion = intervaloProfesional;
+      } else {
+        throw new HttpException(
+          'No se pudo determinar la duración de la cita. Especifica tiempo_cita o verifica que el profesional tenga intervalo configurado.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    let lastError: string | null = null;
+
+    for (const api of apisToTry) {
+      try {
+        let payloadCita: any;
+
+        if (api.type === 'dentalink') {
+          payloadCita = {
+            id_dentista: params.id_profesional,
+            id_sucursal: params.id_sucursal,
+            id_estado: 7, // No confirmado
+            id_sillon: 1,
+            id_paciente: params.id_paciente,
+            fecha: params.fecha,
+            hora_inicio: params.hora_inicio,
+            duracion,
+            comentario: params.comentario || 'Agendado por IA (videoconsulta)',
+            videoconsulta: 1,
+          };
+        } else {
+          // Medilink
+          payloadCita = {
+            id_profesional: params.id_profesional,
+            id_sucursal: params.id_sucursal,
+            id_estado: 7, // No confirmado
+            id_sillon: 1,
+            id_paciente: params.id_paciente,
+            fecha: params.fecha,
+            hora_inicio: params.hora_inicio,
+            duracion,
+            comentario: params.comentario || 'Agendado por IA (videoconsulta)',
+            videoconsulta: 1,
+          };
+        }
+
+        this.logger.log(
+          `📤 Intentando agendar videoconsulta en ${api.type.toUpperCase()}: ${JSON.stringify(payloadCita)}`,
+        );
+
+        const response = await axios.post(`${api.baseUrl}citas/`, payloadCita, { headers });
+
+        if (response.status === 201) {
+          const citaData = response.data?.data || {};
+          const idCita = citaData.id;
+
+          this.logger.log(
+            `✅ Cita de videoconsulta creada exitosamente en ${api.type.toUpperCase()} con ID ${idCita}`,
+          );
+
+          // Integración con GHL (si está habilitado y se proporcionó user_id)
+          if (client.ghlEnabled && params.user_id) {
+            this.logger.log('🔗 Iniciando integración con GHL en background...');
+
+            setImmediate(async () => {
+              try {
+                await this.ghlService.integrarCita(
+                  {
+                    accessToken: client.ghlAccessToken,
+                    calendarId: client.ghlCalendarId,
+                    locationId: client.ghlLocationId,
+                  },
+                  {
+                    userId: params.user_id,
+                    fecha: params.fecha,
+                    hora_inicio: params.hora_inicio,
+                    duracion,
+                    id_profesional: params.id_profesional,
+                    id_sucursal: params.id_sucursal,
+                    comentario: params.comentario,
+                  },
+                  api.baseUrl,
+                  headers,
+                  timezone,
+                );
+              } catch (error) {
+                this.logger.error(`Error integrando con GHL: ${error.message}`);
+              }
+            });
+          }
+
+          return {
+            id_cita: idCita,
+            mensaje: 'Cita de videoconsulta agendada exitosamente',
+          };
+        }
+      } catch (error) {
+        const errorStatus = error.response?.status;
+        const errorData = error.response?.data;
+        const apiErrorMessage = this.extractApiErrorMessage(error);
+
+        this.logger.error(`❌ Error al agendar videoconsulta en ${api.type}: ${apiErrorMessage}`);
+
+        if (error.response) {
+          this.logger.error(`📊 Status Code: ${errorStatus}`);
+          this.logger.error(`📄 Respuesta de ${api.type}: ${JSON.stringify(errorData)}`);
+        }
+
+        if (errorStatus === 412) {
+          this.logger.warn(
+            `⚠️ ${api.type} incompatible con esta sucursal (412), intentando siguiente API...`,
+          );
+          continue;
+        }
+
+        if (errorStatus === 400) {
+          lastError = apiErrorMessage;
+          break;
+        }
+
+        lastError = apiErrorMessage;
+      }
+    }
+
+    throw new HttpException(
+      lastError || 'No se pudo agendar la cita de videoconsulta',
+      HttpStatus.BAD_REQUEST,
+    );
   }
 
   /**
@@ -1585,6 +1780,12 @@ export class DentalinkService {
             id_estado: 1, // Estado anulado
             comentario: 'Cita cancelada por sistema',
           };
+        }
+
+        // Si la cita está en sobrecupo (sillón 7), moverla al sillón 1 para que desaparezca visualmente
+        if (citaDataGuardada.id_sillon === 7) {
+          payloadCancelar.id_sillon = 1;
+          this.logger.log(`🔄 Cita en sobrecupo (sillón 7), moviendo a sillón 1 al anular`);
         }
 
         this.logger.log(`🔄 Intentando cancelar cita en ${api.type.toUpperCase()}`);

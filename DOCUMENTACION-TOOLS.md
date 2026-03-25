@@ -67,7 +67,7 @@ Documentación de endpoints disponibles para el agente de IA. Todos los endpoint
 **Args:**
 | Nombre | Requerido | Descripción |
 |--------|-----------|-------------|
-| `rut` | ✅ | RUT del paciente |
+| `rut` | ❌ | RUT del paciente (opcional) |
 | `nombre` | ✅ | Nombre del paciente |
 | `apellidos` | ✅ | Apellidos del paciente |
 | `telefono` | ❌ | Teléfono de contacto |
@@ -103,6 +103,24 @@ Documentación de endpoints disponibles para el agente de IA. Todos los endpoint
 | `hora_inicio` | ✅ | Hora de inicio de la cita (formato HH:MM) |
 | `tiempo_cita` | ❌ | Duración de la cita en minutos. Si no se proporciona, se usa el intervalo del profesional |
 | `comentario` | ❌ | Comentario o notas adicionales sobre la cita. Si no se proporciona, se usa "Agendado por IA" |
+| `user_id` | ❌ | Contact ID de GHL (solo si GHL está habilitado. Se usa para sincronizar la cita con GoHighLevel) |
+
+---
+
+### POST /appointments/videoconsulta
+- **Nombre:** Agendar Cita Videoconsulta
+- **Descripción:** Agenda una nueva cita de videoconsulta (modalidad remota) en Dentalink/Medilink. Envía videoconsulta=1 automáticamente. Si el cliente tiene GHL habilitado, también sincroniza con GoHighLevel.
+
+**Args:**
+| Nombre | Requerido | Descripción |
+|--------|-----------|-------------|
+| `id_paciente` | ✅ | ID del paciente en Dentalink/Medilink (debe existir previamente) |
+| `id_profesional` | ✅ | ID del profesional que atenderá |
+| `id_sucursal` | ✅ | ID de la sucursal |
+| `fecha` | ✅ | Fecha de la cita (formato YYYY-MM-DD) |
+| `hora_inicio` | ✅ | Hora de inicio de la cita (formato HH:MM) |
+| `tiempo_cita` | ❌ | Duración de la cita en minutos. Si no se proporciona, se usa el intervalo del profesional |
+| `comentario` | ❌ | Comentario o notas adicionales sobre la cita. Si no se proporciona, se usa "Agendado por IA (videoconsulta)" |
 | `user_id` | ❌ | Contact ID de GHL (solo si GHL está habilitado. Se usa para sincronizar la cita con GoHighLevel) |
 
 ---
