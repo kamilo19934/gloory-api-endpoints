@@ -171,6 +171,7 @@ export default function ClientDetailPage() {
                     }
                     const dentalinkIntegration = client.integrations?.find(
                       (i) => i.integrationType === IntegrationType.DENTALINK ||
+                             i.integrationType === IntegrationType.MEDILINK ||
                              i.integrationType === IntegrationType.DENTALINK_MEDILINK
                     );
                     const apiKey = dentalinkIntegration?.config?.apiKey || client.apiKey;

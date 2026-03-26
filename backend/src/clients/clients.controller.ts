@@ -59,6 +59,21 @@ export class ClientsController {
     return this.endpointsService.getEndpointsForClient(id, integrationTypes);
   }
 
+  /**
+   * Retorna todas las tools disponibles del cliente en formato JSON estructurado
+   * para que plataformas externas puedan configurar sus propias tools.
+   * Incluye nombre, descripción y argumentos con metadata (required, type, description).
+   */
+  @Public()
+  @Get(':id/tools')
+  async getTools(@Param('id') id: string) {
+    const client = await this.clientsService.findOne(id);
+    const integrationTypes = (client.integrations || [])
+      .filter((i) => i.isEnabled)
+      .map((i) => i.integrationType);
+    return this.endpointsService.getToolsForClient(id, integrationTypes);
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateClientDto: UpdateClientDto) {
     return this.clientsService.update(id, updateClientDto);

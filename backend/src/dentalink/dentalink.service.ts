@@ -33,6 +33,17 @@ export class DentalinkService {
   ) {}
 
   /**
+   * Obtiene el API key desde la integración config, con fallback al campo legacy
+   */
+  private resolveApiKey(client: any): string {
+    const integration =
+      client.getIntegration('dentalink') ||
+      client.getIntegration('medilink') ||
+      client.getIntegration('dentalink_medilink');
+    return integration?.config?.apiKey || client.apiKey;
+  }
+
+  /**
    * Busca disponibilidad de profesionales en Dentalink
    */
   async searchAvailability(clientId: string, params: SearchAvailabilityDto): Promise<any> {
@@ -40,7 +51,7 @@ export class DentalinkService {
     this.logger.log(`📋 Parámetros recibidos: ${JSON.stringify(params)}`);
 
     const client = await this.clientsService.findOne(clientId);
-    const apiKey = client.apiKey;
+    const apiKey = this.resolveApiKey(client);
     const timezone = client.timezone;
 
     // Detectar tipo de integración
@@ -461,7 +472,7 @@ export class DentalinkService {
     this.logger.log(`📋 Parámetros recibidos: ${JSON.stringify(params)}`);
 
     const client = await this.clientsService.findOne(clientId);
-    const apiKey = client.apiKey;
+    const apiKey = this.resolveApiKey(client);
     const timezone = client.timezone;
     const apisToTry = this.getApisToUse(client);
 
@@ -735,7 +746,7 @@ export class DentalinkService {
     this.logger.log(`🔍 Buscando paciente con RUT: ${params.rut}`);
 
     const client = await this.clientsService.findOne(clientId);
-    const apiKey = client.apiKey;
+    const apiKey = this.resolveApiKey(client);
     const apisToTry = this.getApisToUse(client);
 
     const rutFormateado = formatearRut(params.rut);
@@ -802,7 +813,7 @@ export class DentalinkService {
     );
 
     const client = await this.clientsService.findOne(clientId);
-    const apiKey = client.apiKey;
+    const apiKey = this.resolveApiKey(client);
     const apisToTry = this.getApisToUse(client);
 
     const headers = {
@@ -873,7 +884,7 @@ export class DentalinkService {
     this.logger.log(`👤 Creando paciente: ${params.nombre} ${params.apellidos}`);
 
     const client = await this.clientsService.findOne(clientId);
-    const apiKey = client.apiKey;
+    const apiKey = this.resolveApiKey(client);
     const apisToTry = this.getApisToUse(client);
 
     // Validaciones
@@ -1035,7 +1046,7 @@ export class DentalinkService {
     );
 
     const client = await this.clientsService.findOne(clientId);
-    const apiKey = client.apiKey;
+    const apiKey = this.resolveApiKey(client);
     const timezone = client.timezone;
     const apisToTry = this.getApisToUse(client);
 
@@ -1231,7 +1242,7 @@ export class DentalinkService {
     );
 
     const client = await this.clientsService.findOne(clientId);
-    const apiKey = client.apiKey;
+    const apiKey = this.resolveApiKey(client);
     const timezone = client.timezone;
     const apisToTry = this.getApisToUse(client);
 
@@ -1422,7 +1433,7 @@ export class DentalinkService {
     );
 
     const client = await this.clientsService.findOne(clientId);
-    const apiKey = client.apiKey;
+    const apiKey = this.resolveApiKey(client);
     const timezone = client.timezone;
     const apisToTry = this.getApisToUse(client);
 
@@ -1616,7 +1627,7 @@ export class DentalinkService {
 
     // Usar la función centralizada para determinar las APIs
     const apisBase = this.getApisToUse(client);
-    const apiKey = client.apiKey;
+    const apiKey = this.resolveApiKey(client);
 
     const headers = {
       Authorization: `Token ${apiKey}`,
@@ -1837,7 +1848,7 @@ export class DentalinkService {
     this.logger.log(`🔍 Buscando tratamientos para paciente con RUT: ${params.rut}`);
 
     const client = await this.clientsService.findOne(clientId);
-    const apiKey = client.apiKey;
+    const apiKey = this.resolveApiKey(client);
     const apisToTry = this.getApisToUse(client);
 
     const rutFormateado = formatearRut(params.rut);

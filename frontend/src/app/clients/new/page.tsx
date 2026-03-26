@@ -69,9 +69,9 @@ export default function NewClientPage() {
         })),
       };
 
-      // Legacy: Si hay integración Dentalink o Dentalink+MediLink, también enviar el apiKey legacy
+      // Legacy: Si hay integración HealthAtom (Dentalink, MediLink o Dual), también enviar el apiKey legacy
       const dentalinkIntegration = selectedIntegrations.find(
-        (i) => i.type === IntegrationType.DENTALINK || i.type === IntegrationType.DENTALINK_MEDILINK
+        (i) => i.type === IntegrationType.DENTALINK || i.type === IntegrationType.MEDILINK || i.type === IntegrationType.DENTALINK_MEDILINK
       );
       if (dentalinkIntegration) {
         dataToSend.apiKey = dentalinkIntegration.config.apiKey;

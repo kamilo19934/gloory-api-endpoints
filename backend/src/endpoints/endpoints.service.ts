@@ -29,6 +29,35 @@ export class EndpointsService {
   }
 
   /**
+   * Obtiene las tools de un cliente en formato JSON estructurado para plataformas externas.
+   * Incluye nombre, descripción y argumentos con su metadata.
+   */
+  getToolsForClient(
+    clientId: string,
+    integrationTypes: string[],
+  ): {
+    tools: {
+      name: string;
+      description: string;
+      arguments: { name: string; required: boolean; description: string; type: string }[];
+    }[];
+  } {
+    const endpoints = this.getEndpointsForClient(clientId, integrationTypes);
+    return {
+      tools: endpoints.map((endpoint) => ({
+        name: endpoint.name,
+        description: endpoint.description,
+        arguments: endpoint.arguments.map((arg) => ({
+          name: arg.name,
+          required: arg.required,
+          description: arg.description,
+          type: arg.type,
+        })),
+      })),
+    };
+  }
+
+  /**
    * Obtiene los endpoints de un cliente filtrados por sus integraciones,
    * con URLs completas.
    */
