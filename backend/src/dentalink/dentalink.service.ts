@@ -824,16 +824,16 @@ export class DentalinkService {
     // Construir filtro con los campos proporcionados
     const filtro: Record<string, any> = {};
     if (nombre) {
-      filtro.nombre = { like: `%${nombre}%` };
+      filtro.nombre = { eq: nombre };
     }
     if (telefono) {
       const pais = obtenerPaisDesdeTimezone(client.timezone || 'America/Santiago');
       const telefonoResult = formatearTelefono(telefono, pais);
       const telefonoBusqueda = telefonoResult.isValid ? telefonoResult.formatted : telefono;
-      filtro.celular = { like: `%${telefonoBusqueda}%` };
+      filtro.celular = { eq: telefonoBusqueda };
     }
     if (correo) {
-      filtro.email = { like: `%${correo}%` };
+      filtro.email = { eq: correo };
     }
 
     const filtroStr = JSON.stringify(filtro);
