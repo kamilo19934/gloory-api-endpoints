@@ -827,7 +827,10 @@ export class DentalinkService {
       filtro.nombre = { like: `%${nombre}%` };
     }
     if (telefono) {
-      filtro.celular = { like: `%${telefono}%` };
+      const pais = obtenerPaisDesdeTimezone(client.timezone || 'America/Santiago');
+      const telefonoResult = formatearTelefono(telefono, pais);
+      const telefonoBusqueda = telefonoResult.isValid ? telefonoResult.formatted : telefono;
+      filtro.celular = { like: `%${telefonoBusqueda}%` };
     }
     if (correo) {
       filtro.email = { like: `%${correo}%` };
