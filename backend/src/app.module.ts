@@ -21,6 +21,8 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { ClientApiLogsModule } from './client-api-logs/client-api-logs.module';
 import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-logging.interceptor';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { InternalModule } from './internal/internal.module';
+import { ToolRegistryModule } from './tool-registry/tool-registry.module';
 
 @Module({
   imports: [
@@ -114,6 +116,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
     ReservoConfirmationsModule, // Reservo confirmations (independent from Dentalink)
     ClientApiLogsModule, // API Logs module (with cron cleanup)
     DashboardModule, // Dashboard de monitoreo para ingeniería
+    InternalModule, // Endpoints internos server-to-server (gloory-ai-server → gloory-api-endpoints)
+    ToolRegistryModule, // Registry de tools por plataforma (consumido por gloory-ai-server)
   ],
   providers: [
     // Aplicar JwtAuthGuard globalmente

@@ -29,6 +29,14 @@ export class Client {
   timezone: string;
 
   /**
+   * ID del negocio en Gloory AI (gloory-ai-server)
+   * Se usa para trazabilidad y para garantizar idempotencia
+   * durante el auto-provisioning desde Gloory AI.
+   */
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  gloory_business_id: string | null;
+
+  /**
    * Integraciones configuradas para este cliente
    */
   @OneToMany(() => ClientIntegration, (integration) => integration.client, {
