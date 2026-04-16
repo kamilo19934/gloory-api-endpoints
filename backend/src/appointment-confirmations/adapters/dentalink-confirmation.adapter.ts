@@ -19,51 +19,88 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
     private readonly clientsService: ClientsService,
   ) {}
 
+  /**
+   * Resuelve el API key desde la integración config, con fallback al campo legacy
+   */
+  private resolveApiKey(client: Client): string {
+    const integration =
+      client.getIntegration('dentalink') ||
+      client.getIntegration('medilink') ||
+      client.getIntegration('dentalink_medilink');
+    return (integration?.config as any)?.apiKey || client.apiKey;
+  }
+
   async fetchAppointments(
     client: Client,
     config: ConfirmationConfig,
     appointmentDate: string,
     timezone: string,
   ): Promise<FetchedAppointment[]> {
-    const baseURL =
-      process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/';
+    const hasDentalinkMedilink = client.integrations?.some(
+      (i) => i.integrationType === 'dentalink_medilink' && i.isEnabled,
+    );
+    const hasMedilinkOnly = !hasDentalinkMedilink && client.integrations?.some(
+      (i) => i.integrationType === 'medilink' && i.isEnabled,
+    );
+
+    const apiKey = this.resolveApiKey(client);
     const headers = {
-      Authorization: `Token ${client.apiKey}`,
+      Authorization: `Token ${apiKey}`,
       'Content-Type': 'application/json',
     };
 
+    const apisToTry = hasDentalinkMedilink
+      ? [
+          { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' },
+          { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' },
+        ]
+      : hasMedilinkOnly
+        ? [{ type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' }]
+        : [{ type: 'dentalink', baseUrl: process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/' }];
+
     // Parsear los estados configurados
     const stateIds = config.appointmentStates.split(',').map((id) => parseInt(id.trim(), 10));
-    this.logger.log(`📋 [Dentalink] Filtrando por estados: [${stateIds.join(', ')}]`);
+    this.logger.log(`📋 Filtrando por estados: [${stateIds.join(', ')}]`);
 
-    // Dentalink NO soporta el operador "in", así que hacemos una petición por cada estado
     let appointments = [];
+    const seenIds = new Set<string>();
 
-    for (const stateId of stateIds) {
-      const filtro = JSON.stringify({
-        fecha: { eq: appointmentDate },
-        id_estado: { eq: stateId },
-      });
+    for (const api of apisToTry) {
+      this.logger.log(`🔍 Buscando citas en ${api.type.toUpperCase()}...`);
 
-      this.logger.log(`🔎 [Dentalink] Buscando citas con estado ${stateId}...`);
-
-      try {
-        const response = await axios.get(`${baseURL}citas`, {
-          headers,
-          params: { q: filtro },
+      for (const stateId of stateIds) {
+        const filtro = JSON.stringify({
+          fecha: { eq: appointmentDate },
+          id_estado: { eq: stateId },
         });
 
-        if (response.status === 200) {
-          const stateAppointments = response.data?.data || [];
-          this.logger.log(`   ✅ ${stateAppointments.length} citas con estado ${stateId}`);
-          appointments = appointments.concat(stateAppointments);
+        this.logger.log(`🔎 [${api.type}] Buscando citas con estado ${stateId}...`);
+
+        try {
+          const response = await axios.get(`${api.baseUrl}citas`, {
+            headers,
+            params: { q: filtro },
+          });
+
+          if (response.status === 200) {
+            const stateAppointments = response.data?.data || [];
+            this.logger.log(`   ✅ ${stateAppointments.length} citas con estado ${stateId} en ${api.type}`);
+            // Deduplicar por ID (ambas APIs comparten backend HealthAtom)
+            for (const apt of stateAppointments) {
+              const aptId = String(apt.id);
+              if (!seenIds.has(aptId)) {
+                seenIds.add(aptId);
+                appointments.push(apt);
+              }
+            }
+          }
+        } catch (error) {
+          this.logger.error(`❌ [${api.type}] Error buscando citas con estado ${stateId}: ${error.message}`);
         }
-      } catch (error) {
-        this.logger.error(`❌ [Dentalink] Error buscando citas con estado ${stateId}: ${error.message}`);
       }
     }
 
-    this.logger.log(`✅ [Dentalink] Total de citas obtenidas: ${appointments.length}`);
+    this.logger.log(`✅ Total de citas obtenidas: ${appointments.length}`);
 
     // Normalizar cada cita
     const fetched: FetchedAppointment[] = [];
@@ -75,23 +112,26 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
         let telefonoPaciente = '';
         let rutPaciente = '';
 
-        try {
-          const patientResp = await axios.get(`${baseURL}pacientes/${apt.id_paciente}`, {
-            headers,
-          });
+        for (const api of apisToTry) {
+          try {
+            const patientResp = await axios.get(`${api.baseUrl}pacientes/${apt.id_paciente}`, {
+              headers,
+            });
 
-          if (patientResp.status === 200) {
-            const patient = patientResp.data?.data || {};
-            emailPaciente = patient.email || '';
-            telefonoPaciente = patient.celular || patient.telefono || '';
-            rutPaciente = patient.rut || '';
+            if (patientResp.status === 200) {
+              const patient = patientResp.data?.data || {};
+              emailPaciente = patient.email || '';
+              telefonoPaciente = patient.celular || patient.telefono || '';
+              rutPaciente = patient.rut || '';
 
-            this.logger.log(
-              `📋 [Dentalink] Paciente ${apt.id_paciente}: RUT=${rutPaciente}, Email=${emailPaciente}`,
-            );
+              this.logger.log(
+                `📋 [${api.type}] Paciente ${apt.id_paciente}: RUT=${rutPaciente}, Email=${emailPaciente}`,
+              );
+              break;
+            }
+          } catch (error) {
+            this.logger.warn(`⚠️ [${api.type}] Error obteniendo paciente ${apt.id_paciente}: ${error.message}`);
           }
-        } catch (error) {
-          this.logger.warn(`⚠️ [Dentalink] Error obteniendo paciente ${apt.id_paciente}: ${error.message}`);
         }
 
         fetched.push({
@@ -145,7 +185,7 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
     );
 
     const result = await this.healthAtomService.confirmAppointment(appointmentIdNum, stateId, {
-      apiKey: client.apiKey,
+      apiKey: this.resolveApiKey(client),
     });
 
     if (!result.success) {
@@ -171,7 +211,7 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
     const apiType = hasDentalinkMedilink ? 'dual' : 'dentalink';
 
     const headers = {
-      Authorization: `Token ${client.apiKey}`,
+      Authorization: `Token ${this.resolveApiKey(client)}`,
       'Content-Type': 'application/json',
     };
 
@@ -228,7 +268,7 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
     const apiType = hasDentalinkMedilink ? 'dual' : 'dentalink';
 
     const headers = {
-      Authorization: `Token ${client.apiKey}`,
+      Authorization: `Token ${this.resolveApiKey(client)}`,
       'Content-Type': 'application/json',
     };
 

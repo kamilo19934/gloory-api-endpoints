@@ -80,6 +80,8 @@ export interface Client {
   ghlLocationId?: string;
   confirmationStateId?: number | null;
   contactedStateId?: number | null;
+  notionPageId?: string | null;
+  notionOnboardingStatus?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -221,6 +223,12 @@ export const clientsApi = {
 
   testGHLConnection: async (clientId: string): Promise<{ connected: boolean; message: string; calendars?: number }> => {
     const response = await api.post(`/clients/${clientId}/ghl/test-connection`);
+    return response.data;
+  },
+
+  // Notion onboarding
+  setupNotion: async (clientId: string): Promise<{ notionPageId: string; clientName: string; status: string; message: string }> => {
+    const response = await api.post(`/clients/${clientId}/setup-notion`);
     return response.data;
   },
 
@@ -677,7 +685,7 @@ export interface PendingConfirmation {
   id: string;
   clientId: string;
   confirmationConfigId: string;
-  dentalinkAppointmentId: number;
+  platformAppointmentId: string;
   appointmentData: {
     id_paciente: number;
     nombre_paciente: string;
@@ -1227,5 +1235,101 @@ export const ghlOAuthApi = {
   getCalendarsForLocation: async (locationId: string): Promise<GHLCalendarPreview[]> => {
     const response = await api.get(`/hl/locations/${locationId}/calendars`);
     return response.data;
+  },
+};
+
+// ============================================
+// WHATSAPP (Baileys) API
+// ============================================
+
+export type WhatsAppConnectionStatus = 'disconnected' | 'connecting' | 'connected';
+
+export interface WhatsAppStatus {
+  status: WhatsAppConnectionStatus;
+  phoneNumber: string | null;
+  connectedAt: Date | null;
+}
+
+export interface WhatsAppGroup {
+  id: string;
+  groupJid: string;
+  groupName: string;
+  groupDescription?: string | null;
+  participantCount: number;
+  linkedClientId?: string | null;
+  linkedClient?: Client | null;
+  aiEnabled: boolean;
+  debounceSeconds: number;
+  status: 'active' | 'inactive' | 'removed';
+  lastMessageAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateWhatsAppGroupDto {
+  linkedClientId?: string | null;
+  aiEnabled?: boolean;
+  debounceSeconds?: number;
+}
+
+export interface WhatsAppQrStreamEvent {
+  type: 'qr' | 'connected' | 'disconnected' | 'error';
+  data?: string | { phoneNumber?: string };
+  message?: string;
+}
+
+export const whatsappApi = {
+  getStatus: async (): Promise<WhatsAppStatus> => {
+    const response = await api.get('/whatsapp/status');
+    return response.data;
+  },
+
+  connect: async (): Promise<{ status: string }> => {
+    const response = await api.post('/whatsapp/connect');
+    return response.data;
+  },
+
+  disconnect: async (): Promise<{ success: boolean }> => {
+    const response = await api.post('/whatsapp/disconnect');
+    return response.data;
+  },
+
+  getGroups: async (clientId?: string): Promise<WhatsAppGroup[]> => {
+    const params = clientId ? { clientId } : {};
+    const response = await api.get('/whatsapp/groups', { params });
+    return response.data;
+  },
+
+  getGroup: async (id: string): Promise<WhatsAppGroup> => {
+    const response = await api.get(`/whatsapp/groups/${id}`);
+    return response.data;
+  },
+
+  updateGroup: async (
+    id: string,
+    data: UpdateWhatsAppGroupDto,
+  ): Promise<WhatsAppGroup> => {
+    const response = await api.patch(`/whatsapp/groups/${id}`, data);
+    return response.data;
+  },
+
+  syncGroups: async (): Promise<{ synced: number }> => {
+    const response = await api.post('/whatsapp/groups/sync');
+    return response.data;
+  },
+
+  refreshGroupMetadata: async (id: string): Promise<WhatsAppGroup> => {
+    const response = await api.post(`/whatsapp/groups/${id}/refresh`);
+    return response.data;
+  },
+
+  /**
+   * Retorna la URL absoluta del stream SSE para recibir QR codes.
+   * El frontend debe usar esta URL con EventSource nativo.
+   */
+  getQrStreamUrl: (token?: string): string => {
+    const baseUrl = API_URL.replace(/\/$/, '');
+    const qs = token ? `?token=${encodeURIComponent(token)}` : '';
+    return `${baseUrl}/whatsapp/connect/qr${qs}`;
   },
 };

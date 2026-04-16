@@ -1171,7 +1171,7 @@ export default function AppointmentConfirmationsPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="text-sm font-mono text-gray-900">
-                          #{item.dentalinkAppointmentId}
+                          #{item.platformAppointmentId}
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">

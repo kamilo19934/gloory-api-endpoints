@@ -15,6 +15,7 @@ export class ConfirmationAdapterFactory {
   ) {
     this.adapters = new Map();
     this.adapters.set('dentalink', this.dentalinkAdapter);
+    this.adapters.set('medilink', this.dentalinkAdapter);
     this.adapters.set('dentalink_medilink', this.dentalinkAdapter);
     this.adapters.set('reservo', this.reservoAdapter);
   }
@@ -32,6 +33,9 @@ export class ConfirmationAdapterFactory {
     }
     if (client.hasIntegration('dentalink')) {
       return this.adapters.get('dentalink');
+    }
+    if (client.hasIntegration('medilink')) {
+      return this.adapters.get('medilink');
     }
     // Fallback para clientes legacy que solo tienen apiKey
     this.logger.warn(`⚠️ Cliente ${client.id} sin integración conocida, usando Dentalink por defecto`);
