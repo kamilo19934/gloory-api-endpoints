@@ -23,8 +23,13 @@ export class GHLOAuthService implements OnModuleInit {
   // Tokens de empresa en memoria: companyId → accessToken
   private readonly tokenCache = new Map<string, string>();
 
-  // true cuando algún refresh falla con invalid_grant
-  private oauthInvalid = false;
+  // companyIds cuyo refresh falló con invalid_grant
+  private readonly invalidCompanies = new Set<string>();
+
+  // Webhook para alertas de caída OAuth
+  private readonly ALERT_WEBHOOK_URL =
+    process.env.GHL_OAUTH_ALERT_WEBHOOK ??
+    'https://services.leadconnectorhq.com/hooks/2wdyUgGKN304sYIbppAx/webhook-trigger/c8299d15-2ddb-45cc-8c3f-a97fc625298b';
 
   constructor(
     @InjectRepository(GHLOAuthCompany)
@@ -120,7 +125,7 @@ export class GHLOAuthService implements OnModuleInit {
     tokenExpiry.setSeconds(tokenExpiry.getSeconds() + expires_in);
 
     this.tokenCache.set(companyId, access_token);
-    this.oauthInvalid = false;
+    this.invalidCompanies.delete(companyId);
 
     // Obtener nombre de la empresa (opcional — necesita companies.readonly)
     let companyName = companyId;
@@ -191,15 +196,18 @@ export class GHLOAuthService implements OnModuleInit {
   async checkAndRefreshTokens(): Promise<void> {
     if (!this.CLIENT_ID || !this.CLIENT_SECRET) return;
 
-    if (this.oauthInvalid) {
-      this.logger.warn('OAuth GHL inválido — re-autenticación manual requerida vía GET /api/hl/connect');
-      return;
-    }
-
     const companies = await this.companyRepo.find();
     if (companies.length === 0) return;
 
     for (const company of companies) {
+      // Saltar solo la empresa cuyo refresh falló (no todas)
+      if (this.invalidCompanies.has(company.companyId)) {
+        this.logger.warn(
+          `OAuth inválido para ${company.companyName} — re-autenticación manual requerida vía GET /api/hl/connect`,
+        );
+        continue;
+      }
+
       // Restaurar cache desde BD
       if (company.accessToken) {
         this.tokenCache.set(company.companyId, company.accessToken);
@@ -292,7 +300,7 @@ export class GHLOAuthService implements OnModuleInit {
       this.logger.error(
         `❌ REFRESH TOKEN INVÁLIDO para empresa ${company.companyName} — Re-autenticación manual requerida via GET /api/hl/connect`,
       );
-      this.oauthInvalid = true;
+      this.invalidCompanies.add(company.companyId);
       this.tokenCache.delete(company.companyId);
 
       // Limpiar tokens en BD sin borrar el registro
@@ -300,11 +308,49 @@ export class GHLOAuthService implements OnModuleInit {
         { companyId: company.companyId },
         { accessToken: '', refreshToken: '' },
       );
+
+      // Notificar caída vía webhook
+      this.sendAlertWebhook(company, 'invalid_grant', errorData);
     } else {
       this.logger.error(
         `Error refrescando token empresa ${company.companyName}:`,
         errorData || error?.message,
       );
+
+      // Notificar error de refresh (no invalid_grant) vía webhook
+      this.sendAlertWebhook(company, 'refresh_error', errorData || error?.message);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Webhook de alerta cuando OAuth falla
+  // ══════════════════════════════════════════════════════════════════════════
+  private async sendAlertWebhook(
+    company: GHLOAuthCompany,
+    errorType: string,
+    errorDetail: any,
+  ): Promise<void> {
+    try {
+      await axios.post(this.ALERT_WEBHOOK_URL, {
+        event: 'oauth_token_refresh_failed',
+        severity: errorType === 'invalid_grant' ? 'critical' : 'warning',
+        source: 'gloory-api-endpoints',
+        timestamp: new Date().toISOString(),
+        company: {
+          id: company.companyId,
+          name: company.companyName,
+        },
+        error: errorType,
+        error_detail: typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail),
+        message:
+          errorType === 'invalid_grant'
+            ? `OAuth GHL caído para ${company.companyName}. Reconectar manualmente via /settings/ghl-oauth`
+            : `Error refrescando token de ${company.companyName}. Se reintentará en el próximo ciclo.`,
+        action_required: errorType === 'invalid_grant' ? 'Reconectar OAuth en /settings/ghl-oauth' : 'Revisar logs del servidor',
+      });
+      this.logger.log(`🔔 Alerta webhook enviada — ${errorType} para ${company.companyName}`);
+    } catch (webhookErr) {
+      this.logger.warn(`No se pudo enviar alerta webhook: ${webhookErr?.message}`);
     }
   }
 
@@ -364,11 +410,59 @@ export class GHLOAuthService implements OnModuleInit {
 
   /**
    * Obtiene el access token OAuth para una location específica.
+   * Verifica expiración y refresca on-demand si quedan menos de 5 minutos.
    * Usado por GoHighLevelProxyService cuando ghlOAuthMode = true.
    */
   async getLocationAccessToken(locationId: string): Promise<string | null> {
     const location = await this.locationRepo.findOne({ where: { locationId } });
-    return location?.accessToken ?? null;
+    if (!location?.accessToken) return null;
+
+    const secondsRemaining = Math.floor(
+      (new Date(location.tokenExpiry).getTime() - Date.now()) / 1000,
+    );
+
+    // Si quedan más de 5 minutos, retornar el token actual
+    if (secondsRemaining > 300) {
+      return location.accessToken;
+    }
+
+    // Token expirado o próximo a expirar — intentar refresh on-demand
+    this.logger.warn(
+      `Token de location ${locationId} expira en ${secondsRemaining}s — refrescando on-demand`,
+    );
+
+    const company = await this.companyRepo.findOne({
+      where: { companyId: location.companyId },
+    });
+    if (!company?.accessToken) {
+      this.logger.error(`No hay company token para refrescar location ${locationId}`);
+      return location.accessToken; // Retornar el que hay como último recurso
+    }
+
+    try {
+      const locationToken = await this.getLocationToken(
+        company.companyId,
+        locationId,
+        company.accessToken,
+      );
+      const locationExpiry = new Date();
+      locationExpiry.setSeconds(locationExpiry.getSeconds() + locationToken.expires_in);
+
+      await this.locationRepo.update(
+        { locationId },
+        {
+          accessToken: locationToken.access_token,
+          refreshToken: locationToken.refresh_token,
+          tokenExpiry: locationExpiry,
+        },
+      );
+
+      this.logger.log(`🔄 Token de location ${locationId} refrescado on-demand`);
+      return locationToken.access_token;
+    } catch (err) {
+      this.logger.error(`Error refrescando token on-demand para location ${locationId}: ${err?.message}`);
+      return location.accessToken; // Retornar el existente como fallback
+    }
   }
 
   /**
@@ -378,7 +472,7 @@ export class GHLOAuthService implements OnModuleInit {
     await this.locationRepo.clear();
     await this.companyRepo.clear();
     this.tokenCache.clear();
-    this.oauthInvalid = false;
+    this.invalidCompanies.clear();
     this.logger.log('🔌 OAuth GHL desconectado — todos los tokens eliminados');
   }
 
@@ -388,7 +482,7 @@ export class GHLOAuthService implements OnModuleInit {
   async checkOauth(): Promise<{ valid: boolean; companies: number }> {
     const companies = await this.companyRepo.count();
     return {
-      valid: companies > 0 && !this.oauthInvalid,
+      valid: companies > 0 && this.invalidCompanies.size === 0,
       companies,
     };
   }
