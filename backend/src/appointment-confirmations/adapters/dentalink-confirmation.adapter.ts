@@ -134,6 +134,9 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
           }
         }
 
+        // Normalizar campos: Dentalink usa nombre_dentista/id_dentista/id_tratamiento,
+        // MediLink usa nombre_profesional/id_profesional/id_atencion.
+        // Los campos son mutuamente excluyentes, así que un fallback simple funciona.
         fetched.push({
           platformAppointmentId: String(apt.id),
           appointmentData: {
@@ -143,15 +146,15 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
             rut_paciente: rutPaciente,
             email_paciente: emailPaciente,
             telefono_paciente: telefonoPaciente,
-            id_tratamiento: String(apt.id_tratamiento),
+            id_tratamiento: String(apt.id_tratamiento || apt.id_atencion || ''),
             nombre_tratamiento: apt.nombre_tratamiento || '',
             fecha: apt.fecha,
             hora_inicio: apt.hora_inicio,
             hora_fin: apt.hora_fin,
             duracion: apt.duracion,
-            id_dentista: String(apt.id_dentista),
-            nombre_dentista: apt.nombre_dentista || '',
-            id_sucursal: String(apt.id_sucursal),
+            id_dentista: String(apt.id_dentista || apt.id_profesional || ''),
+            nombre_dentista: apt.nombre_dentista || apt.nombre_profesional || '',
+            id_sucursal: String(apt.id_sucursal || ''),
             nombre_sucursal: apt.nombre_sucursal || '',
             id_estado: String(apt.id_estado),
             estado_cita: apt.estado_cita || '',

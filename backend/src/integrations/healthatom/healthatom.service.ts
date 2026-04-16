@@ -757,10 +757,11 @@ export class HealthAtomService {
         const apiErrorMessage = this.extractApiErrorMessage(error);
         this.logger.warn(`⚠️ Error en ${api}: ${apiErrorMessage}`);
 
-        // Si es error de negocio (400), guardar y salir
+        // Si es error de negocio (400), guardar e intentar siguiente API
+        // El estado custom puede existir solo en una API (ej: MediLink pero no Dentalink)
         if (error.response?.status === 400) {
           lastError = apiErrorMessage;
-          break;
+          continue;
         }
 
         lastError = apiErrorMessage;
@@ -830,10 +831,10 @@ export class HealthAtomService {
         const apiErrorMessage = this.extractApiErrorMessage(error);
         this.logger.warn(`⚠️ Error en ${api}: ${apiErrorMessage}`);
 
-        // Si es error de negocio (400), guardar y salir
+        // Si es error de negocio (400), guardar e intentar siguiente API
         if (error.response?.status === 400) {
           lastError = apiErrorMessage;
-          break;
+          continue;
         }
 
         lastError = apiErrorMessage;
