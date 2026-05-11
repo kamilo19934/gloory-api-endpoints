@@ -45,6 +45,16 @@ export class AppointmentConfirmationsService {
    * Resuelve los parámetros de auth para llamar a GHL via wrapper.
    * Para OAuth no incluye `pitToken` — el wrapper lo resuelve por cada call,
    * lo que permite retry con mint-fresco si el token guardado está revocado.
+   *
+   * Busca en este orden:
+   * 1. Integración 'gohighlevel' standalone.
+   * 2. Embebido en el config de la integración Dentalink/MediLink/dual.
+   *    Si tiene ghlOAuthMode=true → OAuth; si tiene ghlAccessToken → PIT.
+   * 3. Fallback legacy a los campos del Client.
+   *
+   * El cliente puede tener un PIT viejo en los campos legacy y haber migrado
+   * a OAuth dentro del config de su integración HealthAtom — el config embebido
+   * gana sobre el legacy.
    */
   private resolveGHLAuthParams(client: any): GHLAuthParams | null {
     const ghlIntegration = client.getIntegration('gohighlevel');
@@ -57,6 +67,21 @@ export class AppointmentConfirmationsService {
         if (config.ghlAccessToken) {
           return { locationId: config.ghlLocationId, pitToken: config.ghlAccessToken };
         }
+      }
+    }
+
+    // GHL embebido en el config de HealthAtom (Dentalink, MediLink o dual)
+    const healthAtomTypes = ['dentalink', 'medilink', 'dentalink_medilink'];
+    for (const type of healthAtomTypes) {
+      const integration = client.getIntegration(type);
+      if (!integration) continue;
+      const haConfig = integration.config as Record<string, any>;
+      if (!haConfig?.ghlEnabled || !haConfig?.ghlLocationId) continue;
+      if (haConfig.ghlOAuthMode) {
+        return { locationId: haConfig.ghlLocationId };
+      }
+      if (haConfig.ghlAccessToken) {
+        return { locationId: haConfig.ghlLocationId, pitToken: haConfig.ghlAccessToken };
       }
     }
 

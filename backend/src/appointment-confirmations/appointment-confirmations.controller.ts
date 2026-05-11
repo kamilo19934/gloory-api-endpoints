@@ -55,6 +55,18 @@ export class AppointmentConfirmationsController {
    * Resuelve los parámetros de auth para llamar a `GHLApiClient` vía
    * los setup services. Diferencia OAuth (sin pitToken) de PIT (con pitToken).
    * Para OAuth el wrapper resuelve el token dinámicamente por cada request.
+   *
+   * Busca el config GHL en este orden:
+   * 1. Integración 'gohighlevel' standalone.
+   * 2. Embebido en el config de la integración Dentalink/MediLink/dual
+   *    (donde la UI lo guarda hoy). Si el config tiene ghlOAuthMode=true
+   *    se usa OAuth; si tiene ghlAccessToken se usa PIT.
+   * 3. Fallback legacy a los campos del Client (ghlEnabled + ghlAccessToken
+   *    + ghlLocationId).
+   *
+   * El cliente puede tener un PIT viejo en los campos legacy y haber migrado
+   * después a OAuth dentro del config de su integración HealthAtom — en ese
+   * caso el config embebido gana sobre el legacy.
    */
   private resolveGHLAuthParams(client: any): { locationId: string; pitToken?: string } | null {
     const ghlIntegration = client.getIntegration('gohighlevel');
@@ -67,6 +79,21 @@ export class AppointmentConfirmationsController {
         if (config.ghlAccessToken) {
           return { locationId: config.ghlLocationId, pitToken: config.ghlAccessToken };
         }
+      }
+    }
+
+    // GHL embebido en el config de HealthAtom (Dentalink, MediLink o dual)
+    const healthAtomTypes = ['dentalink', 'medilink', 'dentalink_medilink'];
+    for (const type of healthAtomTypes) {
+      const integration = client.getIntegration(type);
+      if (!integration) continue;
+      const haConfig = integration.config as Record<string, any>;
+      if (!haConfig?.ghlEnabled || !haConfig?.ghlLocationId) continue;
+      if (haConfig.ghlOAuthMode) {
+        return { locationId: haConfig.ghlLocationId };
+      }
+      if (haConfig.ghlAccessToken) {
+        return { locationId: haConfig.ghlLocationId, pitToken: haConfig.ghlAccessToken };
       }
     }
 
