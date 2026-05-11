@@ -11,6 +11,7 @@ import {
 import { Client } from '../../clients/entities/client.entity';
 import { ConfirmationConfig } from './confirmation-config.entity';
 import { NormalizedAppointmentData } from '../adapters/confirmation-adapter.interface';
+import { ExecutionLog } from '../types/execution-log.type';
 
 export enum ConfirmationStatus {
   PENDING = 'pending',
@@ -104,6 +105,13 @@ export class PendingConfirmation {
    */
   @Column({ type: 'int', default: 0 })
   attempts: number;
+
+  /**
+   * Log paso-a-paso de cada intento de procesamiento.
+   * Acumula entradas a lo largo de múltiples intentos (cada step incluye `attempt`).
+   */
+  @Column({ type: 'json', nullable: true })
+  executionLog: ExecutionLog | null;
 
   /**
    * Fecha de procesamiento

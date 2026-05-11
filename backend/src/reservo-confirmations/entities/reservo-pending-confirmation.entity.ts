@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Client } from '../../clients/entities/client.entity';
 import { ReservoConfirmationConfig } from './reservo-confirmation-config.entity';
+import { ExecutionLog } from '../../appointment-confirmations/types/execution-log.type';
 
 export enum ReservoConfirmationStatus {
   PENDING = 'pending',
@@ -124,6 +125,13 @@ export class ReservoPendingConfirmation {
    */
   @Column({ type: 'int', default: 0 })
   attempts: number;
+
+  /**
+   * Log paso-a-paso de cada intento de procesamiento.
+   * Acumula entradas a lo largo de múltiples intentos (cada step incluye `attempt`).
+   */
+  @Column({ type: 'json', nullable: true })
+  executionLog: ExecutionLog | null;
 
   /**
    * Fecha de procesamiento exitoso
