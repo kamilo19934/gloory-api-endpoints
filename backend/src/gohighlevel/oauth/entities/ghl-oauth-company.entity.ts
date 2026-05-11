@@ -20,6 +20,9 @@ export class GHLOAuthCompany {
   @Column('simple-array')
   scopes: string[];
 
+  @Column({ name: 'is_oauth_invalid', type: 'boolean', default: false })
+  isOAuthInvalid: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
+import { GHLApiClient } from '../gohighlevel/oauth/ghl-api-client.service';
+import { GHLAuthParams } from '../appointment-confirmations/ghl-setup.service';
 
 interface CustomFieldDefinition {
   name: string;
@@ -15,6 +16,8 @@ interface CustomFieldDefinition {
 @Injectable()
 export class ReservoGhlSetupService {
   private readonly logger = new Logger(ReservoGhlSetupService.name);
+
+  constructor(private readonly ghlApiClient: GHLApiClient) {}
 
   /**
    * Custom fields requeridos para el sistema de confirmaciones de Reservo.
@@ -84,34 +87,36 @@ export class ReservoGhlSetupService {
     },
   ];
 
+  private async callGHL<T = any>(
+    auth: GHLAuthParams,
+    config: Parameters<GHLApiClient['request']>[1],
+  ): Promise<T> {
+    if (auth.pitToken) {
+      return this.ghlApiClient.requestWithToken<T>(auth.pitToken, config);
+    }
+    return this.ghlApiClient.request<T>(auth.locationId, config);
+  }
+
   /**
    * Verifica y crea los custom fields necesarios en GHL
    */
   async ensureCustomFields(
-    ghlAccessToken: string,
-    ghlLocationId: string,
+    auth: GHLAuthParams,
   ): Promise<{ created: string[]; existing: string[]; errors: string[] }> {
-    this.logger.log(`Verificando custom fields en GHL para location ${ghlLocationId}`);
-
-    const headers = {
-      Authorization: `Bearer ${ghlAccessToken}`,
-      'Content-Type': 'application/json',
-      Version: '2021-07-28',
-    };
+    this.logger.log(`Verificando custom fields en GHL para location ${auth.locationId}`);
 
     const created: string[] = [];
     const existing: string[] = [];
     const errors: string[] = [];
 
     try {
-      const getUrl = `https://services.leadconnectorhq.com/locations/${ghlLocationId}/customFields?model=contact`;
-      const getResponse = await axios.get(getUrl, { headers });
+      const data = await this.callGHL<{ customFields?: any[] }>(auth, {
+        method: 'GET',
+        url: `/locations/${auth.locationId}/customFields`,
+        params: { model: 'contact' },
+      });
 
-      if (getResponse.status !== 200) {
-        throw new Error(`Error al obtener custom fields: ${getResponse.status}`);
-      }
-
-      const existingFields = getResponse.data?.customFields || [];
+      const existingFields = data?.customFields || [];
       const existingFieldNames = existingFields.map((f: any) => f.name.toLowerCase());
 
       for (const fieldDef of this.REQUIRED_CUSTOM_FIELDS) {
@@ -121,7 +126,7 @@ export class ReservoGhlSetupService {
           existing.push(fieldDef.name);
         } else {
           try {
-            await this.createCustomField(ghlLocationId, fieldDef, headers);
+            await this.createCustomField(auth, fieldDef);
             created.push(fieldDef.name);
           } catch (error) {
             const errorMsg = `Error creando "${fieldDef.name}": ${error.message}`;
@@ -146,12 +151,9 @@ export class ReservoGhlSetupService {
    * Crea un custom field en GHL
    */
   private async createCustomField(
-    locationId: string,
+    auth: GHLAuthParams,
     fieldDef: CustomFieldDefinition,
-    headers: any,
   ): Promise<void> {
-    const createUrl = `https://services.leadconnectorhq.com/locations/${locationId}/customFields`;
-
     const payload = {
       name: fieldDef.name,
       dataType: fieldDef.dataType,
@@ -160,31 +162,25 @@ export class ReservoGhlSetupService {
       position: 0,
     };
 
-    const response = await axios.post(createUrl, payload, { headers });
-
-    if (response.status !== 200 && response.status !== 201) {
-      throw new Error(`Status ${response.status}: ${JSON.stringify(response.data)}`);
-    }
+    await this.callGHL(auth, {
+      method: 'POST',
+      url: `/locations/${auth.locationId}/customFields`,
+      data: payload,
+    });
   }
 
   /**
    * Valida que todos los custom fields requeridos existan
    */
-  async validateCustomFields(
-    ghlAccessToken: string,
-    ghlLocationId: string,
-  ): Promise<{ valid: boolean; missing: string[] }> {
+  async validateCustomFields(auth: GHLAuthParams): Promise<{ valid: boolean; missing: string[] }> {
     try {
-      const headers = {
-        Authorization: `Bearer ${ghlAccessToken}`,
-        'Content-Type': 'application/json',
-        Version: '2021-07-28',
-      };
+      const data = await this.callGHL<{ customFields?: any[] }>(auth, {
+        method: 'GET',
+        url: `/locations/${auth.locationId}/customFields`,
+        params: { model: 'contact' },
+      });
 
-      const getUrl = `https://services.leadconnectorhq.com/locations/${ghlLocationId}/customFields?model=contact`;
-      const getResponse = await axios.get(getUrl, { headers });
-
-      const existingFields = getResponse.data?.customFields || [];
+      const existingFields = data?.customFields || [];
       const existingFieldNames = existingFields.map((f: any) => f.name.toLowerCase());
 
       const missing: string[] = [];

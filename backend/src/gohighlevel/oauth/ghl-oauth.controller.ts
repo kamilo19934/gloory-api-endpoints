@@ -28,18 +28,15 @@ export class GHLOAuthController {
    */
   @HttpCode(302)
   @Get('callback')
-  async oauthCallback(
-    @Query('code') code: string,
-    @Res() res: Response,
-  ): Promise<void> {
+  async oauthCallback(@Query('code') code: string, @Res() res: Response): Promise<void> {
     try {
       await this.ghlOAuthService.handleCallback(code);
       res.redirect(process.env.CLIENT_HOST || 'http://localhost:3000');
     } catch (error) {
-      this.logger.error(`Error en callback OAuth: ${error?.message} | GHL response: ${JSON.stringify(error?.response?.data)}`);
-      res.redirect(
-        `${process.env.CLIENT_HOST || 'http://localhost:3000'}?ghl_oauth_error=true`,
+      this.logger.error(
+        `Error en callback OAuth: ${error?.message} | GHL response: ${JSON.stringify(error?.response?.data)}`,
       );
+      res.redirect(`${process.env.CLIENT_HOST || 'http://localhost:3000'}?ghl_oauth_error=true`);
     }
   }
 
@@ -79,7 +76,11 @@ export class GHLOAuthController {
    * POST /api/hl/sync-locations
    */
   @Post('sync-locations')
-  async syncLocations(): Promise<{ newLocations: number; totalLocations: number }> {
+  async syncLocations(): Promise<{
+    newLocations: number;
+    refreshedLocations: number;
+    totalLocations: number;
+  }> {
     return this.ghlOAuthService.syncLocations();
   }
 

@@ -71,7 +71,10 @@ export class GoHighLevelProxyService {
 
     const config = integration.config as GoHighLevelConfig;
 
-    // Si el cliente usa OAuth Marketplace, resolver el token desde la BD OAuth
+    // Validación temprana de OAuth: si no hay token disponible (location revocada
+    // o nunca conectada), fallar con mensaje claro en vez de propagar 401 después.
+    // El token real se resuelve dinámicamente por GHLApiClient en cada request,
+    // lo que permite mint+retry on-401.
     if (config.ghlOAuthMode) {
       const oauthToken = await this.ghlOAuthService.getLocationAccessToken(config.ghlLocationId);
       if (!oauthToken) {
@@ -80,20 +83,15 @@ export class GoHighLevelProxyService {
           HttpStatus.BAD_REQUEST,
         );
       }
-      return { ...config, ghlAccessToken: oauthToken };
     }
 
-    // Clientes actuales con PIT token — sin cambios
     return config;
   }
 
   /**
    * Resuelve un ID de calendario al GHLCalendar correspondiente
    */
-  private async resolveCalendar(
-    clientId: string,
-    calendarId: number,
-  ): Promise<GHLCalendar> {
+  private async resolveCalendar(clientId: string, calendarId: number): Promise<GHLCalendar> {
     const calendar = await this.calendarRepository.findOne({
       where: { clientId, id: calendarId },
     });
@@ -256,10 +254,7 @@ export class GoHighLevelProxyService {
       let profesionalNombre = calendar.name || 'Profesional';
       const teamMembers = calendarInfo?.teamMembers || [];
       if (teamMembers.length > 0) {
-        const userResult = await this.goHighLevelService.getUser(
-          config,
-          teamMembers[0].userId,
-        );
+        const userResult = await this.goHighLevelService.getUser(config, teamMembers[0].userId);
         if (userResult.success && userResult.data?.name) {
           profesionalNombre = userResult.data.name;
         }
@@ -275,7 +270,9 @@ export class GoHighLevelProxyService {
           },
         );
         calendariosActualizados++;
-        this.logger.log(`Actualizado: ${profesionalNombre} (${calendar.id}) - slotDuration: ${slotDurationMinutes} min, slotInterval: ${slotIntervalMinutes} min`);
+        this.logger.log(
+          `Actualizado: ${profesionalNombre} (${calendar.id}) - slotDuration: ${slotDurationMinutes} min, slotInterval: ${slotIntervalMinutes} min`,
+        );
       } else {
         const nextId = await this.getNextCalendarId(clientId);
         const ghlCalendar = this.calendarRepository.create({
@@ -298,7 +295,8 @@ export class GoHighLevelProxyService {
 
     const partes: string[] = [];
     if (calendariosNuevos > 0) partes.push(`${calendariosNuevos} calendarios nuevos`);
-    if (calendariosActualizados > 0) partes.push(`${calendariosActualizados} calendarios actualizados`);
+    if (calendariosActualizados > 0)
+      partes.push(`${calendariosActualizados} calendarios actualizados`);
 
     const mensaje =
       partes.length === 0
@@ -332,7 +330,13 @@ export class GoHighLevelProxyService {
 
   async createBranch(
     clientId: string,
-    data: { nombre: string; direccion?: string; telefono?: string; ciudad?: string; comuna?: string },
+    data: {
+      nombre: string;
+      direccion?: string;
+      telefono?: string;
+      ciudad?: string;
+      comuna?: string;
+    },
   ): Promise<GHLBranch> {
     this.logger.log(`Creando sede GHL para cliente ${clientId}: ${data.nombre}`);
 
@@ -352,7 +356,13 @@ export class GoHighLevelProxyService {
   async updateBranch(
     clientId: string,
     branchId: number,
-    data: { nombre?: string; direccion?: string; telefono?: string; ciudad?: string; comuna?: string },
+    data: {
+      nombre?: string;
+      direccion?: string;
+      telefono?: string;
+      ciudad?: string;
+      comuna?: string;
+    },
   ): Promise<GHLBranch> {
     const branch = await this.branchRepository.findOne({
       where: { id: branchId, clientId },
@@ -425,7 +435,11 @@ export class GoHighLevelProxyService {
     });
   }
 
-  async toggleCalendar(clientId: string, calendarId: number, activo: boolean): Promise<GHLCalendar> {
+  async toggleCalendar(
+    clientId: string,
+    calendarId: number,
+    activo: boolean,
+  ): Promise<GHLCalendar> {
     const calendar = await this.calendarRepository.findOne({
       where: { id: calendarId, clientId },
     });
@@ -438,7 +452,11 @@ export class GoHighLevelProxyService {
     return this.calendarRepository.save(calendar);
   }
 
-  async updateCalendarSpecialty(clientId: string, calendarId: number, especialidad: string): Promise<GHLCalendar> {
+  async updateCalendarSpecialty(
+    clientId: string,
+    calendarId: number,
+    especialidad: string,
+  ): Promise<GHLCalendar> {
     const calendar = await this.calendarRepository.findOne({
       where: { id: calendarId, clientId },
     });
@@ -451,7 +469,11 @@ export class GoHighLevelProxyService {
     return this.calendarRepository.save(calendar);
   }
 
-  async assignCalendarToBranches(clientId: string, calendarId: number, branchIds: number[]): Promise<GHLCalendar> {
+  async assignCalendarToBranches(
+    clientId: string,
+    calendarId: number,
+    branchIds: number[],
+  ): Promise<GHLCalendar> {
     const calendar = await this.calendarRepository.findOne({
       where: { id: calendarId, clientId },
     });
@@ -563,12 +585,14 @@ export class GoHighLevelProxyService {
       }
 
       const calendarInfo = calendarInfoResult.data;
-      const slotIntervalMinutos = calendarInfo.slotIntervalUnit === 'hours'
-        ? (calendarInfo.slotInterval ?? 0) * 60
-        : calendarInfo.slotInterval;
-      const slotDurationMinutos = calendarInfo.slotDurationUnit === 'hours'
-        ? (calendarInfo.slotDuration ?? 0) * 60
-        : calendarInfo.slotDuration;
+      const slotIntervalMinutos =
+        calendarInfo.slotIntervalUnit === 'hours'
+          ? (calendarInfo.slotInterval ?? 0) * 60
+          : calendarInfo.slotInterval;
+      const slotDurationMinutos =
+        calendarInfo.slotDurationUnit === 'hours'
+          ? (calendarInfo.slotDuration ?? 0) * 60
+          : calendarInfo.slotDuration;
 
       if (!slotIntervalMinutos) {
         throw new HttpException(
@@ -587,7 +611,7 @@ export class GoHighLevelProxyService {
         `Calendario: ${calendar.nombre}, slotInterval: ${slotIntervalMinutos} min, slotDuration: ${slotDurationMinutos} min, tiempo_cita: ${params.tiempo_cita || 'no especificado'} min, bloques necesarios: ${bloquesNecesarios}`,
       );
 
-      let horariosDisponibles: Record<string, string[]> = {};
+      const horariosDisponibles: Record<string, string[]> = {};
       const maxWeeks = 4;
 
       const startDateStr = params.fecha_inicio || new Date().toISOString().split('T')[0];
@@ -607,7 +631,9 @@ export class GoHighLevelProxyService {
         );
 
         if (!slotsResult.success || !slotsResult.data) {
-          this.logger.warn(`Error obteniendo slots de GHL para semana ${week + 1}: ${slotsResult.error}`);
+          this.logger.warn(
+            `Error obteniendo slots de GHL para semana ${week + 1}: ${slotsResult.error}`,
+          );
           break;
         }
 
@@ -727,18 +753,12 @@ export class GoHighLevelProxyService {
     };
   }
 
-  async cancelAppointment(
-    clientId: string,
-    params: { event_id: string },
-  ) {
+  async cancelAppointment(clientId: string, params: { event_id: string }) {
     const config = await this.getGHLConfig(clientId);
     const result = await this.goHighLevelService.deleteAppointment(config, params.event_id);
 
     if (!result.success) {
-      throw new HttpException(
-        result.error || 'Error eliminando la cita',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException(result.error || 'Error eliminando la cita', HttpStatus.BAD_REQUEST);
     }
 
     return {
@@ -761,10 +781,7 @@ export class GoHighLevelProxyService {
 
     const appointmentResult = await this.goHighLevelService.getAppointment(config, params.event_id);
     if (!appointmentResult.success) {
-      throw new HttpException(
-        'No se pudo obtener la cita',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('No se pudo obtener la cita', HttpStatus.BAD_REQUEST);
     }
 
     const startTimeActual = appointmentResult.data?.startTime;
@@ -773,9 +790,7 @@ export class GoHighLevelProxyService {
       const contactPayload: any = {};
       if (params.telefono) contactPayload.phone = params.telefono.trim();
       if (params.comentario) {
-        contactPayload.customFields = [
-          { key: 'comentario', field_value: params.comentario },
-        ];
+        contactPayload.customFields = [{ key: 'comentario', field_value: params.comentario }];
       }
 
       try {
@@ -799,10 +814,7 @@ export class GoHighLevelProxyService {
     };
   }
 
-  async getContactAppointments(
-    clientId: string,
-    params: { user_id: string },
-  ) {
+  async getContactAppointments(clientId: string, params: { user_id: string }) {
     const config = await this.getGHLConfig(clientId);
     const result = await this.goHighLevelService.getContactAppointments(config, params.user_id);
 
@@ -813,21 +825,23 @@ export class GoHighLevelProxyService {
       );
     }
 
-    const citas = (result.data || []).map((evento: any) => {
-      const startStr = evento.startTime;
-      if (!startStr) return null;
+    const citas = (result.data || [])
+      .map((evento: any) => {
+        const startStr = evento.startTime;
+        if (!startStr) return null;
 
-      try {
-        const dt = new Date(startStr.includes('T') ? startStr : startStr.replace(' ', 'T'));
-        return {
-          id: evento.id,
-          fecha: dt.toISOString().split('T')[0],
-          hora: `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`,
-        };
-      } catch {
-        return null;
-      }
-    }).filter(Boolean);
+        try {
+          const dt = new Date(startStr.includes('T') ? startStr : startStr.replace(' ', 'T'));
+          return {
+            id: evento.id,
+            fecha: dt.toISOString().split('T')[0],
+            hora: `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`,
+          };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
 
     return { citas };
   }

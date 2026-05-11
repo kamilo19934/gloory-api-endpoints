@@ -38,6 +38,11 @@ Thumbs.db
 # Database
 *.db
 *.sqlite
+
+# DB backups (contienen credenciales/datos sensibles)
+/backups/
+*.sql
+*.dump
 *.sqlite3
 
 # Testing

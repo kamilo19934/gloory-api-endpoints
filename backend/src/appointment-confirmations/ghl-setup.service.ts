@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
+import { GHLApiClient } from '../gohighlevel/oauth/ghl-api-client.service';
 
 interface CustomFieldDefinition {
   name: string;
@@ -8,9 +8,37 @@ interface CustomFieldDefinition {
   model: string;
 }
 
+/**
+ * Parámetros para llamar a GHL:
+ * - locationId: siempre requerido.
+ * - pitToken: si viene, se usa modo PIT (token estático, sin retry on-401).
+ *   Si no viene, se asume OAuth Marketplace y el wrapper resuelve el token
+ *   dinámicamente por cada llamada.
+ */
+export interface GHLAuthParams {
+  locationId: string;
+  pitToken?: string;
+}
+
 @Injectable()
 export class GHLSetupService {
   private readonly logger = new Logger(GHLSetupService.name);
+
+  constructor(private readonly ghlApiClient: GHLApiClient) {}
+
+  /**
+   * Ejecuta una request a GHL respetando el modo (OAuth/PIT) del cliente.
+   * Para OAuth, el wrapper maneja retry on-401, mint y marca de invalidación.
+   */
+  private async callGHL<T = any>(
+    auth: GHLAuthParams,
+    config: Parameters<GHLApiClient['request']>[1],
+  ): Promise<T> {
+    if (auth.pitToken) {
+      return this.ghlApiClient.requestWithToken<T>(auth.pitToken, config);
+    }
+    return this.ghlApiClient.request<T>(auth.locationId, config);
+  }
 
   /**
    * Custom fields requeridos para el sistema de confirmaciones
@@ -82,38 +110,26 @@ export class GHLSetupService {
    * Verifica y crea los custom fields necesarios en GHL
    */
   async ensureCustomFields(
-    ghlAccessToken: string,
-    ghlLocationId: string,
+    auth: GHLAuthParams,
   ): Promise<{ created: string[]; existing: string[]; errors: string[] }> {
-    this.logger.log(`🔍 Verificando custom fields en GHL para location ${ghlLocationId}`);
-
-    const headers = {
-      Authorization: `Bearer ${ghlAccessToken}`,
-      'Content-Type': 'application/json',
-      Version: '2021-07-28',
-    };
+    this.logger.log(`🔍 Verificando custom fields en GHL para location ${auth.locationId}`);
 
     const created: string[] = [];
     const existing: string[] = [];
     const errors: string[] = [];
 
     try {
-      // 1. Obtener custom fields existentes
-      const getUrl = `https://services.leadconnectorhq.com/locations/${ghlLocationId}/customFields?model=contact`;
-      this.logger.log(`📡 Obteniendo custom fields existentes: ${getUrl}`);
+      const data = await this.callGHL<{ customFields?: any[] }>(auth, {
+        method: 'GET',
+        url: `/locations/${auth.locationId}/customFields`,
+        params: { model: 'contact' },
+      });
 
-      const getResponse = await axios.get(getUrl, { headers });
-
-      if (getResponse.status !== 200) {
-        throw new Error(`Error al obtener custom fields: ${getResponse.status}`);
-      }
-
-      const existingFields = getResponse.data?.customFields || [];
+      const existingFields = data?.customFields || [];
       const existingFieldNames = existingFields.map((f: any) => f.name.toLowerCase());
 
       this.logger.log(`✅ Encontrados ${existingFields.length} custom fields existentes`);
 
-      // 2. Verificar y crear los que faltan
       for (const fieldDef of this.REQUIRED_CUSTOM_FIELDS) {
         const fieldNameLower = fieldDef.name.toLowerCase();
 
@@ -121,9 +137,8 @@ export class GHLSetupService {
           this.logger.log(`✓ Custom field "${fieldDef.name}" ya existe`);
           existing.push(fieldDef.name);
         } else {
-          // Crear el custom field
           try {
-            await this.createCustomField(ghlLocationId, fieldDef, headers);
+            await this.createCustomField(auth, fieldDef);
             created.push(fieldDef.name);
             this.logger.log(`✅ Custom field "${fieldDef.name}" creado exitosamente`);
           } catch (error) {
@@ -149,12 +164,9 @@ export class GHLSetupService {
    * Crea un custom field en GHL
    */
   private async createCustomField(
-    locationId: string,
+    auth: GHLAuthParams,
     fieldDef: CustomFieldDefinition,
-    headers: any,
   ): Promise<void> {
-    const createUrl = `https://services.leadconnectorhq.com/locations/${locationId}/customFields`;
-
     const payload = {
       name: fieldDef.name,
       dataType: fieldDef.dataType,
@@ -165,31 +177,25 @@ export class GHLSetupService {
 
     this.logger.log(`📤 Creando custom field: ${JSON.stringify(payload)}`);
 
-    const response = await axios.post(createUrl, payload, { headers });
-
-    if (response.status !== 200 && response.status !== 201) {
-      throw new Error(`Status ${response.status}: ${JSON.stringify(response.data)}`);
-    }
+    await this.callGHL(auth, {
+      method: 'POST',
+      url: `/locations/${auth.locationId}/customFields`,
+      data: payload,
+    });
   }
 
   /**
    * Valida que todos los custom fields requeridos existan
    */
-  async validateCustomFields(
-    ghlAccessToken: string,
-    ghlLocationId: string,
-  ): Promise<{ valid: boolean; missing: string[] }> {
+  async validateCustomFields(auth: GHLAuthParams): Promise<{ valid: boolean; missing: string[] }> {
     try {
-      const headers = {
-        Authorization: `Bearer ${ghlAccessToken}`,
-        'Content-Type': 'application/json',
-        Version: '2021-07-28',
-      };
+      const data = await this.callGHL<{ customFields?: any[] }>(auth, {
+        method: 'GET',
+        url: `/locations/${auth.locationId}/customFields`,
+        params: { model: 'contact' },
+      });
 
-      const getUrl = `https://services.leadconnectorhq.com/locations/${ghlLocationId}/customFields?model=contact`;
-      const getResponse = await axios.get(getUrl, { headers });
-
-      const existingFields = getResponse.data?.customFields || [];
+      const existingFields = data?.customFields || [];
       const existingFieldNames = existingFields.map((f: any) => f.name.toLowerCase());
 
       const missing: string[] = [];

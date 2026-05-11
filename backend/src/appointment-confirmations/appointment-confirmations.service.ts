@@ -8,7 +8,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, In } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import axios from 'axios';
 import * as moment from 'moment-timezone';
 import { ConfirmationConfig } from './entities/confirmation-config.entity';
 import { PendingConfirmation, ConfirmationStatus } from './entities/pending-confirmation.entity';
@@ -18,7 +17,14 @@ import { ClientsService } from '../clients/clients.service';
 import { ConfirmationAdapterFactory } from './adapters/confirmation-adapter.factory';
 import { NormalizedAppointmentData } from './adapters/confirmation-adapter.interface';
 import { GHLOAuthService } from '../gohighlevel/oauth/ghl-oauth.service';
+import { GHLApiClient } from '../gohighlevel/oauth/ghl-api-client.service';
+import { GHLAuthParams } from './ghl-setup.service';
 import { GoHighLevelConfig } from '../integrations/gohighlevel/gohighlevel.types';
+import {
+  ExecutionStepEntry,
+  ExecutionStepName,
+  ExecutionStepStatus,
+} from './types/execution-log.type';
 
 @Injectable()
 export class AppointmentConfirmationsService {
@@ -31,8 +37,48 @@ export class AppointmentConfirmationsService {
     private pendingRepository: Repository<PendingConfirmation>,
     private clientsService: ClientsService,
     private ghlOAuthService: GHLOAuthService,
+    private ghlApiClient: GHLApiClient,
     private adapterFactory: ConfirmationAdapterFactory,
   ) {}
+
+  /**
+   * Resuelve los parámetros de auth para llamar a GHL via wrapper.
+   * Para OAuth no incluye `pitToken` — el wrapper lo resuelve por cada call,
+   * lo que permite retry con mint-fresco si el token guardado está revocado.
+   */
+  private resolveGHLAuthParams(client: any): GHLAuthParams | null {
+    const ghlIntegration = client.getIntegration('gohighlevel');
+    if (ghlIntegration) {
+      const config = ghlIntegration.config as GoHighLevelConfig;
+      if (config.ghlLocationId) {
+        if (config.ghlOAuthMode) {
+          return { locationId: config.ghlLocationId };
+        }
+        if (config.ghlAccessToken) {
+          return { locationId: config.ghlLocationId, pitToken: config.ghlAccessToken };
+        }
+      }
+    }
+
+    if (client.ghlEnabled && client.ghlAccessToken && client.ghlLocationId) {
+      return { locationId: client.ghlLocationId, pitToken: client.ghlAccessToken };
+    }
+
+    return null;
+  }
+
+  /**
+   * Ejecuta una request a GHL respetando el modo (OAuth/PIT) del cliente.
+   */
+  private async callGHL<T = any>(
+    auth: GHLAuthParams,
+    config: Parameters<GHLApiClient['request']>[1],
+  ): Promise<T> {
+    if (auth.pitToken) {
+      return this.ghlApiClient.requestWithToken<T>(auth.pitToken, config);
+    }
+    return this.ghlApiClient.request<T>(auth.locationId, config);
+  }
 
   /**
    * Helper para agregar delay entre peticiones (rate limiting)
@@ -42,72 +88,46 @@ export class AppointmentConfirmationsService {
   }
 
   /**
-   * Resuelve las credenciales GHL del cliente (OAuth o PIT/legacy)
+   * Ejecuta un paso del pipeline de confirmación registrándolo en el log.
+   * Mide duración, captura status HTTP y body de errores GHL.
+   * Re-lanza el error para que el catch global mantenga la lógica de retry.
    */
-  private async resolveGHLCredentials(client: any): Promise<{ ghlAccessToken: string; ghlLocationId: string } | null> {
-    // 1. Intentar desde integración gohighlevel (nuevo sistema)
-    const ghlIntegration = client.getIntegration('gohighlevel');
-    if (ghlIntegration) {
-      const config = ghlIntegration.config as GoHighLevelConfig;
-      if (config.ghlLocationId) {
-        if (config.ghlOAuthMode) {
-          const oauthToken = await this.ghlOAuthService.getLocationAccessToken(config.ghlLocationId);
-          if (oauthToken) {
-            return { ghlAccessToken: oauthToken, ghlLocationId: config.ghlLocationId };
-          }
-          return null;
-        }
-        if (config.ghlAccessToken) {
-          return { ghlAccessToken: config.ghlAccessToken, ghlLocationId: config.ghlLocationId };
-        }
-      }
+  private async runStep<T>(
+    log: ExecutionStepEntry[],
+    attempt: number,
+    step: ExecutionStepName,
+    fn: () => Promise<T>,
+    metadataExtractor?: (result: T) => Record<string, any> | undefined,
+  ): Promise<T> {
+    const startedAt = new Date();
+    try {
+      const result = await fn();
+      log.push({
+        attempt,
+        step,
+        status: ExecutionStepStatus.SUCCESS,
+        startedAt: startedAt.toISOString(),
+        endedAt: new Date().toISOString(),
+        durationMs: Date.now() - startedAt.getTime(),
+        metadata: metadataExtractor ? metadataExtractor(result) : undefined,
+      });
+      return result;
+    } catch (error) {
+      const httpStatus = error?.response?.status;
+      const ghlError = error?.response?.data;
+      log.push({
+        attempt,
+        step,
+        status: ExecutionStepStatus.ERROR,
+        startedAt: startedAt.toISOString(),
+        endedAt: new Date().toISOString(),
+        durationMs: Date.now() - startedAt.getTime(),
+        errorMessage: error?.message || String(error),
+        httpStatus,
+        metadata: ghlError ? { ghlError } : undefined,
+      });
+      throw error;
     }
-
-    // 2. Fallback a campos legacy del cliente
-    if (client.ghlEnabled && client.ghlAccessToken && client.ghlLocationId) {
-      return { ghlAccessToken: client.ghlAccessToken, ghlLocationId: client.ghlLocationId };
-    }
-
-    return null;
-  }
-
-  /**
-   * Helper para hacer llamadas HTTP con retry automático en caso de error 429
-   */
-  private async makeGHLRequest<T>(requestFn: () => Promise<T>, maxRetries: number = 3): Promise<T> {
-    let lastError: any;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        return await requestFn();
-      } catch (error) {
-        lastError = error;
-        const statusCode = error.response?.status;
-
-        if (error.response) {
-          this.logger.error(`🔴 Error de GHL (Status ${statusCode}):`);
-          this.logger.error(`   URL: ${error.config?.url}`);
-          this.logger.error(`   Method: ${error.config?.method?.toUpperCase()}`);
-          this.logger.error(`   Response Data: ${JSON.stringify(error.response.data, null, 2)}`);
-          this.logger.error(
-            `   Response Headers: ${JSON.stringify(error.response.headers, null, 2)}`,
-          );
-        }
-
-        if (statusCode === 429 && attempt < maxRetries - 1) {
-          const waitTime = Math.pow(2, attempt) * 2000;
-          this.logger.warn(
-            `⚠️ Rate limit (429) - Reintentando en ${waitTime}ms (intento ${attempt + 1}/${maxRetries})`,
-          );
-          await this.sleep(waitTime);
-          continue;
-        }
-
-        throw error;
-      }
-    }
-
-    throw lastError;
   }
 
   // ============================================
@@ -506,9 +526,7 @@ export class AppointmentConfirmationsService {
                 `✅ Cita ${fetched.platformAppointmentId} almacenada para confirmación`,
               );
             } else {
-              this.logger.log(
-                `⚠️ Cita ${fetched.platformAppointmentId} ya existe en pendientes`,
-              );
+              this.logger.log(`⚠️ Cita ${fetched.platformAppointmentId} ya existe en pendientes`);
             }
 
             allAppointments.push(fetched);
@@ -519,9 +537,7 @@ export class AppointmentConfirmationsService {
           }
         }
       } catch (error) {
-        this.logger.error(
-          `❌ Error obteniendo citas de ${adapter.platform}: ${error.message}`,
-        );
+        this.logger.error(`❌ Error obteniendo citas de ${adapter.platform}: ${error.message}`);
       }
     }
 
@@ -533,9 +549,7 @@ export class AppointmentConfirmationsService {
    * Este método es completamente genérico - funciona con cualquier plataforma.
    */
   private async processConfirmation(confirmation: PendingConfirmation): Promise<void> {
-    this.logger.log(
-      `📤 Procesando confirmación ${confirmation.id} [${confirmation.platform}]`,
-    );
+    this.logger.log(`📤 Procesando confirmación ${confirmation.id} [${confirmation.platform}]`);
 
     // Marcar como procesando
     confirmation.status = ConfirmationStatus.PROCESSING;
@@ -550,43 +564,53 @@ export class AppointmentConfirmationsService {
     );
     await this.sleep(delayMs);
 
+    const log: ExecutionStepEntry[] = confirmation.executionLog ?? [];
+    const attempt = confirmation.attempts;
+
     try {
       const client = confirmation.client;
       const appointmentData = confirmation.appointmentData;
 
-      // Resolver credenciales GHL (OAuth o PIT/legacy)
-      const ghlCredentials = await this.resolveGHLCredentials(client);
-      if (!ghlCredentials) {
-        throw new Error('Cliente no tiene GoHighLevel configurado');
-      }
-
-      const ghlHeaders = {
-        Authorization: `Bearer ${ghlCredentials.ghlAccessToken}`,
-        'Content-Type': 'application/json',
-        Version: '2021-07-28',
-      };
+      // Resolver parámetros GHL (OAuth o PIT/legacy)
+      const ghlAuth = await this.runStep(
+        log,
+        attempt,
+        ExecutionStepName.RESOLVE_GHL_CREDENTIALS,
+        async () => {
+          const params = this.resolveGHLAuthParams(client);
+          if (!params) {
+            throw new Error('Cliente no tiene GoHighLevel configurado');
+          }
+          return params;
+        },
+        (params) => ({ ghlLocationId: params.locationId }),
+      );
 
       // 1. Buscar o crear contacto en GHL
-      const contactId = await this.findOrCreateContact(
-        ghlCredentials.ghlLocationId,
-        appointmentData,
-        ghlHeaders,
-        confirmation.platform,
+      const contactId = await this.runStep(
+        log,
+        attempt,
+        ExecutionStepName.FIND_OR_CREATE_CONTACT,
+        () => this.findOrCreateContact(ghlAuth, appointmentData, confirmation.platform),
+        (id) => ({ contactId: id }),
       );
 
       confirmation.ghlContactId = contactId;
       await this.pendingRepository.save(confirmation);
 
       // 2. Actualizar custom fields del contacto (incluye for_confirmation: true)
-      await this.updateContactCustomFields(
-        contactId,
-        confirmation.platformAppointmentId,
-        appointmentData,
-        ghlHeaders,
+      await this.runStep(log, attempt, ExecutionStepName.UPDATE_CONTACT_CUSTOM_FIELDS, () =>
+        this.updateContactCustomFields(
+          contactId,
+          confirmation.platformAppointmentId,
+          appointmentData,
+          ghlAuth,
+        ),
       );
 
-      // 3. Actualizar el estado de la cita en la plataforma origen
+      // 3. Actualizar el estado de la cita en la plataforma origen (best-effort)
       if (client.contactedStateId) {
+        const startedAt = new Date();
         try {
           const adapter = this.adapterFactory.getAdapterForClient(client);
           this.logger.log(
@@ -597,10 +621,41 @@ export class AppointmentConfirmationsService {
             confirmation.platformAppointmentId,
             client.contactedStateId,
           );
+          log.push({
+            attempt,
+            step: ExecutionStepName.UPDATE_PLATFORM_STATUS,
+            status: ExecutionStepStatus.SUCCESS,
+            startedAt: startedAt.toISOString(),
+            endedAt: new Date().toISOString(),
+            durationMs: Date.now() - startedAt.getTime(),
+            metadata: { adapter: adapter.platform, stateId: client.contactedStateId },
+          });
           this.logger.log(`✅ Estado de la cita actualizado a "Contactado"`);
         } catch (error) {
+          log.push({
+            attempt,
+            step: ExecutionStepName.UPDATE_PLATFORM_STATUS,
+            status: ExecutionStepStatus.WARNING,
+            startedAt: startedAt.toISOString(),
+            endedAt: new Date().toISOString(),
+            durationMs: Date.now() - startedAt.getTime(),
+            errorMessage: error?.message || String(error),
+            httpStatus: error?.response?.status,
+            metadata: error?.response?.data ? { ghlError: error.response.data } : undefined,
+          });
           this.logger.warn(`⚠️ No se pudo actualizar el estado de la cita: ${error.message}`);
         }
+      } else {
+        const ts = new Date().toISOString();
+        log.push({
+          attempt,
+          step: ExecutionStepName.UPDATE_PLATFORM_STATUS,
+          status: ExecutionStepStatus.SKIPPED,
+          startedAt: ts,
+          endedAt: ts,
+          durationMs: 0,
+          metadata: { reason: 'client.contactedStateId no configurado' },
+        });
       }
 
       // Marcar como completado
@@ -637,6 +692,7 @@ export class AppointmentConfirmationsService {
       }
     }
 
+    confirmation.executionLog = log;
     await this.pendingRepository.save(confirmation);
   }
 
@@ -658,40 +714,29 @@ export class AppointmentConfirmationsService {
   }
 
   private async findOrCreateContact(
-    locationId: string,
+    auth: GHLAuthParams,
     appointmentData: NormalizedAppointmentData,
-    headers: any,
     platform: string,
   ): Promise<string> {
-    const searchUrl = 'https://services.leadconnectorhq.com/contacts/search';
-
     // 1. Buscar por email
     if (this.isValidEmail(appointmentData.email_paciente)) {
       try {
         this.logger.log(`🔍 Buscando contacto por email: ${appointmentData.email_paciente}`);
 
-        const searchPayload = {
-          locationId,
-          pageLimit: 20,
-          filters: [
-            {
-              field: 'email',
-              operator: 'eq',
-              value: appointmentData.email_paciente,
-            },
-          ],
-        };
+        const data = await this.callGHL<{ contacts?: any[] }>(auth, {
+          method: 'POST',
+          url: '/contacts/search',
+          data: {
+            locationId: auth.locationId,
+            pageLimit: 20,
+            filters: [{ field: 'email', operator: 'eq', value: appointmentData.email_paciente }],
+          },
+        });
 
-        const searchResp = await this.makeGHLRequest(() =>
-          axios.post(searchUrl, searchPayload, { headers }),
-        );
-
-        if (searchResp.status === 200) {
-          const contacts = searchResp.data?.contacts || [];
-          if (contacts.length > 0) {
-            this.logger.log(`✅ Contacto encontrado por email: ${contacts[0].id}`);
-            return contacts[0].id;
-          }
+        const contacts = data?.contacts || [];
+        if (contacts.length > 0) {
+          this.logger.log(`✅ Contacto encontrado por email: ${contacts[0].id}`);
+          return contacts[0].id;
         }
       } catch (error) {
         this.logger.warn(`⚠️ Error buscando por email: ${error.message}`);
@@ -706,28 +751,20 @@ export class AppointmentConfirmationsService {
           `🔍 Buscando contacto por teléfono: ${appointmentData.telefono_paciente} (normalizado: ${normalizedPhone})`,
         );
 
-        const searchPayload = {
-          locationId,
-          pageLimit: 20,
-          filters: [
-            {
-              field: 'phone',
-              operator: 'eq',
-              value: normalizedPhone,
-            },
-          ],
-        };
+        const data = await this.callGHL<{ contacts?: any[] }>(auth, {
+          method: 'POST',
+          url: '/contacts/search',
+          data: {
+            locationId: auth.locationId,
+            pageLimit: 20,
+            filters: [{ field: 'phone', operator: 'eq', value: normalizedPhone }],
+          },
+        });
 
-        const searchResp = await this.makeGHLRequest(() =>
-          axios.post(searchUrl, searchPayload, { headers }),
-        );
-
-        if (searchResp.status === 200) {
-          const contacts = searchResp.data?.contacts || [];
-          if (contacts.length > 0) {
-            this.logger.log(`✅ Contacto encontrado por teléfono: ${contacts[0].id}`);
-            return contacts[0].id;
-          }
+        const contacts = data?.contacts || [];
+        if (contacts.length > 0) {
+          this.logger.log(`✅ Contacto encontrado por teléfono: ${contacts[0].id}`);
+          return contacts[0].id;
         }
       } catch (error) {
         this.logger.warn(`⚠️ Error buscando por teléfono: ${error.message}`);
@@ -742,7 +779,7 @@ export class AppointmentConfirmationsService {
     const lastName = nameParts.slice(1).join(' ') || '';
 
     const createPayload: any = {
-      locationId,
+      locationId: auth.locationId,
       firstName,
       lastName,
       name: appointmentData.nombre_paciente,
@@ -758,12 +795,14 @@ export class AppointmentConfirmationsService {
     }
 
     try {
-      const createResp = await this.makeGHLRequest(() =>
-        axios.post('https://services.leadconnectorhq.com/contacts/', createPayload, { headers }),
-      );
+      const data = await this.callGHL<{ contact?: { id: string } }>(auth, {
+        method: 'POST',
+        url: '/contacts/',
+        data: createPayload,
+      });
 
-      if (createResp.status === 201 || createResp.status === 200) {
-        const contactId = createResp.data?.contact?.id;
+      const contactId = data?.contact?.id;
+      if (contactId) {
         this.logger.log(`✅ Contacto creado: ${contactId}`);
         return contactId;
       }
@@ -789,7 +828,7 @@ export class AppointmentConfirmationsService {
     contactId: string,
     platformAppointmentId: string,
     appointmentData: NormalizedAppointmentData,
-    headers: any,
+    auth: GHLAuthParams,
   ): Promise<void> {
     this.logger.log(`📝 Actualizando custom fields del contacto ${contactId}`);
     this.logger.log(
@@ -811,20 +850,16 @@ export class AppointmentConfirmationsService {
       ],
     };
 
-    const updateUrl = `https://services.leadconnectorhq.com/contacts/${contactId}`;
-
-    this.logger.log(`📤 Enviando a GHL:`);
-    this.logger.log(`   URL: ${updateUrl}`);
+    this.logger.log(`📤 PUT /contacts/${contactId}`);
     this.logger.log(`   Payload: ${JSON.stringify(updatePayload, null, 2)}`);
 
     try {
-      const updateResp = await this.makeGHLRequest(() =>
-        axios.put(updateUrl, updatePayload, { headers }),
-      );
-
-      if (updateResp.status === 200) {
-        this.logger.log(`✅ Custom fields actualizados (incluyendo for_confirmation: true)`);
-      }
+      await this.callGHL(auth, {
+        method: 'PUT',
+        url: `/contacts/${contactId}`,
+        data: updatePayload,
+      });
+      this.logger.log(`✅ Custom fields actualizados (incluyendo for_confirmation: true)`);
     } catch (error) {
       this.logger.error(`❌ Error actualizando custom fields: ${error.message}`);
       this.logger.error(`   Contact ID: ${contactId}`);

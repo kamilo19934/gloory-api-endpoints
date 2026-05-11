@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleInit,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -45,6 +40,17 @@ export class GHLOAuthService implements OnModuleInit {
       );
       return;
     }
+
+    // Hidratar invalidCompanies desde BD para que el estado de invalidación
+    // sobreviva reinicios del servidor.
+    const invalid = await this.companyRepo.find({ where: { isOAuthInvalid: true } });
+    invalid.forEach((c) => this.invalidCompanies.add(c.companyId));
+    if (invalid.length > 0) {
+      this.logger.warn(
+        `Hidratando invalidCompanies desde BD: ${invalid.length} companies marcadas como inválidas`,
+      );
+    }
+
     await this.checkAndRefreshTokens();
   }
 
@@ -94,7 +100,9 @@ export class GHLOAuthService implements OnModuleInit {
   // PASO 3 — Intercambia el código por tokens y guarda en BD
   // ══════════════════════════════════════════════════════════════════════════
   private async exchangeCodeForToken(code: string): Promise<void> {
-    this.logger.log(`Intercambiando código OAuth — redirect_uri: ${this.REDIRECT_URL}, client_id: ${this.CLIENT_ID}`);
+    this.logger.log(
+      `Intercambiando código OAuth — redirect_uri: ${this.REDIRECT_URL}, client_id: ${this.CLIENT_ID}`,
+    );
 
     const params = new URLSearchParams({
       client_id: this.CLIENT_ID,
@@ -115,7 +123,9 @@ export class GHLOAuthService implements OnModuleInit {
       });
       data = response.data;
     } catch (err) {
-      this.logger.error(`GHL 401 body: ${JSON.stringify(err?.response?.data)} | status: ${err?.response?.status}`);
+      this.logger.error(
+        `GHL 401 body: ${JSON.stringify(err?.response?.data)} | status: ${err?.response?.status}`,
+      );
       throw err;
     }
 
@@ -133,10 +143,13 @@ export class GHLOAuthService implements OnModuleInit {
       const companyData = await this.getCompany(companyId, access_token);
       companyName = companyData.company?.name || companyId;
     } catch (err) {
-      this.logger.warn(`No se pudo obtener nombre de empresa (¿falta companies.readonly?): ${JSON.stringify(err?.response?.data)}`);
+      this.logger.warn(
+        `No se pudo obtener nombre de empresa (¿falta companies.readonly?): ${JSON.stringify(err?.response?.data)}`,
+      );
     }
 
-    // Guardar/actualizar company en BD
+    // Guardar/actualizar company en BD. Reset isOAuthInvalid: una nueva
+    // autorización exitosa invalida cualquier marca previa de invalidez.
     await this.companyRepo.upsert(
       {
         companyId,
@@ -145,6 +158,7 @@ export class GHLOAuthService implements OnModuleInit {
         refreshToken: refresh_token,
         tokenExpiry,
         scopes: (scope as string).split(' '),
+        isOAuthInvalid: false,
       },
       ['companyId'],
     );
@@ -155,11 +169,7 @@ export class GHLOAuthService implements OnModuleInit {
 
     for (const location of locations) {
       try {
-        const locationToken = await this.getLocationToken(
-          companyId,
-          location.id,
-          access_token,
-        );
+        const locationToken = await this.mintLocationToken(companyId, location.id, access_token);
 
         const locationExpiry = new Date();
         locationExpiry.setSeconds(locationExpiry.getSeconds() + locationToken.expires_in);
@@ -173,14 +183,13 @@ export class GHLOAuthService implements OnModuleInit {
             refreshToken: locationToken.refresh_token,
             tokenExpiry: locationExpiry,
             scopes: (locationToken.scope as string).split(' '),
+            isOAuthInvalid: false,
           },
           ['locationId'],
         );
         locationCount++;
       } catch (err) {
-        this.logger.warn(
-          `No se pudo obtener token para location ${location.id}: ${err?.message}`,
-        );
+        this.logger.warn(`No se pudo obtener token para location ${location.id}: ${err?.message}`);
       }
     }
 
@@ -248,10 +257,16 @@ export class GHLOAuthService implements OnModuleInit {
       tokenExpiry.setSeconds(tokenExpiry.getSeconds() + expires_in);
 
       this.tokenCache.set(company.companyId, access_token);
+      this.invalidCompanies.delete(company.companyId);
 
       await this.companyRepo.update(
         { companyId: company.companyId },
-        { accessToken: access_token, refreshToken: newRefreshToken, tokenExpiry },
+        {
+          accessToken: access_token,
+          refreshToken: newRefreshToken,
+          tokenExpiry,
+          isOAuthInvalid: false,
+        },
       );
 
       // Refrescar tokens de todas las locations de esta empresa
@@ -261,7 +276,7 @@ export class GHLOAuthService implements OnModuleInit {
 
       for (const location of locations) {
         try {
-          const locationToken = await this.getLocationToken(
+          const locationToken = await this.mintLocationToken(
             company.companyId,
             location.locationId,
             access_token,
@@ -275,6 +290,7 @@ export class GHLOAuthService implements OnModuleInit {
               accessToken: locationToken.access_token,
               refreshToken: locationToken.refresh_token,
               tokenExpiry: locationExpiry,
+              isOAuthInvalid: false,
             },
           );
         } catch (err) {
@@ -303,14 +319,14 @@ export class GHLOAuthService implements OnModuleInit {
       this.invalidCompanies.add(company.companyId);
       this.tokenCache.delete(company.companyId);
 
-      // Limpiar tokens en BD sin borrar el registro
+      // Persistir el estado de invalidez para que sobreviva reinicios
       this.companyRepo.update(
         { companyId: company.companyId },
-        { accessToken: '', refreshToken: '' },
+        { accessToken: '', refreshToken: '', isOAuthInvalid: true },
       );
 
       // Notificar caída vía webhook
-      this.sendAlertWebhook(company, 'invalid_grant', errorData);
+      this.sendAlertWebhook(company, 'company', 'invalid_grant', errorData);
     } else {
       this.logger.error(
         `Error refrescando token empresa ${company.companyName}:`,
@@ -318,7 +334,7 @@ export class GHLOAuthService implements OnModuleInit {
       );
 
       // Notificar error de refresh (no invalid_grant) vía webhook
-      this.sendAlertWebhook(company, 'refresh_error', errorData || error?.message);
+      this.sendAlertWebhook(company, 'company', 'refresh_error', errorData || error?.message);
     }
   }
 
@@ -326,29 +342,67 @@ export class GHLOAuthService implements OnModuleInit {
   // Webhook de alerta cuando OAuth falla
   // ══════════════════════════════════════════════════════════════════════════
   private async sendAlertWebhook(
-    company: GHLOAuthCompany,
-    errorType: string,
+    entity: GHLOAuthCompany | GHLOAuthLocation,
+    entityType: 'company' | 'location',
+    errorType: 'invalid_grant' | 'refresh_error' | 'location_token_invalid',
     errorDetail: any,
   ): Promise<void> {
+    const isCritical = errorType === 'invalid_grant' || errorType === 'location_token_invalid';
+    const event =
+      errorType === 'location_token_invalid'
+        ? 'location_token_invalid'
+        : 'oauth_token_refresh_failed';
+
+    const entityPayload =
+      entityType === 'company'
+        ? {
+            id: (entity as GHLOAuthCompany).companyId,
+            name: (entity as GHLOAuthCompany).companyName,
+            type: 'company',
+          }
+        : {
+            id: (entity as GHLOAuthLocation).locationId,
+            name: (entity as GHLOAuthLocation).locationName,
+            type: 'location',
+            company_id: (entity as GHLOAuthLocation).companyId,
+          };
+
+    const entityLabel =
+      entityType === 'company'
+        ? (entity as GHLOAuthCompany).companyName
+        : `${(entity as GHLOAuthLocation).locationName} (location)`;
+
+    let message: string;
+    let actionRequired: string;
+    if (errorType === 'invalid_grant') {
+      message = `OAuth GHL caído para ${entityLabel}. Reconectar manualmente via /settings/ghl-oauth`;
+      actionRequired = 'Reconectar OAuth en /settings/ghl-oauth';
+    } else if (errorType === 'location_token_invalid') {
+      message = `Location ${entityLabel} responde 401 tras reintento con token fresco. Probablemente OAuth desinstalado en GHL para esa location.`;
+      actionRequired = 'Reconectar OAuth en /settings/ghl-oauth y reseleccionar la location';
+    } else {
+      message = `Error refrescando token de ${entityLabel}. Se reintentará en el próximo ciclo.`;
+      actionRequired = 'Revisar logs del servidor';
+    }
+
     try {
       await axios.post(this.ALERT_WEBHOOK_URL, {
-        event: 'oauth_token_refresh_failed',
-        severity: errorType === 'invalid_grant' ? 'critical' : 'warning',
+        event,
+        severity: isCritical ? 'critical' : 'warning',
         source: 'gloory-api-endpoints',
         timestamp: new Date().toISOString(),
-        company: {
-          id: company.companyId,
-          name: company.companyName,
-        },
+        entity: entityPayload,
+        // Backwards-compat: el webhook viejo esperaba `company` plano. Lo
+        // mantenemos cuando aplica para no romper consumidores existentes.
+        ...(entityType === 'company'
+          ? { company: { id: entityPayload.id, name: entityPayload.name } }
+          : {}),
         error: errorType,
         error_detail: typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail),
-        message:
-          errorType === 'invalid_grant'
-            ? `OAuth GHL caído para ${company.companyName}. Reconectar manualmente via /settings/ghl-oauth`
-            : `Error refrescando token de ${company.companyName}. Se reintentará en el próximo ciclo.`,
-        action_required: errorType === 'invalid_grant' ? 'Reconectar OAuth en /settings/ghl-oauth' : 'Revisar logs del servidor',
+        message,
+        action_required: actionRequired,
       });
-      this.logger.log(`🔔 Alerta webhook enviada — ${errorType} para ${company.companyName}`);
+      this.logger.log(`🔔 Alerta webhook enviada — ${errorType} para ${entityLabel}`);
     } catch (webhookErr) {
       this.logger.warn(`No se pudo enviar alerta webhook: ${webhookErr?.message}`);
     }
@@ -383,24 +437,25 @@ export class GHLOAuthService implements OnModuleInit {
     return data.locations || [];
   }
 
-  private async getLocationToken(
+  /**
+   * Mintea un location token fresco usando el company access token.
+   * Público: usado tanto en el flujo de refresh interno como por
+   * `GHLApiClient` para forzar mint tras un 401.
+   */
+  async mintLocationToken(
     companyId: string,
     locationId: string,
     companyAccessToken: string,
   ): Promise<any> {
     const params = new URLSearchParams({ companyId, locationId });
-    const { data } = await axios.post(
-      `${this.BASE_URL}/oauth/locationToken`,
-      params,
-      {
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Version: '2021-07-28',
-          Authorization: `Bearer ${companyAccessToken}`,
-        },
+    const { data } = await axios.post(`${this.BASE_URL}/oauth/locationToken`, params, {
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Version: '2021-07-28',
+        Authorization: `Bearer ${companyAccessToken}`,
       },
-    );
+    });
     return data;
   }
 
@@ -416,6 +471,19 @@ export class GHLOAuthService implements OnModuleInit {
   async getLocationAccessToken(locationId: string): Promise<string | null> {
     const location = await this.locationRepo.findOne({ where: { locationId } });
     if (!location?.accessToken) return null;
+
+    // Si la location o su company están marcadas como inválidas, no devolver
+    // el token aunque siga "vigente" en BD — está revocado del lado de GHL.
+    if (location.isOAuthInvalid) {
+      this.logger.warn(`Location ${locationId} marcada como inválida — requiere reconexión OAuth`);
+      return null;
+    }
+    if (this.invalidCompanies.has(location.companyId)) {
+      this.logger.warn(
+        `Company ${location.companyId} marcada como inválida — location ${locationId} no usable`,
+      );
+      return null;
+    }
 
     const secondsRemaining = Math.floor(
       (new Date(location.tokenExpiry).getTime() - Date.now()) / 1000,
@@ -435,12 +503,14 @@ export class GHLOAuthService implements OnModuleInit {
       where: { companyId: location.companyId },
     });
     if (!company?.accessToken) {
+      // Sin company token no podemos mintear nuevo. No devolver el token viejo:
+      // si está al borde de expirar lo más probable es que ya esté inválido.
       this.logger.error(`No hay company token para refrescar location ${locationId}`);
-      return location.accessToken; // Retornar el que hay como último recurso
+      return null;
     }
 
     try {
-      const locationToken = await this.getLocationToken(
+      const locationToken = await this.mintLocationToken(
         company.companyId,
         locationId,
         company.accessToken,
@@ -454,15 +524,91 @@ export class GHLOAuthService implements OnModuleInit {
           accessToken: locationToken.access_token,
           refreshToken: locationToken.refresh_token,
           tokenExpiry: locationExpiry,
+          isOAuthInvalid: false,
         },
       );
 
       this.logger.log(`🔄 Token de location ${locationId} refrescado on-demand`);
       return locationToken.access_token;
     } catch (err) {
-      this.logger.error(`Error refrescando token on-demand para location ${locationId}: ${err?.message}`);
-      return location.accessToken; // Retornar el existente como fallback
+      // El refresh falló. No devolver el token viejo — si el reloj local dice
+      // que está al borde de expirar y GHL rechaza el mint, lo más probable
+      // es que el token siguiente también falle.
+      this.logger.error(
+        `Error refrescando token on-demand para location ${locationId}: ${err?.message}`,
+      );
+      return null;
     }
+  }
+
+  /**
+   * Mintea forzosamente un token nuevo para la location, sin importar
+   * el `tokenExpiry` actual. Usado por `GHLApiClient` cuando recibe 401
+   * con un token que en BD aún figura como vigente.
+   *
+   * Lanza si la company asociada está marcada como inválida o si el mint
+   * falla — el caller debe manejar el error (típicamente: marcar location
+   * inválida y disparar webhook).
+   */
+  async forceRefreshLocationToken(locationId: string): Promise<string> {
+    const location = await this.locationRepo.findOne({ where: { locationId } });
+    if (!location) {
+      throw new BadRequestException(`Location ${locationId} no existe en BD OAuth`);
+    }
+
+    if (this.invalidCompanies.has(location.companyId)) {
+      throw new BadRequestException(
+        `Company ${location.companyId} marcada como inválida — re-autenticar primero`,
+      );
+    }
+
+    const company = await this.companyRepo.findOne({
+      where: { companyId: location.companyId },
+    });
+    if (!company?.accessToken) {
+      throw new BadRequestException(`No hay company token disponible para location ${locationId}`);
+    }
+
+    const locationToken = await this.mintLocationToken(
+      company.companyId,
+      locationId,
+      company.accessToken,
+    );
+    const locationExpiry = new Date();
+    locationExpiry.setSeconds(locationExpiry.getSeconds() + locationToken.expires_in);
+
+    await this.locationRepo.update(
+      { locationId },
+      {
+        accessToken: locationToken.access_token,
+        refreshToken: locationToken.refresh_token,
+        tokenExpiry: locationExpiry,
+        isOAuthInvalid: false,
+      },
+    );
+
+    this.logger.log(`🔄 Token de location ${locationId} refrescado tras 401 — reintentando`);
+    return locationToken.access_token;
+  }
+
+  /**
+   * Marca una location como OAuth-inválida y dispara webhook de alerta.
+   * Usado por `GHLApiClient` cuando el reintento con token fresco sigue
+   * dando 401 — la location está revocada de GHL.
+   */
+  async markLocationInvalid(locationId: string, reason: string): Promise<void> {
+    const location = await this.locationRepo.findOne({ where: { locationId } });
+    if (!location) {
+      this.logger.warn(`No se encontró location ${locationId} al marcarla inválida`);
+      return;
+    }
+
+    await this.locationRepo.update({ locationId }, { isOAuthInvalid: true });
+    this.logger.error(
+      `❌ Location ${location.locationName} (${locationId}) marcada como inválida — ${reason}`,
+    );
+
+    await this.sendAlertWebhook(location, 'location', 'location_token_invalid', reason);
   }
 
   /**
@@ -491,17 +637,25 @@ export class GHLOAuthService implements OnModuleInit {
    * Re-sincroniza locations desde GHL: descubre nuevas sub-cuentas y genera sus tokens.
    * Retorna cuántas locations nuevas se encontraron.
    */
-  async syncLocations(): Promise<{ newLocations: number; totalLocations: number }> {
+  async syncLocations(): Promise<{
+    newLocations: number;
+    refreshedLocations: number;
+    totalLocations: number;
+  }> {
     const companies = await this.companyRepo.find();
     if (companies.length === 0) {
-      throw new BadRequestException('No hay empresa OAuth conectada. Conecta primero via GET /api/hl/connect');
+      throw new BadRequestException(
+        'No hay empresa OAuth conectada. Conecta primero via GET /api/hl/connect',
+      );
     }
 
     let totalNew = 0;
+    let totalRefreshed = 0;
     let totalLocations = 0;
 
     for (const company of companies) {
       if (!company.accessToken) continue;
+      if (this.invalidCompanies.has(company.companyId)) continue;
 
       const remoteLocations = await this.getAllLocations(company.companyId, company.accessToken);
       totalLocations += remoteLocations.length;
@@ -511,44 +665,51 @@ export class GHLOAuthService implements OnModuleInit {
           where: { locationId: location.id },
         });
 
-        if (!existing) {
-          try {
-            const locationToken = await this.getLocationToken(
-              company.companyId,
-              location.id,
-              company.accessToken,
-            );
+        try {
+          const locationToken = await this.mintLocationToken(
+            company.companyId,
+            location.id,
+            company.accessToken,
+          );
 
-            const locationExpiry = new Date();
-            locationExpiry.setSeconds(locationExpiry.getSeconds() + locationToken.expires_in);
+          const locationExpiry = new Date();
+          locationExpiry.setSeconds(locationExpiry.getSeconds() + locationToken.expires_in);
 
-            await this.locationRepo.upsert(
-              {
-                locationId: location.id,
-                locationName: location.name,
-                companyId: company.companyId,
-                accessToken: locationToken.access_token,
-                refreshToken: locationToken.refresh_token,
-                tokenExpiry: locationExpiry,
-                scopes: (locationToken.scope as string).split(' '),
-              },
-              ['locationId'],
-            );
+          await this.locationRepo.upsert(
+            {
+              locationId: location.id,
+              locationName: location.name,
+              companyId: company.companyId,
+              accessToken: locationToken.access_token,
+              refreshToken: locationToken.refresh_token,
+              tokenExpiry: locationExpiry,
+              scopes: (locationToken.scope as string).split(' '),
+              isOAuthInvalid: false,
+            },
+            ['locationId'],
+          );
+
+          if (!existing) {
             totalNew++;
             this.logger.log(`➕ Nueva location sincronizada: ${location.name} (${location.id})`);
-          } catch (err) {
-            this.logger.warn(
-              `No se pudo obtener token para nueva location ${location.id}: ${err?.message}`,
+          } else {
+            totalRefreshed++;
+            this.logger.log(
+              `🔄 Token refrescado para location existente: ${location.name} (${location.id})`,
             );
           }
+        } catch (err) {
+          this.logger.warn(
+            `No se pudo obtener token para location ${location.id}: ${err?.message}`,
+          );
         }
       }
     }
 
     this.logger.log(
-      `🔄 Sincronización completada — ${totalNew} nuevas locations, ${totalLocations} total`,
+      `🔄 Sincronización completada — ${totalNew} nuevas, ${totalRefreshed} refrescadas, ${totalLocations} total`,
     );
-    return { newLocations: totalNew, totalLocations };
+    return { newLocations: totalNew, refreshedLocations: totalRefreshed, totalLocations };
   }
 
   /**

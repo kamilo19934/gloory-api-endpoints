@@ -36,28 +36,43 @@ export class AppointmentConfirmationsController {
   /**
    * Resuelve las credenciales GHL del cliente (OAuth o PIT/legacy)
    */
-  private async resolveGHLCredentials(client: any): Promise<{ ghlAccessToken: string; ghlLocationId: string } | null> {
-    // 1. Intentar desde integración gohighlevel (nuevo sistema)
+  private async resolveGHLCredentials(
+    client: any,
+  ): Promise<{ ghlAccessToken: string; ghlLocationId: string } | null> {
+    const params = this.resolveGHLAuthParams(client);
+    if (!params) return null;
+
+    if (params.pitToken) {
+      return { ghlAccessToken: params.pitToken, ghlLocationId: params.locationId };
+    }
+
+    const oauthToken = await this.ghlOAuthService.getLocationAccessToken(params.locationId);
+    if (!oauthToken) return null;
+    return { ghlAccessToken: oauthToken, ghlLocationId: params.locationId };
+  }
+
+  /**
+   * Resuelve los parámetros de auth para llamar a `GHLApiClient` vía
+   * los setup services. Diferencia OAuth (sin pitToken) de PIT (con pitToken).
+   * Para OAuth el wrapper resuelve el token dinámicamente por cada request.
+   */
+  private resolveGHLAuthParams(client: any): { locationId: string; pitToken?: string } | null {
     const ghlIntegration = client.getIntegration('gohighlevel');
     if (ghlIntegration) {
       const config = ghlIntegration.config as GoHighLevelConfig;
       if (config.ghlLocationId) {
         if (config.ghlOAuthMode) {
-          const oauthToken = await this.ghlOAuthService.getLocationAccessToken(config.ghlLocationId);
-          if (oauthToken) {
-            return { ghlAccessToken: oauthToken, ghlLocationId: config.ghlLocationId };
-          }
-          return null; // OAuth configurado pero sin token disponible
+          return { locationId: config.ghlLocationId };
         }
         if (config.ghlAccessToken) {
-          return { ghlAccessToken: config.ghlAccessToken, ghlLocationId: config.ghlLocationId };
+          return { locationId: config.ghlLocationId, pitToken: config.ghlAccessToken };
         }
       }
     }
 
-    // 2. Fallback a campos legacy del cliente
+    // Fallback legacy
     if (client.ghlEnabled && client.ghlAccessToken && client.ghlLocationId) {
-      return { ghlAccessToken: client.ghlAccessToken, ghlLocationId: client.ghlLocationId };
+      return { locationId: client.ghlLocationId, pitToken: client.ghlAccessToken };
     }
 
     return null;
@@ -210,7 +225,7 @@ export class AppointmentConfirmationsController {
     if (client.hasIntegration('reservo')) {
       throw new BadRequestException(
         'Los estados de cita personalizados no están soportados para Reservo. ' +
-        'Reservo usa estados fijos: NC (No Confirmado), C (Confirmado), S (Suspendido).',
+          'Reservo usa estados fijos: NC (No Confirmado), C (Confirmado), S (Suspendido).',
       );
     }
 
@@ -243,19 +258,16 @@ export class AppointmentConfirmationsController {
   @Post('setup-ghl')
   async setupGHL(@Param('clientId') clientId: string) {
     const client = await this.clientsService.findOne(clientId);
-    const credentials = await this.resolveGHLCredentials(client);
+    const auth = this.resolveGHLAuthParams(client);
 
-    if (!credentials) {
+    if (!auth) {
       return {
         success: false,
         message: 'El cliente no tiene GoHighLevel configurado correctamente',
       };
     }
 
-    const result = await this.ghlSetupService.ensureCustomFields(
-      credentials.ghlAccessToken,
-      credentials.ghlLocationId,
-    );
+    const result = await this.ghlSetupService.ensureCustomFields(auth);
 
     return {
       success: true,
@@ -275,19 +287,16 @@ export class AppointmentConfirmationsController {
   @Get('validate-ghl')
   async validateGHL(@Param('clientId') clientId: string) {
     const client = await this.clientsService.findOne(clientId);
-    const credentials = await this.resolveGHLCredentials(client);
+    const auth = this.resolveGHLAuthParams(client);
 
-    if (!credentials) {
+    if (!auth) {
       return {
         valid: false,
         message: 'El cliente no tiene GoHighLevel configurado correctamente',
       };
     }
 
-    const result = await this.ghlSetupService.validateCustomFields(
-      credentials.ghlAccessToken,
-      credentials.ghlLocationId,
-    );
+    const result = await this.ghlSetupService.validateCustomFields(auth);
 
     return {
       valid: result.valid,

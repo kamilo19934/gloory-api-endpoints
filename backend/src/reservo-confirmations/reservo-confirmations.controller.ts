@@ -35,23 +35,43 @@ export class ReservoConfirmationsController {
   /**
    * Resuelve las credenciales GHL para Reservo (OAuth, PIT en reservo config, o PIT en GHL integration)
    */
-  private async resolveGHLCredentials(client: any, reservoConfig: ReservoConfig): Promise<{ ghlAccessToken: string; ghlLocationId: string } | null> {
-    // 1. Intentar desde integración gohighlevel (OAuth mode)
+  private async resolveGHLCredentials(
+    client: any,
+    reservoConfig: ReservoConfig,
+  ): Promise<{ ghlAccessToken: string; ghlLocationId: string } | null> {
+    const params = this.resolveGHLAuthParams(client, reservoConfig);
+    if (!params) return null;
+
+    if (params.pitToken) {
+      return { ghlAccessToken: params.pitToken, ghlLocationId: params.locationId };
+    }
+
+    const oauthToken = await this.ghlOAuthService.getLocationAccessToken(params.locationId);
+    if (!oauthToken) return null;
+    return { ghlAccessToken: oauthToken, ghlLocationId: params.locationId };
+  }
+
+  /**
+   * Resuelve los parámetros de auth para el wrapper GHLApiClient.
+   * Para OAuth no incluye `pitToken` — el wrapper lo resuelve por cada call.
+   */
+  private resolveGHLAuthParams(
+    client: any,
+    reservoConfig: ReservoConfig,
+  ): { locationId: string; pitToken?: string } | null {
     const ghlIntegration = client.getIntegration('gohighlevel');
     if (ghlIntegration) {
       const ghlConfig = ghlIntegration.config as GoHighLevelConfig;
       if (ghlConfig.ghlOAuthMode && ghlConfig.ghlLocationId) {
-        const oauthToken = await this.ghlOAuthService.getLocationAccessToken(ghlConfig.ghlLocationId);
-        if (oauthToken) {
-          return { ghlAccessToken: oauthToken, ghlLocationId: ghlConfig.ghlLocationId };
-        }
-        return null; // OAuth configurado pero sin token disponible
+        return { locationId: ghlConfig.ghlLocationId };
       }
     }
 
-    // 2. Usar campos GHL dentro de la configuración Reservo (PIT mode)
     if (reservoConfig.ghlEnabled && reservoConfig.ghlAccessToken && reservoConfig.ghlLocationId) {
-      return { ghlAccessToken: reservoConfig.ghlAccessToken, ghlLocationId: reservoConfig.ghlLocationId };
+      return {
+        locationId: reservoConfig.ghlLocationId,
+        pitToken: reservoConfig.ghlAccessToken,
+      };
     }
 
     return null;
@@ -62,10 +82,7 @@ export class ReservoConfirmationsController {
   // ============================================
 
   @Post('configs')
-  async createConfig(
-    @Param('clientId') clientId: string,
-    @Body() dto: CreateReservoConfigDto,
-  ) {
+  async createConfig(@Param('clientId') clientId: string, @Body() dto: CreateReservoConfigDto) {
     return await this.confirmationsService.createConfig(clientId, dto);
   }
 
@@ -192,19 +209,16 @@ export class ReservoConfirmationsController {
     }
 
     const reservoConfig = integration.config as ReservoConfig;
-    const credentials = await this.resolveGHLCredentials(client, reservoConfig);
+    const auth = this.resolveGHLAuthParams(client, reservoConfig);
 
-    if (!credentials) {
+    if (!auth) {
       return {
         success: false,
         message: 'La integración Reservo no tiene GoHighLevel configurado',
       };
     }
 
-    const result = await this.ghlSetupService.ensureCustomFields(
-      credentials.ghlAccessToken,
-      credentials.ghlLocationId,
-    );
+    const result = await this.ghlSetupService.ensureCustomFields(auth);
 
     return {
       success: true,
@@ -228,19 +242,16 @@ export class ReservoConfirmationsController {
     }
 
     const reservoConfig = integration.config as ReservoConfig;
-    const credentials = await this.resolveGHLCredentials(client, reservoConfig);
+    const auth = this.resolveGHLAuthParams(client, reservoConfig);
 
-    if (!credentials) {
+    if (!auth) {
       return {
         valid: false,
         message: 'La integración Reservo no tiene GoHighLevel configurado',
       };
     }
 
-    const result = await this.ghlSetupService.validateCustomFields(
-      credentials.ghlAccessToken,
-      credentials.ghlLocationId,
-    );
+    const result = await this.ghlSetupService.validateCustomFields(auth);
 
     return {
       valid: result.valid,

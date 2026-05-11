@@ -8,7 +8,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, In } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import axios from 'axios';
 import * as moment from 'moment-timezone';
 import { ReservoConfirmationConfig } from './entities/reservo-confirmation-config.entity';
 import {
@@ -22,7 +21,14 @@ import { ClientsService } from '../clients/clients.service';
 import { ReservoService } from '../integrations/reservo/reservo.service';
 import { ReservoConfig } from '../integrations/reservo/reservo.types';
 import { GHLOAuthService } from '../gohighlevel/oauth/ghl-oauth.service';
+import { GHLApiClient } from '../gohighlevel/oauth/ghl-api-client.service';
+import { GHLAuthParams } from '../appointment-confirmations/ghl-setup.service';
 import { GoHighLevelConfig } from '../integrations/gohighlevel/gohighlevel.types';
+import {
+  ExecutionStepEntry,
+  ExecutionStepName,
+  ExecutionStepStatus,
+} from '../appointment-confirmations/types/execution-log.type';
 
 @Injectable()
 export class ReservoConfirmationsService {
@@ -36,7 +42,44 @@ export class ReservoConfirmationsService {
     private clientsService: ClientsService,
     private reservoService: ReservoService,
     private ghlOAuthService: GHLOAuthService,
+    private ghlApiClient: GHLApiClient,
   ) {}
+
+  /**
+   * Resuelve parámetros de auth para llamar a GHL via wrapper.
+   * Para OAuth no incluye `pitToken` — el wrapper lo resuelve dinámicamente.
+   */
+  private resolveGHLAuthParams(client: any, reservoConfig: ReservoConfig): GHLAuthParams | null {
+    const ghlIntegration = client.getIntegration('gohighlevel');
+    if (ghlIntegration) {
+      const ghlConfig = ghlIntegration.config as GoHighLevelConfig;
+      if (ghlConfig.ghlOAuthMode && ghlConfig.ghlLocationId) {
+        return { locationId: ghlConfig.ghlLocationId };
+      }
+    }
+
+    if (reservoConfig.ghlEnabled && reservoConfig.ghlAccessToken && reservoConfig.ghlLocationId) {
+      return {
+        locationId: reservoConfig.ghlLocationId,
+        pitToken: reservoConfig.ghlAccessToken,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Ejecuta una request a GHL respetando el modo del cliente.
+   */
+  private async callGHL<T = any>(
+    auth: GHLAuthParams,
+    config: Parameters<GHLApiClient['request']>[1],
+  ): Promise<T> {
+    if (auth.pitToken) {
+      return this.ghlApiClient.requestWithToken<T>(auth.pitToken, config);
+    }
+    return this.ghlApiClient.request<T>(auth.locationId, config);
+  }
 
   // ============================================
   // HELPERS
@@ -47,63 +90,51 @@ export class ReservoConfirmationsService {
   }
 
   /**
+   * Ejecuta un paso del pipeline de confirmación registrándolo en el log.
+   * Mide duración, captura status HTTP y body de errores GHL.
+   * Re-lanza el error para que el catch global mantenga la lógica de retry.
+   */
+  private async runStep<T>(
+    log: ExecutionStepEntry[],
+    attempt: number,
+    step: ExecutionStepName,
+    fn: () => Promise<T>,
+    metadataExtractor?: (result: T) => Record<string, any> | undefined,
+  ): Promise<T> {
+    const startedAt = new Date();
+    try {
+      const result = await fn();
+      log.push({
+        attempt,
+        step,
+        status: ExecutionStepStatus.SUCCESS,
+        startedAt: startedAt.toISOString(),
+        endedAt: new Date().toISOString(),
+        durationMs: Date.now() - startedAt.getTime(),
+        metadata: metadataExtractor ? metadataExtractor(result) : undefined,
+      });
+      return result;
+    } catch (error) {
+      const httpStatus = error?.response?.status;
+      const ghlError = error?.response?.data;
+      log.push({
+        attempt,
+        step,
+        status: ExecutionStepStatus.ERROR,
+        startedAt: startedAt.toISOString(),
+        endedAt: new Date().toISOString(),
+        durationMs: Date.now() - startedAt.getTime(),
+        errorMessage: error?.message || String(error),
+        httpStatus,
+        metadata: ghlError ? { ghlError } : undefined,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Resuelve las credenciales GHL para Reservo (OAuth, PIT en reservo config, o PIT en GHL integration)
    */
-  private async resolveGHLCredentials(client: any, reservoConfig: ReservoConfig): Promise<{ ghlAccessToken: string; ghlLocationId: string } | null> {
-    // 1. Intentar desde integración gohighlevel (OAuth mode)
-    const ghlIntegration = client.getIntegration('gohighlevel');
-    if (ghlIntegration) {
-      const ghlConfig = ghlIntegration.config as GoHighLevelConfig;
-      if (ghlConfig.ghlOAuthMode && ghlConfig.ghlLocationId) {
-        const oauthToken = await this.ghlOAuthService.getLocationAccessToken(ghlConfig.ghlLocationId);
-        if (oauthToken) {
-          return { ghlAccessToken: oauthToken, ghlLocationId: ghlConfig.ghlLocationId };
-        }
-        return null;
-      }
-    }
-
-    // 2. Usar campos GHL dentro de la configuración Reservo (PIT mode)
-    if (reservoConfig.ghlEnabled && reservoConfig.ghlAccessToken && reservoConfig.ghlLocationId) {
-      return { ghlAccessToken: reservoConfig.ghlAccessToken, ghlLocationId: reservoConfig.ghlLocationId };
-    }
-
-    return null;
-  }
-
-  private async makeGHLRequest<T>(requestFn: () => Promise<T>, maxRetries: number = 3): Promise<T> {
-    let lastError: any;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        return await requestFn();
-      } catch (error) {
-        lastError = error;
-        const statusCode = error.response?.status;
-
-        if (error.response) {
-          this.logger.error(`Error de GHL (Status ${statusCode}):`);
-          this.logger.error(`   URL: ${error.config?.url}`);
-          this.logger.error(`   Method: ${error.config?.method?.toUpperCase()}`);
-          this.logger.error(`   Response Data: ${JSON.stringify(error.response.data, null, 2)}`);
-        }
-
-        if (statusCode === 429 && attempt < maxRetries - 1) {
-          const waitTime = Math.pow(2, attempt) * 2000;
-          this.logger.warn(
-            `Rate limit (429) - Reintentando en ${waitTime}ms (intento ${attempt + 1}/${maxRetries})`,
-          );
-          await this.sleep(waitTime);
-          continue;
-        }
-
-        throw error;
-      }
-    }
-
-    throw lastError;
-  }
-
   private normalizePhone(phone: string): string {
     if (!phone) return phone;
     return phone.replace(/[\s\-\(\)]/g, '');
@@ -307,7 +338,9 @@ export class ReservoConfirmationsService {
               true,
             );
 
-            this.logger.log(`[Reservo] ${result.stored} citas almacenadas para confirmación inmediata`);
+            this.logger.log(
+              `[Reservo] ${result.stored} citas almacenadas para confirmación inmediata`,
+            );
 
             if (result.stored > 0) {
               const processResult = await this.processAllPendingConfirmationsNow(client.id);
@@ -406,9 +439,7 @@ export class ReservoConfirmationsService {
         }
 
         // Filtrar solo citas No Confirmadas (NC)
-        const ncAppointments = citasResult.data.filter(
-          (apt) => apt.estado?.codigo === 'NC',
-        );
+        const ncAppointments = citasResult.data.filter((apt) => apt.estado?.codigo === 'NC');
 
         this.logger.log(
           `[Reservo] ${ncAppointments.length} citas NC de ${citasResult.data.length} totales para ${appointmentDate}`,
@@ -456,9 +487,7 @@ export class ReservoConfirmationsService {
 
             allAppointments.push({ uuid: apt.uuid, data: normalized });
           } catch (error) {
-            this.logger.error(
-              `[Reservo] Error almacenando cita ${apt.uuid}: ${error.message}`,
-            );
+            this.logger.error(`[Reservo] Error almacenando cita ${apt.uuid}: ${error.message}`);
           }
         }
       } catch (error) {
@@ -472,10 +501,7 @@ export class ReservoConfirmationsService {
   /**
    * Normaliza una cita de Reservo a formato interno
    */
-  private normalizeAppointment(
-    apt: any,
-    timezone: string,
-  ): ReservoNormalizedAppointment {
+  private normalizeAppointment(apt: any, timezone: string): ReservoNormalizedAppointment {
     const cliente = apt.cliente;
     const profesional = apt.profesional;
     const sucursal = apt.sucursal;
@@ -500,8 +526,7 @@ export class ReservoConfirmationsService {
       id_profesional: profesional?.uuid || '',
       nombre_profesional: profesional?.nombre || 'Sin profesional',
       id_tratamiento: tratamientos[0]?.uuid || '',
-      nombre_tratamiento:
-        tratamientos.map((t: any) => t.nombre).join(', ') || 'Sin tratamiento',
+      nombre_tratamiento: tratamientos.map((t: any) => t.nombre).join(', ') || 'Sin tratamiento',
       id_sucursal: sucursal?.uuid || '',
       nombre_sucursal: sucursal?.nombre || 'Sin sucursal',
       estado_codigo: apt.estado?.codigo || 'NC',
@@ -534,29 +559,37 @@ export class ReservoConfirmationsService {
     this.logger.log(`[Reservo] Esperando ${delaySeconds}s antes de procesar ${confirmation.id}...`);
     await this.sleep(delayMs);
 
+    const log: ExecutionStepEntry[] = confirmation.executionLog ?? [];
+    const attempt = confirmation.attempts;
+
     try {
-      const client = confirmation.client
-        || await this.clientsService.findOne(confirmation.clientId);
+      const client =
+        confirmation.client || (await this.clientsService.findOne(confirmation.clientId));
       const reservoConfig = this.getReservoConfig(client);
       const appointmentData = confirmation.appointmentData;
 
-      // Resolver credenciales GHL (OAuth o PIT)
-      const ghlCredentials = await this.resolveGHLCredentials(client, reservoConfig);
-      if (!ghlCredentials) {
-        throw new Error('La integración Reservo no tiene GoHighLevel configurado');
-      }
-
-      const ghlHeaders = {
-        Authorization: `Bearer ${ghlCredentials.ghlAccessToken}`,
-        'Content-Type': 'application/json',
-        Version: '2021-07-28',
-      };
+      // Resolver parámetros GHL (OAuth o PIT)
+      const ghlAuth = await this.runStep(
+        log,
+        attempt,
+        ExecutionStepName.RESOLVE_GHL_CREDENTIALS,
+        async () => {
+          const params = this.resolveGHLAuthParams(client, reservoConfig);
+          if (!params) {
+            throw new Error('La integración Reservo no tiene GoHighLevel configurado');
+          }
+          return params;
+        },
+        (params) => ({ ghlLocationId: params.locationId }),
+      );
 
       // 1. Buscar o crear contacto en GHL
-      const contactId = await this.findOrCreateContact(
-        ghlCredentials.ghlLocationId,
-        appointmentData,
-        ghlHeaders,
+      const contactId = await this.runStep(
+        log,
+        attempt,
+        ExecutionStepName.FIND_OR_CREATE_CONTACT,
+        () => this.findOrCreateContact(ghlAuth, appointmentData),
+        (id) => ({ contactId: id }),
       );
 
       confirmation.ghlContactId = contactId;
@@ -565,11 +598,13 @@ export class ReservoConfirmationsService {
       });
 
       // 2. Actualizar custom fields del contacto
-      await this.updateContactCustomFields(
-        contactId,
-        confirmation.reservoAppointmentUuid,
-        appointmentData,
-        ghlHeaders,
+      await this.runStep(log, attempt, ExecutionStepName.UPDATE_CONTACT_CUSTOM_FIELDS, () =>
+        this.updateContactCustomFields(
+          contactId,
+          confirmation.reservoAppointmentUuid,
+          appointmentData,
+          ghlAuth,
+        ),
       );
 
       // Nota: NO se cambia el estado de la cita en Reservo — queda tal cual ("NC")
@@ -597,12 +632,16 @@ export class ReservoConfirmationsService {
         confirmation.errorMessage = errorMessage;
 
         if (confirmation.attempts >= 3) {
-          this.logger.error(`[Reservo] Confirmación ${confirmation.id} falló después de 3 intentos`);
+          this.logger.error(
+            `[Reservo] Confirmación ${confirmation.id} falló después de 3 intentos`,
+          );
         } else {
           confirmation.status = ReservoConfirmationStatus.PENDING;
         }
       }
     }
+
+    confirmation.executionLog = log;
 
     // Guardar estado final con update() para evitar FK constraint en SQLite
     await this.pendingRepository.update(confirmation.id, {
@@ -611,6 +650,7 @@ export class ReservoConfirmationsService {
       errorMessage: confirmation.errorMessage,
       attempts: confirmation.attempts,
       processedAt: confirmation.processedAt,
+      executionLog: log,
     });
   }
 
@@ -618,39 +658,28 @@ export class ReservoConfirmationsService {
    * Busca un contacto en GHL por email o teléfono, o lo crea si no existe
    */
   private async findOrCreateContact(
-    locationId: string,
+    auth: GHLAuthParams,
     appointmentData: ReservoNormalizedAppointment,
-    headers: any,
   ): Promise<string> {
-    const searchUrl = 'https://services.leadconnectorhq.com/contacts/search';
-
     // 1. Buscar por email
     if (appointmentData.email_paciente) {
       try {
         this.logger.log(`[Reservo] Buscando contacto por email: ${appointmentData.email_paciente}`);
 
-        const searchPayload = {
-          locationId,
-          pageLimit: 20,
-          filters: [
-            {
-              field: 'email',
-              operator: 'eq',
-              value: appointmentData.email_paciente,
-            },
-          ],
-        };
+        const data = await this.callGHL<{ contacts?: any[] }>(auth, {
+          method: 'POST',
+          url: '/contacts/search',
+          data: {
+            locationId: auth.locationId,
+            pageLimit: 20,
+            filters: [{ field: 'email', operator: 'eq', value: appointmentData.email_paciente }],
+          },
+        });
 
-        const searchResp = await this.makeGHLRequest(() =>
-          axios.post(searchUrl, searchPayload, { headers }),
-        );
-
-        if (searchResp.status === 200) {
-          const contacts = searchResp.data?.contacts || [];
-          if (contacts.length > 0) {
-            this.logger.log(`[Reservo] Contacto encontrado por email: ${contacts[0].id}`);
-            return contacts[0].id;
-          }
+        const contacts = data?.contacts || [];
+        if (contacts.length > 0) {
+          this.logger.log(`[Reservo] Contacto encontrado por email: ${contacts[0].id}`);
+          return contacts[0].id;
         }
       } catch (error) {
         this.logger.warn(`[Reservo] Error buscando por email: ${error.message}`);
@@ -663,28 +692,20 @@ export class ReservoConfirmationsService {
         const normalizedPhone = this.normalizePhone(appointmentData.telefono_paciente);
         this.logger.log(`[Reservo] Buscando contacto por teléfono: ${normalizedPhone}`);
 
-        const searchPayload = {
-          locationId,
-          pageLimit: 20,
-          filters: [
-            {
-              field: 'phone',
-              operator: 'eq',
-              value: normalizedPhone,
-            },
-          ],
-        };
+        const data = await this.callGHL<{ contacts?: any[] }>(auth, {
+          method: 'POST',
+          url: '/contacts/search',
+          data: {
+            locationId: auth.locationId,
+            pageLimit: 20,
+            filters: [{ field: 'phone', operator: 'eq', value: normalizedPhone }],
+          },
+        });
 
-        const searchResp = await this.makeGHLRequest(() =>
-          axios.post(searchUrl, searchPayload, { headers }),
-        );
-
-        if (searchResp.status === 200) {
-          const contacts = searchResp.data?.contacts || [];
-          if (contacts.length > 0) {
-            this.logger.log(`[Reservo] Contacto encontrado por teléfono: ${contacts[0].id}`);
-            return contacts[0].id;
-          }
+        const contacts = data?.contacts || [];
+        if (contacts.length > 0) {
+          this.logger.log(`[Reservo] Contacto encontrado por teléfono: ${contacts[0].id}`);
+          return contacts[0].id;
         }
       } catch (error) {
         this.logger.warn(`[Reservo] Error buscando por teléfono: ${error.message}`);
@@ -699,7 +720,7 @@ export class ReservoConfirmationsService {
     const lastName = nameParts.slice(1).join(' ') || '';
 
     const createPayload: any = {
-      locationId,
+      locationId: auth.locationId,
       firstName,
       lastName,
       name: appointmentData.nombre_paciente,
@@ -715,12 +736,14 @@ export class ReservoConfirmationsService {
     }
 
     try {
-      const createResp = await this.makeGHLRequest(() =>
-        axios.post('https://services.leadconnectorhq.com/contacts/', createPayload, { headers }),
-      );
+      const data = await this.callGHL<{ contact?: { id: string } }>(auth, {
+        method: 'POST',
+        url: '/contacts/',
+        data: createPayload,
+      });
 
-      if (createResp.status === 201 || createResp.status === 200) {
-        const contactId = createResp.data?.contact?.id;
+      const contactId = data?.contact?.id;
+      if (contactId) {
         this.logger.log(`[Reservo] Contacto creado: ${contactId}`);
         return contactId;
       }
@@ -746,7 +769,7 @@ export class ReservoConfirmationsService {
     contactId: string,
     reservoAppointmentUuid: string,
     appointmentData: ReservoNormalizedAppointment,
-    headers: any,
+    auth: GHLAuthParams,
   ): Promise<void> {
     this.logger.log(`[Reservo] Actualizando custom fields del contacto ${contactId}`);
 
@@ -765,16 +788,13 @@ export class ReservoConfirmationsService {
       ],
     };
 
-    const updateUrl = `https://services.leadconnectorhq.com/contacts/${contactId}`;
-
     try {
-      const updateResp = await this.makeGHLRequest(() =>
-        axios.put(updateUrl, updatePayload, { headers }),
-      );
-
-      if (updateResp.status === 200) {
-        this.logger.log(`[Reservo] Custom fields actualizados (for_confirmation: true)`);
-      }
+      await this.callGHL(auth, {
+        method: 'PUT',
+        url: `/contacts/${contactId}`,
+        data: updatePayload,
+      });
+      this.logger.log(`[Reservo] Custom fields actualizados (for_confirmation: true)`);
     } catch (error) {
       this.logger.error(`[Reservo] Error actualizando custom fields: ${error.message}`);
       throw error;
@@ -791,7 +811,9 @@ export class ReservoConfirmationsService {
   async processAllPendingConfirmationsNow(
     clientId: string,
   ): Promise<{ processed: number; completed: number; failed: number }> {
-    this.logger.log(`[Reservo] Procesando TODAS las confirmaciones pendientes para cliente ${clientId}`);
+    this.logger.log(
+      `[Reservo] Procesando TODAS las confirmaciones pendientes para cliente ${clientId}`,
+    );
 
     let totalProcessed = 0;
     let totalCompleted = 0;
@@ -901,7 +923,9 @@ export class ReservoConfirmationsService {
           failed++;
         }
       } catch (error) {
-        this.logger.error(`[Reservo] Error procesando confirmación ${confirmation.id}: ${error.message}`);
+        this.logger.error(
+          `[Reservo] Error procesando confirmación ${confirmation.id}: ${error.message}`,
+        );
         failed++;
       }
     }
@@ -920,9 +944,7 @@ export class ReservoConfirmationsService {
     clientId: string,
     confirmationIds: string[],
   ): Promise<{ processed: number; completed: number; failed: number }> {
-    this.logger.log(
-      `[Reservo] Procesando ${confirmationIds.length} confirmaciones seleccionadas`,
-    );
+    this.logger.log(`[Reservo] Procesando ${confirmationIds.length} confirmaciones seleccionadas`);
 
     const pending = await this.pendingRepository.find({
       where: {
@@ -956,7 +978,9 @@ export class ReservoConfirmationsService {
           failed++;
         }
       } catch (error) {
-        this.logger.error(`[Reservo] Error procesando confirmación ${confirmation.id}: ${error.message}`);
+        this.logger.error(
+          `[Reservo] Error procesando confirmación ${confirmation.id}: ${error.message}`,
+        );
         failed++;
       }
     }
