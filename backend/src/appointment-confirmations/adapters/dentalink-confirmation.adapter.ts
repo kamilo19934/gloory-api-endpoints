@@ -4,10 +4,7 @@ import { Client } from '../../clients/entities/client.entity';
 import { ConfirmationConfig } from '../entities/confirmation-config.entity';
 import { HealthAtomService } from '../../integrations/healthatom/healthatom.service';
 import { ClientsService } from '../../clients/clients.service';
-import {
-  IConfirmationAdapter,
-  FetchedAppointment,
-} from './confirmation-adapter.interface';
+import { IConfirmationAdapter, FetchedAppointment } from './confirmation-adapter.interface';
 
 @Injectable()
 export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
@@ -39,9 +36,9 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
     const hasDentalinkMedilink = client.integrations?.some(
       (i) => i.integrationType === 'dentalink_medilink' && i.isEnabled,
     );
-    const hasMedilinkOnly = !hasDentalinkMedilink && client.integrations?.some(
-      (i) => i.integrationType === 'medilink' && i.isEnabled,
-    );
+    const hasMedilinkOnly =
+      !hasDentalinkMedilink &&
+      client.integrations?.some((i) => i.integrationType === 'medilink' && i.isEnabled);
 
     const apiKey = this.resolveApiKey(client);
     const headers = {
@@ -56,13 +53,19 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
         ]
       : hasMedilinkOnly
         ? [{ type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' }]
-        : [{ type: 'dentalink', baseUrl: process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/' }];
+        : [
+            {
+              type: 'dentalink',
+              baseUrl:
+                process.env.DENTALINK_BASE_URL || 'https://api.dentalink.healthatom.com/api/v1/',
+            },
+          ];
 
     // Parsear los estados configurados
     const stateIds = config.appointmentStates.split(',').map((id) => parseInt(id.trim(), 10));
     this.logger.log(`📋 Filtrando por estados: [${stateIds.join(', ')}]`);
 
-    let appointments = [];
+    const appointments = [];
     const seenIds = new Set<string>();
 
     for (const api of apisToTry) {
@@ -84,7 +87,9 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
 
           if (response.status === 200) {
             const stateAppointments = response.data?.data || [];
-            this.logger.log(`   ✅ ${stateAppointments.length} citas con estado ${stateId} en ${api.type}`);
+            this.logger.log(
+              `   ✅ ${stateAppointments.length} citas con estado ${stateId} en ${api.type}`,
+            );
             // Deduplicar por ID (ambas APIs comparten backend HealthAtom)
             for (const apt of stateAppointments) {
               const aptId = String(apt.id);
@@ -95,7 +100,9 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
             }
           }
         } catch (error) {
-          this.logger.error(`❌ [${api.type}] Error buscando citas con estado ${stateId}: ${error.message}`);
+          this.logger.error(
+            `❌ [${api.type}] Error buscando citas con estado ${stateId}: ${error.message}`,
+          );
         }
       }
     }
@@ -130,7 +137,9 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
               break;
             }
           } catch (error) {
-            this.logger.warn(`⚠️ [${api.type}] Error obteniendo paciente ${apt.id_paciente}: ${error.message}`);
+            this.logger.warn(
+              `⚠️ [${api.type}] Error obteniendo paciente ${apt.id_paciente}: ${error.message}`,
+            );
           }
         }
 
@@ -210,20 +219,22 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
     const hasDentalinkMedilink = client.integrations?.some(
       (i) => i.integrationType === 'dentalink_medilink' && i.isEnabled,
     );
-
-    const apiType = hasDentalinkMedilink ? 'dual' : 'dentalink';
+    const hasMedilinkOnly =
+      !hasDentalinkMedilink &&
+      client.integrations?.some((i) => i.integrationType === 'medilink' && i.isEnabled);
 
     const headers = {
       Authorization: `Token ${this.resolveApiKey(client)}`,
       'Content-Type': 'application/json',
     };
 
-    const apisToTry =
-      apiType === 'dual'
-        ? [
-            { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' },
-            { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' },
-          ]
+    const apisToTry = hasDentalinkMedilink
+      ? [
+          { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' },
+          { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' },
+        ]
+      : hasMedilinkOnly
+        ? [{ type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' }]
         : [{ type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' }];
 
     const allStates: any[] = [];
@@ -267,8 +278,9 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
     const hasDentalinkMedilink = client.integrations?.some(
       (i) => i.integrationType === 'dentalink_medilink' && i.isEnabled,
     );
-
-    const apiType = hasDentalinkMedilink ? 'dual' : 'dentalink';
+    const hasMedilinkOnly =
+      !hasDentalinkMedilink &&
+      client.integrations?.some((i) => i.integrationType === 'medilink' && i.isEnabled);
 
     const headers = {
       Authorization: `Token ${this.resolveApiKey(client)}`,
@@ -294,12 +306,13 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
       },
     ];
 
-    const apisToTry =
-      apiType === 'dual'
-        ? [
-            { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' },
-            { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' },
-          ]
+    const apisToTry = hasDentalinkMedilink
+      ? [
+          { type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' },
+          { type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' },
+        ]
+      : hasMedilinkOnly
+        ? [{ type: 'medilink', baseUrl: 'https://api.medilink2.healthatom.com/api/v5/' }]
         : [{ type: 'dentalink', baseUrl: 'https://api.dentalink.healthatom.com/api/v1/' }];
 
     // Verificar si ya existen los estados
