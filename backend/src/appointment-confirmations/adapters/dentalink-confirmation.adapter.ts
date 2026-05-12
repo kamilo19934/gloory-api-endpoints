@@ -61,8 +61,22 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
             },
           ];
 
-    // Parsear los estados configurados
-    const stateIds = config.appointmentStates.split(',').map((id) => parseInt(id.trim(), 10));
+    // Parsear los estados configurados y descartar el "Confirmado por Bookys"
+    // si el operador lo dejó en appointmentStates por error. No filtramos
+    // "Contactado por Bookys" porque sí queremos poder reintentar el flujo
+    // de confirmación sobre citas que ya fueron contactadas pero no respondieron.
+    const requestedStateIds = config.appointmentStates
+      .split(',')
+      .map((id) => parseInt(id.trim(), 10))
+      .filter((id) => !isNaN(id));
+    const confirmedStateId = client.confirmationStateId;
+    const stateIds = requestedStateIds.filter((id) => id !== confirmedStateId);
+    const droppedConfirmed = requestedStateIds.filter((id) => id === confirmedStateId);
+    if (droppedConfirmed.length > 0) {
+      this.logger.warn(
+        `⚠️ Ignorando estado ${droppedConfirmed.join(', ')} en appointmentStates: coincide con confirmationStateId del cliente — citas ya confirmadas no deben re-procesarse`,
+      );
+    }
     this.logger.log(`📋 Filtrando por estados: [${stateIds.join(', ')}]`);
 
     const appointments = [];
@@ -90,13 +104,29 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
             this.logger.log(
               `   ✅ ${stateAppointments.length} citas con estado ${stateId} en ${api.type}`,
             );
-            // Deduplicar por ID (ambas APIs comparten backend HealthAtom)
+            // Deduplicar por ID (ambas APIs comparten backend HealthAtom).
+            // Adicionalmente filtrar por nombre del estado: descartar las que
+            // ya están en cualquier variante de "Confirmado" — defensa contra
+            // estados nativos de la clínica ("Confirmado", "Confirmado por
+            // teléfono", etc.) que el operador haya incluido en el filtro.
             for (const apt of stateAppointments) {
               const aptId = String(apt.id);
-              if (!seenIds.has(aptId)) {
-                seenIds.add(aptId);
-                appointments.push(apt);
+              if (seenIds.has(aptId)) continue;
+
+              const estadoNombre = (apt.estado_cita || '')
+                .toString()
+                .normalize('NFD')
+                .replace(/[̀-ͯ]/g, '')
+                .toLowerCase();
+              if (estadoNombre.includes('confirmado') || estadoNombre.includes('confirmada')) {
+                this.logger.log(
+                  `   ⏭️ Saltando cita ${aptId}: estado "${apt.estado_cita}" indica ya confirmada`,
+                );
+                continue;
               }
+
+              seenIds.add(aptId);
+              appointments.push(apt);
             }
           }
         } catch (error) {

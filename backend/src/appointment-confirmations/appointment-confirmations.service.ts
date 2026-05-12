@@ -113,6 +113,51 @@ export class AppointmentConfirmationsService {
   }
 
   /**
+   * Determina si una cita ya está confirmada y por lo tanto NO debe
+   * degradarse a "Contactado por Bookys".
+   *
+   * Se considera "confirmada" si:
+   * - su `id_estado` coincide con `client.confirmationStateId` (Confirmado por Bookys), o
+   * - el nombre del estado contiene "confirmado"/"confirmada" (estados nativos
+   *   como "Confirmado", "Confirmado por teléfono", etc.), case/acento-insensitive.
+   *
+   * Las citas en estado "Contactado*" NO se filtran: la idea es poder volver
+   * a solicitar confirmación si el paciente aún no respondió.
+   *
+   * Usado para no sobrescribir un "Confirmado por Bookys" / "Confirmado" cuando
+   * una config secundaria (recordatorio, disparo manual, o appointmentStates
+   * mal configurado) re-procesa la cita.
+   */
+  private isAlreadyConfirmed(
+    client: any,
+    appointmentData: NormalizedAppointmentData,
+  ): { skip: boolean; reason?: string } {
+    const currentStateId = String(appointmentData?.id_estado ?? '').trim();
+    const currentStateName = (appointmentData?.estado_cita ?? '').toString();
+
+    if (
+      currentStateId &&
+      client.confirmationStateId != null &&
+      currentStateId === String(client.confirmationStateId)
+    ) {
+      return { skip: true, reason: 'cita ya en confirmationStateId (Confirmado por Bookys)' };
+    }
+
+    const normalized = currentStateName
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase();
+    if (normalized.includes('confirmado') || normalized.includes('confirmada')) {
+      return {
+        skip: true,
+        reason: `nombre del estado contiene "confirmado" (${currentStateName})`,
+      };
+    }
+
+    return { skip: false };
+  }
+
+  /**
    * Ejecuta un paso del pipeline de confirmación registrándolo en el log.
    * Mide duración, captura status HTTP y body de errores GHL.
    * Re-lanza el error para que el catch global mantenga la lógica de retry.
@@ -633,42 +678,68 @@ export class AppointmentConfirmationsService {
         ),
       );
 
-      // 3. Actualizar el estado de la cita en la plataforma origen (best-effort)
+      // 3. Actualizar el estado de la cita en la plataforma origen (best-effort).
+      // Guard: nunca degradar una cita que ya está "Confirmado*" o "Contactado*"
+      // (sea por Bookys o nativo). Evita sobrescribir un "Confirmado por Bookys"
+      // con "Contactado por Bookys" cuando una segunda config (recordatorio,
+      // disparo manual, o appointmentStates con un ID de Bookys) re-procesa
+      // la cita.
       if (client.contactedStateId) {
-        const startedAt = new Date();
-        try {
-          const adapter = this.adapterFactory.getAdapterForClient(client);
+        const alreadyManaged = this.isAlreadyConfirmed(client, appointmentData);
+        if (alreadyManaged.skip) {
+          const ts = new Date().toISOString();
+          log.push({
+            attempt,
+            step: ExecutionStepName.UPDATE_PLATFORM_STATUS,
+            status: ExecutionStepStatus.SKIPPED,
+            startedAt: ts,
+            endedAt: ts,
+            durationMs: 0,
+            metadata: {
+              reason: alreadyManaged.reason,
+              currentStateId: appointmentData.id_estado,
+              currentStateName: appointmentData.estado_cita,
+            },
+          });
           this.logger.log(
-            `📞 [${adapter.platform}] Actualizando cita ${confirmation.platformAppointmentId} al estado "Contactado"`,
+            `⏭️ Estado plataforma NO actualizado: cita ${confirmation.platformAppointmentId} ya está en "${appointmentData.estado_cita}" (id=${appointmentData.id_estado}) — ${alreadyManaged.reason}`,
           );
-          await adapter.confirmAppointmentOnPlatform(
-            client,
-            confirmation.platformAppointmentId,
-            client.contactedStateId,
-          );
-          log.push({
-            attempt,
-            step: ExecutionStepName.UPDATE_PLATFORM_STATUS,
-            status: ExecutionStepStatus.SUCCESS,
-            startedAt: startedAt.toISOString(),
-            endedAt: new Date().toISOString(),
-            durationMs: Date.now() - startedAt.getTime(),
-            metadata: { adapter: adapter.platform, stateId: client.contactedStateId },
-          });
-          this.logger.log(`✅ Estado de la cita actualizado a "Contactado"`);
-        } catch (error) {
-          log.push({
-            attempt,
-            step: ExecutionStepName.UPDATE_PLATFORM_STATUS,
-            status: ExecutionStepStatus.WARNING,
-            startedAt: startedAt.toISOString(),
-            endedAt: new Date().toISOString(),
-            durationMs: Date.now() - startedAt.getTime(),
-            errorMessage: error?.message || String(error),
-            httpStatus: error?.response?.status,
-            metadata: error?.response?.data ? { ghlError: error.response.data } : undefined,
-          });
-          this.logger.warn(`⚠️ No se pudo actualizar el estado de la cita: ${error.message}`);
+        } else {
+          const startedAt = new Date();
+          try {
+            const adapter = this.adapterFactory.getAdapterForClient(client);
+            this.logger.log(
+              `📞 [${adapter.platform}] Actualizando cita ${confirmation.platformAppointmentId} al estado "Contactado"`,
+            );
+            await adapter.confirmAppointmentOnPlatform(
+              client,
+              confirmation.platformAppointmentId,
+              client.contactedStateId,
+            );
+            log.push({
+              attempt,
+              step: ExecutionStepName.UPDATE_PLATFORM_STATUS,
+              status: ExecutionStepStatus.SUCCESS,
+              startedAt: startedAt.toISOString(),
+              endedAt: new Date().toISOString(),
+              durationMs: Date.now() - startedAt.getTime(),
+              metadata: { adapter: adapter.platform, stateId: client.contactedStateId },
+            });
+            this.logger.log(`✅ Estado de la cita actualizado a "Contactado"`);
+          } catch (error) {
+            log.push({
+              attempt,
+              step: ExecutionStepName.UPDATE_PLATFORM_STATUS,
+              status: ExecutionStepStatus.WARNING,
+              startedAt: startedAt.toISOString(),
+              endedAt: new Date().toISOString(),
+              durationMs: Date.now() - startedAt.getTime(),
+              errorMessage: error?.message || String(error),
+              httpStatus: error?.response?.status,
+              metadata: error?.response?.data ? { ghlError: error.response.data } : undefined,
+            });
+            this.logger.warn(`⚠️ No se pudo actualizar el estado de la cita: ${error.message}`);
+          }
         }
       } else {
         const ts = new Date().toISOString();
