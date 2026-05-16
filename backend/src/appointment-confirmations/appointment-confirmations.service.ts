@@ -113,27 +113,22 @@ export class AppointmentConfirmationsService {
   }
 
   /**
-   * Determina si una cita ya está confirmada y por lo tanto NO debe
-   * degradarse a "Contactado por Bookys".
+   * Determina si una cita ya está en el estado "Confirmado por Bookys" y por
+   * lo tanto NO debe degradarse a "Contactado por Bookys".
    *
-   * Se considera "confirmada" si:
-   * - su `id_estado` coincide con `client.confirmationStateId` (Confirmado por Bookys), o
-   * - el nombre del estado contiene "confirmado"/"confirmada" (estados nativos
-   *   como "Confirmado", "Confirmado por teléfono", etc.), case/acento-insensitive.
+   * Se compara únicamente por ID (`appointmentData.id_estado ===
+   * client.confirmationStateId`). NO usamos heurísticos por nombre porque en
+   * Dentalink/MediLink el estado nativo "Confirmada/Confirmado" es el estado
+   * agendado de entrada al flujo — no significa "paciente ya confirmó".
    *
    * Las citas en estado "Contactado*" NO se filtran: la idea es poder volver
    * a solicitar confirmación si el paciente aún no respondió.
-   *
-   * Usado para no sobrescribir un "Confirmado por Bookys" / "Confirmado" cuando
-   * una config secundaria (recordatorio, disparo manual, o appointmentStates
-   * mal configurado) re-procesa la cita.
    */
   private isAlreadyConfirmed(
     client: any,
     appointmentData: NormalizedAppointmentData,
   ): { skip: boolean; reason?: string } {
     const currentStateId = String(appointmentData?.id_estado ?? '').trim();
-    const currentStateName = (appointmentData?.estado_cita ?? '').toString();
 
     if (
       currentStateId &&
@@ -141,17 +136,6 @@ export class AppointmentConfirmationsService {
       currentStateId === String(client.confirmationStateId)
     ) {
       return { skip: true, reason: 'cita ya en confirmationStateId (Confirmado por Bookys)' };
-    }
-
-    const normalized = currentStateName
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase();
-    if (normalized.includes('confirmado') || normalized.includes('confirmada')) {
-      return {
-        skip: true,
-        reason: `nombre del estado contiene "confirmado" (${currentStateName})`,
-      };
     }
 
     return { skip: false };

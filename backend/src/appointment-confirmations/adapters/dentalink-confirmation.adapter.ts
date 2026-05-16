@@ -105,26 +105,13 @@ export class DentalinkConfirmationAdapter implements IConfirmationAdapter {
               `   ✅ ${stateAppointments.length} citas con estado ${stateId} en ${api.type}`,
             );
             // Deduplicar por ID (ambas APIs comparten backend HealthAtom).
-            // Adicionalmente filtrar por nombre del estado: descartar las que
-            // ya están en cualquier variante de "Confirmado" — defensa contra
-            // estados nativos de la clínica ("Confirmado", "Confirmado por
-            // teléfono", etc.) que el operador haya incluido en el filtro.
+            // El filtrado por id_estado ya excluye el confirmationStateId (ver
+            // arriba); no filtramos adicional por nombre porque en Dentalink/
+            // MediLink el estado nativo "Confirmada/Confirmado" (id 7 por
+            // defecto) ES el estado agendado de entrada al flujo.
             for (const apt of stateAppointments) {
               const aptId = String(apt.id);
               if (seenIds.has(aptId)) continue;
-
-              const estadoNombre = (apt.estado_cita || '')
-                .toString()
-                .normalize('NFD')
-                .replace(/[̀-ͯ]/g, '')
-                .toLowerCase();
-              if (estadoNombre.includes('confirmado') || estadoNombre.includes('confirmada')) {
-                this.logger.log(
-                  `   ⏭️ Saltando cita ${aptId}: estado "${apt.estado_cita}" indica ya confirmada`,
-                );
-                continue;
-              }
-
               seenIds.add(aptId);
               appointments.push(apt);
             }
