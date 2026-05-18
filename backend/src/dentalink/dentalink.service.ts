@@ -2028,13 +2028,23 @@ export class DentalinkService {
 
     const client = await this.clientsService.findOne(clientId);
     const ghlIntegration = client.getIntegration('gohighlevel');
-    if (!ghlIntegration) {
+    let ghlConfig: GoHighLevelConfig;
+    if (ghlIntegration) {
+      ghlConfig = ghlIntegration.config as GoHighLevelConfig;
+    } else if (client.ghlAccessToken && client.ghlLocationId) {
+      // Fallback legacy: campos top-level del cliente (PIT mode)
+      ghlConfig = {
+        ghlAccessToken: client.ghlAccessToken,
+        ghlLocationId: client.ghlLocationId,
+        ghlOAuthMode: false,
+        timezone: client.timezone,
+      };
+    } else {
       throw new HttpException(
         'Este cliente no tiene integración con GoHighLevel configurada',
         HttpStatus.BAD_REQUEST,
       );
     }
-    const ghlConfig = ghlIntegration.config as GoHighLevelConfig;
 
     // 1. Obtener contacto GHL
     const contactResult = await this.goHighLevelService.getContact(ghlConfig, contactId);
