@@ -2027,45 +2027,10 @@ export class DentalinkService {
     this.logger.log(`📇 Obteniendo estado del contacto GHL: ${contactId}`);
 
     const client = await this.clientsService.findOne(clientId);
-    // Buscar integration sin filtrar por isEnabled (algunos clientes OAuth
-    // pueden tener la entry pero con isEnabled=false durante reconexiones)
-    const integrationAny = client.integrations?.find(
-      (i: any) => i.integrationType === 'gohighlevel',
-    );
-    let ghlConfig: GoHighLevelConfig | undefined;
-    if (integrationAny?.config) {
-      ghlConfig = integrationAny.config as GoHighLevelConfig;
-    } else if (client.ghlAccessToken && client.ghlLocationId) {
-      // Fallback legacy: campos top-level del cliente (PIT mode)
-      ghlConfig = {
-        ghlAccessToken: client.ghlAccessToken,
-        ghlLocationId: client.ghlLocationId,
-        ghlOAuthMode: false,
-        timezone: client.timezone,
-      };
-    }
-    if (!ghlConfig || !ghlConfig.ghlLocationId) {
-      const debug = {
-        integrations:
-          client.integrations?.map((i: any) => ({
-            type: i.integrationType,
-            isEnabled: i.isEnabled,
-            hasConfig: !!i.config,
-            configKeys: i.config ? Object.keys(i.config) : [],
-            hasLocationId: !!(i.config as any)?.ghlLocationId,
-            ghlOAuthMode: (i.config as any)?.ghlOAuthMode,
-          })) || [],
-        legacy: {
-          ghlEnabled: client.ghlEnabled,
-          hasAccessToken: !!client.ghlAccessToken,
-          hasLocationId: !!client.ghlLocationId,
-        },
-      };
+    const ghlConfig = this.resolveGhlConfig(client);
+    if (!ghlConfig) {
       throw new HttpException(
-        {
-          message: 'Este cliente no tiene integración con GoHighLevel configurada',
-          debug,
-        },
+        'Este cliente no tiene integración con GoHighLevel configurada',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -2139,6 +2104,50 @@ export class DentalinkService {
       },
       ...stateResult.data,
     };
+  }
+
+  /**
+   * Resuelve la config GHL del cliente probando, en orden:
+   * 1. Integration estándar `gohighlevel`.
+   * 2. Campos GHL embebidos en la integration `dentalink`/`medilink`/`dentalink_medilink`
+   *    (algunos clientes los guardan ahí — ver commit c4b966a).
+   * 3. Campos legacy top-level del entity (`client.ghlAccessToken` + `ghlLocationId`).
+   */
+  private resolveGhlConfig(client: any): GoHighLevelConfig | undefined {
+    const findIntegration = (type: string) =>
+      client.integrations?.find((i: any) => i.integrationType === type);
+
+    // 1. Integration "gohighlevel"
+    const ghl = findIntegration('gohighlevel');
+    if (ghl?.config?.ghlLocationId) {
+      return ghl.config as GoHighLevelConfig;
+    }
+
+    // 2. GHL embebido en dentalink / medilink / dual
+    for (const type of ['dentalink', 'medilink', 'dentalink_medilink']) {
+      const integ = findIntegration(type);
+      const cfg = integ?.config;
+      if (cfg?.ghlLocationId && (cfg.ghlAccessToken || cfg.ghlOAuthMode)) {
+        return {
+          ghlAccessToken: cfg.ghlAccessToken || '',
+          ghlLocationId: cfg.ghlLocationId,
+          ghlOAuthMode: cfg.ghlOAuthMode === true,
+          timezone: cfg.timezone || client.timezone,
+        };
+      }
+    }
+
+    // 3. Legacy top-level
+    if (client.ghlLocationId && (client.ghlAccessToken || client.ghlEnabled)) {
+      return {
+        ghlAccessToken: client.ghlAccessToken || '',
+        ghlLocationId: client.ghlLocationId,
+        ghlOAuthMode: false,
+        timezone: client.timezone,
+      };
+    }
+
+    return undefined;
   }
 
   private mapGhlChannelType(type: string | null): string | null {
