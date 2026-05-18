@@ -2027,10 +2027,14 @@ export class DentalinkService {
     this.logger.log(`📇 Obteniendo estado del contacto GHL: ${contactId}`);
 
     const client = await this.clientsService.findOne(clientId);
-    const ghlIntegration = client.getIntegration('gohighlevel');
-    let ghlConfig: GoHighLevelConfig;
-    if (ghlIntegration) {
-      ghlConfig = ghlIntegration.config as GoHighLevelConfig;
+    // Buscar integration sin filtrar por isEnabled (algunos clientes OAuth
+    // pueden tener la entry pero con isEnabled=false durante reconexiones)
+    const integrationAny = client.integrations?.find(
+      (i: any) => i.integrationType === 'gohighlevel',
+    );
+    let ghlConfig: GoHighLevelConfig | undefined;
+    if (integrationAny?.config) {
+      ghlConfig = integrationAny.config as GoHighLevelConfig;
     } else if (client.ghlAccessToken && client.ghlLocationId) {
       // Fallback legacy: campos top-level del cliente (PIT mode)
       ghlConfig = {
@@ -2039,9 +2043,29 @@ export class DentalinkService {
         ghlOAuthMode: false,
         timezone: client.timezone,
       };
-    } else {
+    }
+    if (!ghlConfig || !ghlConfig.ghlLocationId) {
+      const debug = {
+        integrations:
+          client.integrations?.map((i: any) => ({
+            type: i.integrationType,
+            isEnabled: i.isEnabled,
+            hasConfig: !!i.config,
+            configKeys: i.config ? Object.keys(i.config) : [],
+            hasLocationId: !!(i.config as any)?.ghlLocationId,
+            ghlOAuthMode: (i.config as any)?.ghlOAuthMode,
+          })) || [],
+        legacy: {
+          ghlEnabled: client.ghlEnabled,
+          hasAccessToken: !!client.ghlAccessToken,
+          hasLocationId: !!client.ghlLocationId,
+        },
+      };
       throw new HttpException(
-        'Este cliente no tiene integración con GoHighLevel configurada',
+        {
+          message: 'Este cliente no tiene integración con GoHighLevel configurada',
+          debug,
+        },
         HttpStatus.BAD_REQUEST,
       );
     }
