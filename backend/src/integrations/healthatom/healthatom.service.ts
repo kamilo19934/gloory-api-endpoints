@@ -1072,13 +1072,19 @@ export class HealthAtomService {
       `📞 Buscando paciente por teléfono. Variantes: ${phoneVariants.join(', ')}`,
     );
 
+    // Núcleo del teléfono (últimos 8 dígitos sin código país) para búsqueda LIKE,
+    // que tolera espacios/guiones/paréntesis y prefijos +56 distintos en BD.
+    const digitsOnly = telefonoBusqueda.replace(/\D/g, '');
+    const phoneCore = digitsOnly.slice(-8);
+
     for (const api of this.getApisToTry()) {
       try {
         const client = this.createClient(config.apiKey, api);
         const endpoints = this.getEndpoints(api);
 
-        // Probar cada variante con dos campos: celular y telefono
+        // 1. Probar variantes exactas (eq) en celular y telefono
         let paciente: any = null;
+        let matchInfo = '';
         for (const variant of phoneVariants) {
           for (const field of ['celular', 'telefono']) {
             const filtro = JSON.stringify({ [field]: { eq: variant } });
@@ -1086,10 +1092,8 @@ export class HealthAtomService {
               const resp = await client.get(endpoints.patients, { params: { q: filtro } });
               const pacs = resp.data?.data || [];
               if (pacs.length > 0) {
-                this.logger.log(
-                  `✅ Match en ${api} con ${field}=${variant} (${pacs.length} resultado(s))`,
-                );
                 paciente = pacs[0];
+                matchInfo = `eq ${field}=${variant}`;
                 break;
               }
             } catch {
@@ -1099,7 +1103,27 @@ export class HealthAtomService {
           if (paciente) break;
         }
 
+        // 2. Fallback LIKE por los últimos 8 dígitos (tolera formatos con
+        // espacios, guiones, paréntesis, prefijos distintos)
+        if (!paciente && phoneCore.length >= 6) {
+          for (const field of ['celular', 'telefono']) {
+            const filtro = JSON.stringify({ [field]: { like: `%${phoneCore}%` } });
+            try {
+              const resp = await client.get(endpoints.patients, { params: { q: filtro } });
+              const pacs = resp.data?.data || [];
+              if (pacs.length > 0) {
+                paciente = pacs[0];
+                matchInfo = `like ${field}=%${phoneCore}%`;
+                break;
+              }
+            } catch {
+              // ignorar errores de campo no soportado
+            }
+          }
+        }
+
         if (!paciente) continue;
+        this.logger.log(`✅ Match en ${api} (${matchInfo})`);
         const idPaciente = paciente.id;
         const nombreCompleto =
           `${paciente.nombre || ''} ${paciente.apellidos || paciente.apellido || ''}`.trim();
