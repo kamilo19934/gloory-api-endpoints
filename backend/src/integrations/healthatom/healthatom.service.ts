@@ -1021,4 +1021,190 @@ export class HealthAtomService {
       error: `No se pudieron obtener las citas para el RUT ${formattedRut}`,
     };
   }
+
+  /**
+   * Busca un paciente por teléfono y compone su "estado":
+   * paciente + tratamientos + citas (futuras + últimas N pasadas).
+   * Intenta ambas APIs (Dentalink/MediLink) si el cliente es dual.
+   */
+  async getContactState(
+    phone: string,
+    config: HealthAtomConfig,
+    pastLimit = 5,
+  ): Promise<
+    DualApiOperationResult<{
+      api: string;
+      paciente: {
+        id: number;
+        nombre: string;
+        rut: string | null;
+        telefono: string | null;
+        email: string | null;
+      };
+      tratamientos: any[];
+      total_tratamientos: number;
+      citas_futuras: any[];
+      total_citas_futuras: number;
+      citas_pasadas: any[];
+      total_citas_pasadas: number;
+    }>
+  > {
+    const pais = obtenerPaisDesdeTimezone(config.timezone || 'America/Santiago');
+    const telefonoResult = formatearTelefono(phone, pais);
+    const telefonoBusqueda = telefonoResult.isValid ? telefonoResult.formatted : phone;
+    const timezone = config.timezone || 'America/Santiago';
+
+    this.logger.log(`📞 Buscando paciente por teléfono ${telefonoBusqueda}`);
+
+    for (const api of this.getApisToTry()) {
+      try {
+        const client = this.createClient(config.apiKey, api);
+        const endpoints = this.getEndpoints(api);
+
+        const filtro = JSON.stringify({ celular: { eq: telefonoBusqueda } });
+        const respPaciente = await client.get(endpoints.patients, { params: { q: filtro } });
+
+        if (respPaciente.status !== 200) continue;
+
+        const pacientes = respPaciente.data?.data || [];
+        if (pacientes.length === 0) continue;
+
+        const paciente = pacientes[0];
+        const idPaciente = paciente.id;
+        const nombreCompleto =
+          `${paciente.nombre || ''} ${paciente.apellidos || paciente.apellido || ''}`.trim();
+
+        this.logger.log(`✅ Paciente encontrado en ${api}: ${nombreCompleto} (ID: ${idPaciente})`);
+
+        // Resolver links (cae a URLs construidas si no existen)
+        const relTratamientos = api === HealthAtomApi.DENTALINK ? 'tratamientos' : 'atenciones';
+        const relAlternativo = api === HealthAtomApi.DENTALINK ? 'atenciones' : 'tratamientos';
+        const tratamientosLink =
+          paciente.links?.find((l: any) => l.rel === relTratamientos)?.href ||
+          paciente.links?.find((l: any) => l.rel === relAlternativo)?.href ||
+          `${endpoints.baseUrl}pacientes/${idPaciente}/${relTratamientos}`;
+        const citasLink =
+          paciente.links?.find((l: any) => l.rel === 'citas')?.href ||
+          `${endpoints.baseUrl}pacientes/${idPaciente}/citas`;
+
+        const headers = {
+          Authorization: `Token ${config.apiKey}`,
+        };
+
+        // Tratamientos
+        let tratamientos: any[] = [];
+        try {
+          const respTrat = await axios.get(tratamientosLink, { headers });
+          const tratamientosData = respTrat.data?.data || [];
+          tratamientos = tratamientosData.map((t: any) =>
+            api === HealthAtomApi.DENTALINK
+              ? {
+                  id: t.id,
+                  nombre: t.nombre,
+                  fecha: t.fecha,
+                  id_dentista: t.id_dentista,
+                  nombre_dentista: t.nombre_dentista,
+                  id_sucursal: t.id_sucursal,
+                  nombre_sucursal: t.nombre_sucursal,
+                  finalizado: t.finalizado,
+                }
+              : {
+                  id: t.id,
+                  nombre: t.nombre,
+                  tipo_atencion: t.tipo_atencion,
+                  fecha: t.fecha,
+                  id_profesional: t.id_profesional,
+                  nombre_profesional: t.nombre_profesional,
+                  id_sucursal: t.id_sucursal,
+                  nombre_sucursal: t.nombre_sucursal,
+                  finalizado: t.finalizado,
+                },
+          );
+        } catch (err: any) {
+          this.logger.warn(
+            `⚠️ No se pudieron obtener ${relTratamientos} en ${api}: ${err.message}`,
+          );
+        }
+
+        // Citas (todas)
+        let citas: any[] = [];
+        try {
+          const respCitas = await axios.get(citasLink, { headers });
+          citas = respCitas.data?.data || [];
+        } catch (err: any) {
+          this.logger.warn(`⚠️ No se pudieron obtener citas en ${api}: ${err.message}`);
+        }
+
+        // Partición pasado / futuro
+        const now = moment.tz(timezone);
+        const currentDate = now.format('YYYY-MM-DD');
+        const currentTime = now.format('HH:mm:ss');
+
+        const mapCita = (c: any) => ({
+          id: c.id,
+          id_estado: c.id_estado,
+          estado_cita: c.estado_cita,
+          estado_anulacion: c.estado_anulacion,
+          nombre_tratamiento: c.nombre_tratamiento,
+          id_dentista: c.id_dentista,
+          nombre_dentista: c.nombre_dentista,
+          id_sucursal: c.id_sucursal,
+          fecha: c.fecha,
+          hora_inicio: c.hora_inicio,
+          hora_fin: c.hora_fin,
+          duracion: c.duracion,
+          comentarios: c.comentarios,
+        });
+
+        const isFuture = (c: any) =>
+          c.fecha > currentDate || (c.fecha === currentDate && (c.hora_inicio || '') > currentTime);
+
+        const futuras = citas
+          .filter((c) => c.estado_anulacion === 0 && isFuture(c))
+          .sort((a: any, b: any) => {
+            const d = (a.fecha || '').localeCompare(b.fecha || '');
+            if (d !== 0) return d;
+            return (a.hora_inicio || '').localeCompare(b.hora_inicio || '');
+          })
+          .map(mapCita);
+
+        const pasadas = citas
+          .filter((c) => !isFuture(c))
+          .sort((a: any, b: any) => {
+            const d = (b.fecha || '').localeCompare(a.fecha || '');
+            if (d !== 0) return d;
+            return (b.hora_inicio || '').localeCompare(a.hora_inicio || '');
+          })
+          .slice(0, pastLimit)
+          .map(mapCita);
+
+        return {
+          success: true,
+          data: {
+            api,
+            paciente: {
+              id: idPaciente,
+              nombre: nombreCompleto,
+              rut: paciente.rut || null,
+              telefono: paciente.celular || null,
+              email: paciente.email || null,
+            },
+            tratamientos,
+            total_tratamientos: tratamientos.length,
+            citas_futuras: futuras,
+            total_citas_futuras: futuras.length,
+            citas_pasadas: pasadas,
+            total_citas_pasadas: pasadas.length,
+          },
+        };
+      } catch (error: any) {
+        this.logger.warn(`⚠️ Error buscando contacto por teléfono en ${api}: ${error.message}`);
+      }
+    }
+
+    return {
+      success: false,
+      error: `No se encontró un paciente con el teléfono "${telefonoBusqueda}"`,
+    };
+  }
 }

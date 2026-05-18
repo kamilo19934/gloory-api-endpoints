@@ -212,6 +212,40 @@ export class GoHighLevelService {
   // CONTACTOS
   // ============================
 
+  async getContact(config: GoHighLevelConfig, contactId: string): Promise<GHLOperationResult<any>> {
+    try {
+      this.logger.log(`Obteniendo contacto: ${contactId}`);
+
+      const data = await this.callGHL<{ contact?: any }>(config, {
+        method: 'GET',
+        url: `/contacts/${contactId}`,
+      });
+
+      return { success: true, data: data?.contact || data };
+    } catch (error) {
+      return this.failureResult(error, 'Error obteniendo contacto');
+    }
+  }
+
+  async searchConversations(
+    config: GoHighLevelConfig,
+    contactId: string,
+  ): Promise<GHLOperationResult<any[]>> {
+    try {
+      this.logger.log(`Buscando conversaciones del contacto: ${contactId}`);
+
+      const data = await this.callGHL<{ conversations?: any[] }>(config, {
+        method: 'GET',
+        url: '/conversations/search',
+        params: { locationId: config.ghlLocationId, contactId },
+      });
+
+      return { success: true, data: data?.conversations || [] };
+    } catch (error) {
+      return this.failureResult(error, 'Error buscando conversaciones del contacto');
+    }
+  }
+
   async getContactAppointments(
     config: GoHighLevelConfig,
     contactId: string,

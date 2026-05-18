@@ -81,8 +81,7 @@ export const DENTALINK_TOOLS: ToolSchema[] = [
   },
   {
     name: 'listar_especialidades',
-    description:
-      'Lista las especialidades disponibles de los profesionales activos del negocio.',
+    description: 'Lista las especialidades disponibles de los profesionales activos del negocio.',
     target: 'server',
     endpoint: '/api/v1/assistant/specialties',
     method: 'POST',
@@ -314,8 +313,7 @@ export const DENTALINK_TOOLS: ToolSchema[] = [
         type: 'integer',
         required: false,
         configurable: true,
-        description:
-          'Duración de la cita en minutos. Default: intervalo del profesional.',
+        description: 'Duración de la cita en minutos. Default: intervalo del profesional.',
       },
       comentario: {
         type: 'string',
@@ -327,8 +325,7 @@ export const DENTALINK_TOOLS: ToolSchema[] = [
   },
   {
     name: 'crear_cita_videoconsulta',
-    description:
-      'Agenda una nueva cita de videoconsulta (modalidad remota) en Dentalink.',
+    description: 'Agenda una nueva cita de videoconsulta (modalidad remota) en Dentalink.',
     target: 'external',
     endpoint: '/api/clients/{clientId}/appointments/videoconsulta',
     method: 'POST',
@@ -429,8 +426,7 @@ export const DENTALINK_TOOLS: ToolSchema[] = [
   },
   {
     name: 'confirmar_cita',
-    description:
-      'Confirma una cita cambiándola al estado configurado para confirmación.',
+    description: 'Confirma una cita cambiándola al estado configurado para confirmación.',
     target: 'external',
     endpoint: '/api/clients/{clientId}/appointments/confirm',
     method: 'POST',
@@ -474,6 +470,26 @@ export const DENTALINK_TOOLS: ToolSchema[] = [
         type: 'string',
         required: true,
         description: 'RUT del paciente (el sistema formatea automáticamente)',
+      },
+    },
+  },
+
+  // ============================
+  // ESTADO DE CONTACTO (GHL + HealthAtom)
+  // ============================
+  {
+    name: 'obtener_estado_contacto',
+    description:
+      'Obtiene el contexto completo de un contacto de GoHighLevel: busca el contact por contact_id, si tiene teléfono lo cruza con Dentalink/MediLink y devuelve el paciente (id, nombre, rut), sus tratamientos, sus próximas citas y las últimas 5 citas pasadas. Si el contact no tiene teléfono, devuelve el canal de comunicación de la última conversación. Si tiene teléfono pero no existe el paciente, indica que no se encontró.',
+    target: 'external',
+    endpoint: '/api/clients/{clientId}/contact-state',
+    method: 'POST',
+    category: 'read',
+    fields: {
+      contact_id: {
+        type: 'string',
+        required: true,
+        description: 'ID del contacto en GoHighLevel',
       },
     },
   },

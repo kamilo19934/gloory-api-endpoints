@@ -24,6 +24,7 @@ import { GetTreatmentsDto } from './dto/get-treatments.dto';
 import { SearchSobrecupoAvailabilityDto } from './dto/search-sobrecupo-availability.dto';
 import { ScheduleSobrecupoAppointmentDto } from './dto/schedule-sobrecupo-appointment.dto';
 import { SearchPatientByDataDto } from './dto/search-patient-by-data.dto';
+import { GetContactStateDto } from './dto/get-contact-state.dto';
 
 @Public()
 @Controller('clients/:clientId')
@@ -123,7 +124,10 @@ export class DentalinkController {
     @Param('clientId') clientId: string,
     @Body() scheduleAppointmentDto: ScheduleAppointmentDto,
   ) {
-    return await this.dentalinkService.scheduleVideoconsultaAppointment(clientId, scheduleAppointmentDto);
+    return await this.dentalinkService.scheduleVideoconsultaAppointment(
+      clientId,
+      scheduleAppointmentDto,
+    );
   }
 
   @Post('appointments/sobrecupo')
@@ -160,6 +164,15 @@ export class DentalinkController {
     @Body() getFutureAppointmentsDto: GetFutureAppointmentsDto,
   ) {
     return await this.dentalinkService.getFutureAppointments(clientId, getFutureAppointmentsDto);
+  }
+
+  @Post('contact-state')
+  @HttpCode(HttpStatus.OK)
+  async getContactState(
+    @Param('clientId') clientId: string,
+    @Body() getContactStateDto: GetContactStateDto,
+  ) {
+    return await this.dentalinkService.getContactState(clientId, getContactStateDto);
   }
 
   // Test connection endpoint

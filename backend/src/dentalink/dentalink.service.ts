@@ -3,6 +3,9 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { ClientsService } from '../clients/clients.service';
 import { GHLService } from './ghl.service';
 import { HealthAtomService } from '../integrations/healthatom/healthatom.service';
+import { GoHighLevelService } from '../integrations/gohighlevel/gohighlevel.service';
+import { GoHighLevelConfig } from '../integrations/gohighlevel/gohighlevel.types';
+import { GetContactStateDto } from './dto/get-contact-state.dto';
 import { formatearRut } from '../utils/rut.util';
 import { formatearTelefono, obtenerPaisDesdeTimezone } from '../utils/phone.util';
 import { formatearFechaEspanol, normalizarHora } from '../utils/date.util';
@@ -30,6 +33,7 @@ export class DentalinkService {
     private readonly clientsService: ClientsService,
     private readonly ghlService: GHLService,
     private readonly healthAtomService: HealthAtomService,
+    private readonly goHighLevelService: GoHighLevelService,
   ) {}
 
   /**
@@ -509,7 +513,8 @@ export class DentalinkService {
                 const profesional = profesionales.find((p: any) => p.id === idProf);
                 if (profesional) {
                   const apellido = profesional.apellidos || profesional.apellido || '';
-                  profesionalesInfo[idProf] = `${profesional.nombre || 'Desconocido'} ${apellido}`.trim();
+                  profesionalesInfo[idProf] =
+                    `${profesional.nombre || 'Desconocido'} ${apellido}`.trim();
                   profesionalesIntervalos[idProf] = profesional.intervalo;
                 }
               }
@@ -522,7 +527,8 @@ export class DentalinkService {
                 const profesional = profResp.data?.data;
                 if (profesional) {
                   const apellido = profesional.apellidos || profesional.apellido || '';
-                  profesionalesInfo[idProf] = `${profesional.nombre || 'Desconocido'} ${apellido}`.trim();
+                  profesionalesInfo[idProf] =
+                    `${profesional.nombre || 'Desconocido'} ${apellido}`.trim();
                   profesionalesIntervalos[idProf] = profesional.intervalo;
                 }
               }
@@ -593,7 +599,11 @@ export class DentalinkService {
               );
             }
           }
-          return { idProf, slots: {} as Record<string, Array<{ hora_inicio: string }>>, apiType: null };
+          return {
+            idProf,
+            slots: {} as Record<string, Array<{ hora_inicio: string }>>,
+            apiType: null,
+          };
         }),
       );
 
@@ -622,9 +632,7 @@ export class DentalinkService {
 
           if (horariosFuturos.length > 0) {
             // Normalizar horas (HH:MM:SS → HH:MM)
-            let horariosNormalizados = horariosFuturos.map((h) =>
-              normalizarHora(h.hora_inicio),
-            );
+            let horariosNormalizados = horariosFuturos.map((h) => normalizarHora(h.hora_inicio));
 
             // Validar bloques consecutivos si tenemos tiempo de cita e intervalo
             const tiempoCitaEfectivo = params.tiempo_cita || intervaloProfesional;
@@ -971,7 +979,11 @@ export class DentalinkService {
         this.logger.warn(`⚠️ Error al crear paciente en ${api.type}: ${apiErrorMessage}`);
 
         // Si es error 400 con mensaje de "existe", buscar el paciente
-        if (errorStatus === 400 && errorData?.message?.toLowerCase().includes('existe') && rutFormateado) {
+        if (
+          errorStatus === 400 &&
+          errorData?.message?.toLowerCase().includes('existe') &&
+          rutFormateado
+        ) {
           this.logger.log(`⚠️ Paciente ya existe en ${api.type}, buscando...`);
           try {
             const pacienteExistente = await this.searchUser(clientId, { rut: rutFormateado });
@@ -1971,7 +1983,9 @@ export class DentalinkService {
     }
 
     // Si llegamos aquí, no se encontró en ninguna API
-    return { message: `No se encontró un paciente con el RUT "${rutFormateado}" o no tiene tratamientos registrados` };
+    return {
+      message: `No se encontró un paciente con el RUT "${rutFormateado}" o no tiene tratamientos registrados`,
+    };
   }
 
   /**
@@ -1988,11 +2002,126 @@ export class DentalinkService {
     });
 
     if (!result.success) {
-      return { message: result.error || `No se encontraron citas futuras para el paciente con RUT "${params.rut}"` };
+      return {
+        message:
+          result.error ||
+          `No se encontraron citas futuras para el paciente con RUT "${params.rut}"`,
+      };
     }
 
     this.logger.log(`✅ ${result.data.total_citas} citas futuras obtenidas para RUT ${params.rut}`);
 
     return result.data;
+  }
+
+  /**
+   * Obtiene el "estado" completo de un contacto de GoHighLevel:
+   * 1. Busca el contact en GHL por contact_id.
+   * 2. Si tiene phone, busca el paciente en Dentalink/MediLink por teléfono
+   *    y devuelve sus tratamientos, próximas citas y últimas 5 pasadas.
+   * 3. Si NO tiene phone, devuelve el canal donde se está comunicando
+   *    (a partir de la última conversación del contacto en GHL).
+   */
+  async getContactState(clientId: string, params: GetContactStateDto): Promise<any> {
+    const contactId = params.contact_id;
+    this.logger.log(`📇 Obteniendo estado del contacto GHL: ${contactId}`);
+
+    const client = await this.clientsService.findOne(clientId);
+    const ghlIntegration = client.getIntegration('gohighlevel');
+    if (!ghlIntegration) {
+      throw new HttpException(
+        'Este cliente no tiene integración con GoHighLevel configurada',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const ghlConfig = ghlIntegration.config as GoHighLevelConfig;
+
+    // 1. Obtener contacto GHL
+    const contactResult = await this.goHighLevelService.getContact(ghlConfig, contactId);
+    if (!contactResult.success || !contactResult.data) {
+      throw new HttpException(
+        contactResult.error || 'No se pudo obtener el contacto en GoHighLevel',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const contact = contactResult.data;
+    const phone: string | undefined = contact.phone;
+    const displayName: string =
+      contact.contactName ||
+      `${contact.firstName || ''} ${contact.lastName || ''}`.trim() ||
+      contact.name ||
+      'Sin nombre';
+
+    // 2. Sin teléfono → devolver canal desde última conversación
+    if (!phone) {
+      this.logger.log(`📭 Contact ${contactId} sin teléfono. Resolviendo canal por conversación.`);
+
+      const convResult = await this.goHighLevelService.searchConversations(ghlConfig, contactId);
+      const lastConversation = convResult.success ? (convResult.data || [])[0] : null;
+      const lastMessageType = lastConversation?.lastMessageType || null;
+
+      return {
+        found: false,
+        reason: 'contact_without_phone',
+        contact: {
+          id: contactId,
+          display_name: displayName,
+        },
+        channel: {
+          last_message_type: lastMessageType,
+          channel_display_name: this.mapGhlChannelType(lastMessageType),
+        },
+      };
+    }
+
+    // 3. Con teléfono → buscar en Dentalink/MediLink
+    const apiKey = this.resolveApiKey(client);
+    const stateResult = await this.healthAtomService.getContactState(phone, {
+      apiKey,
+      timezone: client.timezone,
+    });
+
+    if (!stateResult.success || !stateResult.data) {
+      return {
+        found: false,
+        reason: 'patient_not_found',
+        contact: {
+          id: contactId,
+          display_name: displayName,
+          phone,
+        },
+        message:
+          stateResult.error ||
+          `No se encontró paciente con el teléfono ${phone} en Dentalink/MediLink`,
+      };
+    }
+
+    return {
+      found: true,
+      contact: {
+        id: contactId,
+        display_name: displayName,
+        phone,
+      },
+      ...stateResult.data,
+    };
+  }
+
+  private mapGhlChannelType(type: string | null): string | null {
+    if (!type) return null;
+    const map: Record<string, string> = {
+      TYPE_SMS: 'SMS',
+      TYPE_EMAIL: 'Email',
+      TYPE_FB_MESSENGER: 'Facebook Messenger',
+      TYPE_INSTAGRAM: 'Instagram',
+      TYPE_WHATSAPP: 'WhatsApp',
+      TYPE_GMB: 'Google Business',
+      TYPE_CALL: 'Llamada',
+      TYPE_LIVE_CHAT: 'Live Chat',
+      TYPE_REVIEW: 'Reseña',
+      TYPE_CUSTOM_EMAIL: 'Email',
+      TYPE_CUSTOM_SMS: 'SMS',
+    };
+    return map[type] || type;
   }
 }
