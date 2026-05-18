@@ -1051,25 +1051,55 @@ export class HealthAtomService {
   > {
     const pais = obtenerPaisDesdeTimezone(config.timezone || 'America/Santiago');
     const telefonoResult = formatearTelefono(phone, pais);
-    const telefonoBusqueda = telefonoResult.isValid ? telefonoResult.formatted : phone;
+    const telefonoBusqueda = telefonoResult.isValid ? telefonoResult.formatted! : phone;
     const timezone = config.timezone || 'America/Santiago';
 
-    this.logger.log(`📞 Buscando paciente por teléfono ${telefonoBusqueda}`);
+    // Variantes de teléfono para probar: en Dentalink/MediLink algunos clientes
+    // guardan el celular como +56XXXXXXXXX y otros como XXXXXXXXX (sin código).
+    const phoneVariants = Array.from(
+      new Set(
+        [
+          telefonoBusqueda,
+          telefonoBusqueda.replace(/^\+/, ''),
+          telefonoBusqueda.replace(/^\+?\d{1,3}/, ''),
+          phone,
+          phone.replace(/\D/g, ''),
+        ].filter(Boolean),
+      ),
+    );
+
+    this.logger.log(
+      `📞 Buscando paciente por teléfono. Variantes: ${phoneVariants.join(', ')}`,
+    );
 
     for (const api of this.getApisToTry()) {
       try {
         const client = this.createClient(config.apiKey, api);
         const endpoints = this.getEndpoints(api);
 
-        const filtro = JSON.stringify({ celular: { eq: telefonoBusqueda } });
-        const respPaciente = await client.get(endpoints.patients, { params: { q: filtro } });
+        // Probar cada variante con dos campos: celular y telefono
+        let paciente: any = null;
+        for (const variant of phoneVariants) {
+          for (const field of ['celular', 'telefono']) {
+            const filtro = JSON.stringify({ [field]: { eq: variant } });
+            try {
+              const resp = await client.get(endpoints.patients, { params: { q: filtro } });
+              const pacs = resp.data?.data || [];
+              if (pacs.length > 0) {
+                this.logger.log(
+                  `✅ Match en ${api} con ${field}=${variant} (${pacs.length} resultado(s))`,
+                );
+                paciente = pacs[0];
+                break;
+              }
+            } catch {
+              // Si el campo no existe en el modelo de la API, ignorar
+            }
+          }
+          if (paciente) break;
+        }
 
-        if (respPaciente.status !== 200) continue;
-
-        const pacientes = respPaciente.data?.data || [];
-        if (pacientes.length === 0) continue;
-
-        const paciente = pacientes[0];
+        if (!paciente) continue;
         const idPaciente = paciente.id;
         const nombreCompleto =
           `${paciente.nombre || ''} ${paciente.apellidos || paciente.apellido || ''}`.trim();
