@@ -2023,7 +2023,7 @@ export class DentalinkService {
    *    (a partir de la última conversación del contacto en GHL).
    */
   async getContactState(clientId: string, params: GetContactStateDto): Promise<any> {
-    const contactId = params.contact_id;
+    const contactId = params.user_id;
     this.logger.log(`📇 Obteniendo estado del contacto GHL: ${contactId}`);
 
     const client = await this.clientsService.findOne(clientId);

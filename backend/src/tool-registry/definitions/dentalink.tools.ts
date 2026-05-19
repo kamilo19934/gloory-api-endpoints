@@ -480,16 +480,17 @@ export const DENTALINK_TOOLS: ToolSchema[] = [
   {
     name: 'obtener_estado_contacto',
     description:
-      'Obtiene el contexto completo de un contacto de GoHighLevel: busca el contact por contact_id, si tiene teléfono lo cruza con Dentalink/MediLink y devuelve el paciente (id, nombre, rut), sus tratamientos, sus próximas citas y las últimas 5 citas pasadas. Si el contact no tiene teléfono, devuelve el canal de comunicación de la última conversación. Si tiene teléfono pero no existe el paciente, indica que no se encontró.',
+      'Obtiene el contexto del contacto: sus datos de contacto disponibles y, si está creado como paciente en Dentalink/MediLink, incluye sus tratamientos, próximas citas y últimas 5 citas pasadas. Usar al inicio de la conversación para conocer al paciente.',
     target: 'external',
     endpoint: '/api/clients/{clientId}/contact-state',
     method: 'POST',
     category: 'read',
     fields: {
-      contact_id: {
+      user_id: {
         type: 'string',
         required: true,
-        description: 'ID del contacto en GoHighLevel',
+        description:
+          'Contact ID de GHL (mismo identificador que se usa en crear_cita para sincronizar con GoHighLevel)',
       },
     },
   },
