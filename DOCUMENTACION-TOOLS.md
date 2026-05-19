@@ -87,6 +87,17 @@ Documentación de endpoints disponibles para el agente de IA. Todos los endpoint
 
 ---
 
+### POST /contact-state
+- **Nombre:** Obtener Estado Contacto
+- **Descripción:** Obtiene el contexto del contacto: sus datos de contacto disponibles y, si está creado como paciente en Dentalink/MediLink, incluye sus tratamientos, próximas citas y últimas 5 citas pasadas. Usar al inicio de la conversación para conocer al paciente.
+
+**Args:**
+| Nombre | Requerido | Descripción |
+|--------|-----------|-------------|
+| `user_id` | ✅ | Contact ID de GHL (mismo identificador que se usa en `crear_cita` para sincronizar con GoHighLevel) |
+
+---
+
 ## Citas
 
 ### POST /appointments
