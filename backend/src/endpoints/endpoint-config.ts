@@ -229,6 +229,26 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
       },
     ],
   },
+  {
+    id: 'get-contact-state',
+    name: 'Obtener Estado Contacto',
+    description:
+      'Obtiene el contexto del contacto: sus datos de contacto disponibles y, si está creado como paciente en Dentalink/MediLink, incluye sus tratamientos, próximas citas y últimas 5 citas pasadas. Usar al inicio de la conversación para conocer al paciente.',
+    method: 'POST',
+    path: '/contact-state',
+    dentalinkPath: '/pacientes (cruza con GHL contact)',
+    category: 'patients',
+    arguments: [
+      {
+        name: 'user_id',
+        type: 'string',
+        description:
+          'Contact ID de GHL (mismo identificador que se usa en crear_cita para sincronizar con GoHighLevel)',
+        required: true,
+        example: 'ZajQSQMonYeqCoFygQIH',
+      },
+    ],
+  },
 
   // Appointments
   {
@@ -980,7 +1000,8 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
   {
     id: 'reservo-get-future-appointments',
     name: 'Citas Futuras (Reservo)',
-    description: 'Obtiene todas las citas futuras de un paciente desde hoy en adelante (confirmadas y no confirmadas)',
+    description:
+      'Obtiene todas las citas futuras de un paciente desde hoy en adelante (confirmadas y no confirmadas)',
     method: 'POST',
     path: '/reservo/appointments/future',
     dentalinkPath: '',
@@ -1064,8 +1085,7 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
   {
     id: 'ghl-get-calendars-by-specialty',
     name: 'Calendarios por Especialidad (GHL)',
-    description:
-      'Obtiene calendarios filtrados por especialidad. Opcionalmente filtra por sede.',
+    description: 'Obtiene calendarios filtrados por especialidad. Opcionalmente filtra por sede.',
     method: 'POST',
     path: '/ghl/specialties/calendars',
     dentalinkPath: '',
@@ -1318,7 +1338,8 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
   {
     id: 'ghl-test-connection',
     name: 'Probar Conexion (GHL)',
-    description: 'Verifica la conexion con GoHighLevel y muestra la cantidad de calendarios encontrados',
+    description:
+      'Verifica la conexion con GoHighLevel y muestra la cantidad de calendarios encontrados',
     method: 'POST',
     path: '/ghl/test-connection',
     dentalinkPath: '',
