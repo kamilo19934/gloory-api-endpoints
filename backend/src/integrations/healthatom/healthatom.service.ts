@@ -1072,28 +1072,14 @@ export class HealthAtomService {
       `📞 Buscando paciente por teléfono. Variantes: ${phoneVariants.join(', ')}`,
     );
 
-    // Núcleo del teléfono (últimos 8 dígitos sin código país) para búsqueda LIKE,
-    // que tolera espacios/guiones/paréntesis y prefijos +56 distintos en BD.
-    const digitsOnly = telefonoBusqueda.replace(/\D/g, '');
-    const phoneCore = digitsOnly.slice(-8);
-
-    // Diagnostics: queries probados y resultado de cada uno (útil cuando no encuentra)
-    const tried: Array<{
-      api: string;
-      query: any;
-      status: number | string;
-      count: number;
-      error?: string;
-    }> = [];
-
     for (const api of this.getApisToTry()) {
       try {
         const client = this.createClient(config.apiKey, api);
         const endpoints = this.getEndpoints(api);
 
-        // 1. Probar variantes exactas (eq) en celular y telefono
+        // Probar variantes exactas en celular y telefono. HealthAtom solo
+        // soporta el operador `eq` para estos campos (like devuelve 400).
         let paciente: any = null;
-        let matchInfo = '';
         for (const variant of phoneVariants) {
           for (const field of ['celular', 'telefono']) {
             const q: any = { [field]: { eq: variant } };
@@ -1102,55 +1088,19 @@ export class HealthAtomService {
                 params: { q: JSON.stringify(q) },
               });
               const pacs = resp.data?.data || [];
-              tried.push({ api, query: q, status: resp.status, count: pacs.length });
               if (pacs.length > 0) {
                 paciente = pacs[0];
-                matchInfo = `eq ${field}=${variant}`;
+                this.logger.log(`✅ Match en ${api} (${field}=${variant})`);
                 break;
               }
-            } catch (e: any) {
-              tried.push({
-                api,
-                query: q,
-                status: e.response?.status || 'err',
-                count: 0,
-                error: e.message,
-              });
+            } catch {
+              // Campo no soportado por la API; intentar siguiente
             }
           }
           if (paciente) break;
         }
 
-        // 2. Fallback LIKE por los últimos 8 dígitos (tolera formatos con
-        // espacios, guiones, paréntesis, prefijos distintos)
-        if (!paciente && phoneCore.length >= 6) {
-          for (const field of ['celular', 'telefono']) {
-            const q: any = { [field]: { like: `%${phoneCore}%` } };
-            try {
-              const resp = await client.get(endpoints.patients, {
-                params: { q: JSON.stringify(q) },
-              });
-              const pacs = resp.data?.data || [];
-              tried.push({ api, query: q, status: resp.status, count: pacs.length });
-              if (pacs.length > 0) {
-                paciente = pacs[0];
-                matchInfo = `like ${field}=%${phoneCore}%`;
-                break;
-              }
-            } catch (e: any) {
-              tried.push({
-                api,
-                query: q,
-                status: e.response?.status || 'err',
-                count: 0,
-                error: e.message,
-              });
-            }
-          }
-        }
-
         if (!paciente) continue;
-        this.logger.log(`✅ Match en ${api} (${matchInfo})`);
         const idPaciente = paciente.id;
         const nombreCompleto =
           `${paciente.nombre || ''} ${paciente.apellidos || paciente.apellido || ''}`.trim();
@@ -1308,19 +1258,12 @@ export class HealthAtomService {
         };
       } catch (error: any) {
         this.logger.warn(`⚠️ Error buscando contacto por teléfono en ${api}: ${error.message}`);
-        tried.push({
-          api,
-          query: null,
-          status: error.response?.status || 'err',
-          count: 0,
-          error: error.message,
-        });
       }
     }
 
     return {
       success: false,
-      error: `No se encontró un paciente con el teléfono "${telefonoBusqueda}". Diagnostics: ${JSON.stringify({ phoneVariants, phoneCore, tried })}`,
+      error: `No se encontró un paciente con el teléfono "${telefonoBusqueda}"`,
     };
   }
 }
