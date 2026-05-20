@@ -1077,6 +1077,15 @@ export class HealthAtomService {
     const digitsOnly = telefonoBusqueda.replace(/\D/g, '');
     const phoneCore = digitsOnly.slice(-8);
 
+    // Diagnostics: queries probados y resultado de cada uno (útil cuando no encuentra)
+    const tried: Array<{
+      api: string;
+      query: any;
+      status: number | string;
+      count: number;
+      error?: string;
+    }> = [];
+
     for (const api of this.getApisToTry()) {
       try {
         const client = this.createClient(config.apiKey, api);
@@ -1087,17 +1096,26 @@ export class HealthAtomService {
         let matchInfo = '';
         for (const variant of phoneVariants) {
           for (const field of ['celular', 'telefono']) {
-            const filtro = JSON.stringify({ [field]: { eq: variant } });
+            const q: any = { [field]: { eq: variant } };
             try {
-              const resp = await client.get(endpoints.patients, { params: { q: filtro } });
+              const resp = await client.get(endpoints.patients, {
+                params: { q: JSON.stringify(q) },
+              });
               const pacs = resp.data?.data || [];
+              tried.push({ api, query: q, status: resp.status, count: pacs.length });
               if (pacs.length > 0) {
                 paciente = pacs[0];
                 matchInfo = `eq ${field}=${variant}`;
                 break;
               }
-            } catch {
-              // Si el campo no existe en el modelo de la API, ignorar
+            } catch (e: any) {
+              tried.push({
+                api,
+                query: q,
+                status: e.response?.status || 'err',
+                count: 0,
+                error: e.message,
+              });
             }
           }
           if (paciente) break;
@@ -1107,17 +1125,26 @@ export class HealthAtomService {
         // espacios, guiones, paréntesis, prefijos distintos)
         if (!paciente && phoneCore.length >= 6) {
           for (const field of ['celular', 'telefono']) {
-            const filtro = JSON.stringify({ [field]: { like: `%${phoneCore}%` } });
+            const q: any = { [field]: { like: `%${phoneCore}%` } };
             try {
-              const resp = await client.get(endpoints.patients, { params: { q: filtro } });
+              const resp = await client.get(endpoints.patients, {
+                params: { q: JSON.stringify(q) },
+              });
               const pacs = resp.data?.data || [];
+              tried.push({ api, query: q, status: resp.status, count: pacs.length });
               if (pacs.length > 0) {
                 paciente = pacs[0];
                 matchInfo = `like ${field}=%${phoneCore}%`;
                 break;
               }
-            } catch {
-              // ignorar errores de campo no soportado
+            } catch (e: any) {
+              tried.push({
+                api,
+                query: q,
+                status: e.response?.status || 'err',
+                count: 0,
+                error: e.message,
+              });
             }
           }
         }
@@ -1194,27 +1221,55 @@ export class HealthAtomService {
         const currentDate = now.format('YYYY-MM-DD');
         const currentTime = now.format('HH:mm:ss');
 
-        const mapCita = (c: any) => ({
-          id: c.id,
-          id_estado: c.id_estado,
-          estado_cita: c.estado_cita,
-          estado_anulacion: c.estado_anulacion,
-          nombre_tratamiento: c.nombre_tratamiento,
-          id_dentista: c.id_dentista,
-          nombre_dentista: c.nombre_dentista,
-          id_sucursal: c.id_sucursal,
-          fecha: c.fecha,
-          hora_inicio: c.hora_inicio,
-          hora_fin: c.hora_fin,
-          duracion: c.duracion,
-          comentarios: c.comentarios,
-        });
+        // Mapeo específico por API: Dentalink usa id_dentista/nombre_dentista
+        // y estado_anulacion; MediLink usa id_profesional/nombre_profesional y
+        // marca anulación vía id_estado/estado_cita.
+        const mapCita = (c: any) =>
+          api === HealthAtomApi.DENTALINK
+            ? {
+                id: c.id,
+                id_estado: c.id_estado,
+                estado_cita: c.estado_cita,
+                estado_anulacion: c.estado_anulacion,
+                nombre_tratamiento: c.nombre_tratamiento,
+                id_dentista: c.id_dentista,
+                nombre_dentista: c.nombre_dentista,
+                id_sucursal: c.id_sucursal,
+                fecha: c.fecha,
+                hora_inicio: c.hora_inicio,
+                hora_fin: c.hora_fin,
+                duracion: c.duracion,
+                comentarios: c.comentarios,
+              }
+            : {
+                id: c.id,
+                id_estado: c.id_estado,
+                estado_cita: c.estado_cita,
+                id_atencion: c.id_atencion,
+                nombre_tratamiento: c.nombre_tratamiento,
+                id_profesional: c.id_profesional,
+                nombre_profesional: c.nombre_profesional,
+                id_sucursal: c.id_sucursal,
+                nombre_sucursal: c.nombre_sucursal,
+                fecha: c.fecha,
+                hora_inicio: c.hora_inicio,
+                hora_fin: c.hora_fin,
+                duracion: c.duracion,
+                comentarios: c.comentarios,
+              };
 
         const isFuture = (c: any) =>
           c.fecha > currentDate || (c.fecha === currentDate && (c.hora_inicio || '') > currentTime);
 
+        // Anulación: Dentalink tiene estado_anulacion (0 = no anulada),
+        // MediLink no tiene ese campo — usar estado_cita.
+        const isAnulada = (c: any) =>
+          api === HealthAtomApi.DENTALINK
+            ? c.estado_anulacion !== 0
+            : (c.estado_cita || '').toLowerCase() === 'anulado';
+
         const futuras = citas
-          .filter((c) => c.estado_anulacion === 0 && isFuture(c))
+          .filter((c) => !isAnulada(c) && isFuture(c))
           .sort((a: any, b: any) => {
             const d = (a.fecha || '').localeCompare(b.fecha || '');
             if (d !== 0) return d;
@@ -1240,7 +1295,7 @@ export class HealthAtomService {
               id: idPaciente,
               nombre: nombreCompleto,
               rut: paciente.rut || null,
-              telefono: paciente.celular || null,
+              telefono: paciente.celular || paciente.telefono || null,
               email: paciente.email || null,
             },
             tratamientos,
@@ -1253,12 +1308,19 @@ export class HealthAtomService {
         };
       } catch (error: any) {
         this.logger.warn(`⚠️ Error buscando contacto por teléfono en ${api}: ${error.message}`);
+        tried.push({
+          api,
+          query: null,
+          status: error.response?.status || 'err',
+          count: 0,
+          error: error.message,
+        });
       }
     }
 
     return {
       success: false,
-      error: `No se encontró un paciente con el teléfono "${telefonoBusqueda}"`,
+      error: `No se encontró un paciente con el teléfono "${telefonoBusqueda}". Diagnostics: ${JSON.stringify({ phoneVariants, phoneCore, tried })}`,
     };
   }
 }
