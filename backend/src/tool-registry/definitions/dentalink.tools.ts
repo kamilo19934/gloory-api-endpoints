@@ -268,6 +268,49 @@ export const DENTALINK_TOOLS: ToolSchema[] = [
       },
     },
   },
+  {
+    name: 'actualizar_paciente',
+    description:
+      'Utiliza esta herramienta para actualizar el paciente en caso de ver inconsistencias entre los datos entregados por el paciente al momento de agendar y los registrados en la plataforma.',
+    target: 'external',
+    endpoint: '/api/clients/{clientId}/patients/update',
+    method: 'POST',
+    category: 'write',
+    requires_validation: true,
+    validation_rules:
+      'VALIDACIONES: 1. El id_paciente debe existir (obtenido vía buscar_paciente). 2. Solo se actualizan los campos provistos; el resto se mantiene intacto. 3. Confirmar con el paciente antes de modificar datos sensibles.',
+    fields: {
+      id_paciente: {
+        type: 'integer',
+        required: true,
+        description: 'ID del paciente en Dentalink/MediLink (obtenido vía buscar_paciente)',
+      },
+      nombre: {
+        type: 'string',
+        required: false,
+        configurable: true,
+        description: 'Nuevo nombre del paciente',
+      },
+      apellidos: {
+        type: 'string',
+        required: false,
+        configurable: true,
+        description: 'Nuevos apellidos del paciente',
+      },
+      email: {
+        type: 'string',
+        required: false,
+        configurable: true,
+        description: 'Nuevo correo electrónico del paciente',
+      },
+      celular: {
+        type: 'string',
+        required: false,
+        configurable: true,
+        description: 'Nuevo número de celular del paciente',
+      },
+    },
+  },
 
   // ============================
   // CITAS (external target)

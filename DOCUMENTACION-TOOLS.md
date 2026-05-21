@@ -87,6 +87,21 @@ Documentación de endpoints disponibles para el agente de IA. Todos los endpoint
 
 ---
 
+### POST /patients/update
+- **Nombre:** Actualizar Paciente
+- **Descripción:** Utiliza esta herramienta para actualizar el paciente en caso de ver inconsistencias entre los datos entregados por el paciente al momento de agendar y los registrados en la plataforma.
+
+**Args:**
+| Nombre | Requerido | Descripción |
+|--------|-----------|-------------|
+| `id_paciente` | ✅ | ID del paciente en Dentalink/MediLink (obtenido vía `buscar_paciente`) |
+| `nombre` | ❌ | Nuevo nombre del paciente |
+| `apellidos` | ❌ | Nuevos apellidos del paciente |
+| `email` | ❌ | Nuevo correo electrónico del paciente |
+| `celular` | ❌ | Nuevo número de celular del paciente |
+
+---
+
 ### POST /contact-state
 - **Nombre:** Obtener Estado Contacto
 - **Descripción:** Obtiene el contexto del contacto: sus datos de contacto disponibles y, si está creado como paciente en Dentalink/MediLink, incluye sus tratamientos, próximas citas y últimas 5 citas pasadas. Usar al inicio de la conversación para conocer al paciente.

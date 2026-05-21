@@ -24,6 +24,7 @@ import { GetTreatmentsDto } from './dto/get-treatments.dto';
 import { SearchSobrecupoAvailabilityDto } from './dto/search-sobrecupo-availability.dto';
 import { ScheduleSobrecupoAppointmentDto } from './dto/schedule-sobrecupo-appointment.dto';
 import { SearchPatientByDataDto } from './dto/search-patient-by-data.dto';
+import { UpdatePatientDto } from './dto/update-patient.dto';
 
 @Injectable()
 export class DentalinkService {
@@ -1022,6 +1023,91 @@ export class DentalinkService {
 
     // Si llegamos aquí, falló en todas las APIs
     throw new HttpException(lastError || 'No se pudo crear el paciente', HttpStatus.BAD_REQUEST);
+  }
+
+  /**
+   * Actualiza datos de un paciente existente en Dentalink/Medilink.
+   * PUT /pacientes/{id_paciente}
+   */
+  async updatePatient(clientId: string, params: UpdatePatientDto): Promise<any> {
+    const { id_paciente, nombre, apellidos, email, celular } = params;
+    this.logger.log(`✏️ Actualizando paciente ${id_paciente}`);
+
+    const client = await this.clientsService.findOne(clientId);
+    const apiKey = this.resolveApiKey(client);
+    const apisToTry = this.getApisToUse(client);
+
+    // Construir body solo con los campos provistos
+    const payload: Record<string, any> = {};
+    if (nombre !== undefined) payload.nombre = nombre;
+    if (apellidos !== undefined) payload.apellidos = apellidos;
+    if (email !== undefined) payload.email = email;
+    if (celular !== undefined) {
+      const pais = obtenerPaisDesdeTimezone(client.timezone || 'America/Santiago');
+      const telResult = formatearTelefono(celular, pais);
+      if (!telResult.isValid) {
+        throw new HttpException(
+          `Teléfono inválido: ${telResult.error}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      payload.celular = telResult.formatted;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      throw new HttpException(
+        'Se requiere al menos un campo a actualizar (nombre, apellidos, email o celular)',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const headers = {
+      Authorization: `Token ${apiKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    let lastError: string | null = null;
+
+    for (const api of apisToTry) {
+      try {
+        this.logger.log(
+          `📤 PUT ${api.type.toUpperCase()} pacientes/${id_paciente}: ${JSON.stringify(payload)}`,
+        );
+
+        const response = await axios.put(
+          `${api.baseUrl}pacientes/${id_paciente}`,
+          payload,
+          { headers },
+        );
+
+        if (response.status >= 200 && response.status < 300) {
+          const data = response.data?.data || {};
+          this.logger.log(`✅ Paciente actualizado en ${api.type.toUpperCase()}`);
+          return {
+            id_paciente: data.id ?? id_paciente,
+            nombre: `${data.nombre || ''} ${data.apellidos || data.apellido || ''}`.trim(),
+            rut: data.rut || null,
+            email: data.email || null,
+            celular: data.celular || null,
+            mensaje: 'Paciente actualizado exitosamente',
+          };
+        }
+      } catch (error) {
+        const apiErrorMessage = this.extractApiErrorMessage(error);
+        this.logger.warn(`⚠️ Error actualizando paciente en ${api.type}: ${apiErrorMessage}`);
+        lastError = `${api.type}: ${apiErrorMessage}`;
+
+        // Si fue 404 (no existe en esta API), intentar la siguiente
+        if (error.response?.status === 404) continue;
+        // Si fue 412 (incompatibilidad de sucursal), intentar siguiente
+        if (error.response?.status === 412) continue;
+      }
+    }
+
+    throw new HttpException(
+      lastError || `No se pudo actualizar el paciente ${id_paciente}`,
+      HttpStatus.BAD_REQUEST,
+    );
   }
 
   /**

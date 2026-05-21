@@ -230,6 +230,53 @@ export const AVAILABLE_ENDPOINTS: EndpointDefinition[] = [
     ],
   },
   {
+    id: 'update-patient',
+    name: 'Actualizar Paciente',
+    description:
+      'Actualiza datos personales (nombre, apellidos, email, celular) de un paciente existente en Dentalink/MediLink. Usar cuando se detecten inconsistencias entre los datos del paciente y los registrados en la plataforma.',
+    method: 'POST',
+    path: '/patients/update',
+    dentalinkPath: '/pacientes/:id',
+    category: 'patients',
+    arguments: [
+      {
+        name: 'id_paciente',
+        type: 'number',
+        description: 'ID del paciente en Dentalink/MediLink (obtenido vía buscar_paciente)',
+        required: true,
+        example: 11071,
+      },
+      {
+        name: 'nombre',
+        type: 'string',
+        description: 'Nuevo nombre del paciente',
+        required: false,
+        example: 'Juan Andrés',
+      },
+      {
+        name: 'apellidos',
+        type: 'string',
+        description: 'Nuevos apellidos del paciente',
+        required: false,
+        example: 'Pérez González',
+      },
+      {
+        name: 'email',
+        type: 'string',
+        description: 'Nuevo correo electrónico del paciente',
+        required: false,
+        example: 'paciente@ejemplo.cl',
+      },
+      {
+        name: 'celular',
+        type: 'string',
+        description: 'Nuevo número de celular del paciente',
+        required: false,
+        example: '+56912345678',
+      },
+    ],
+  },
+  {
     id: 'get-contact-state',
     name: 'Obtener Estado Contacto',
     description:

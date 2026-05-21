@@ -25,6 +25,7 @@ import { SearchSobrecupoAvailabilityDto } from './dto/search-sobrecupo-availabil
 import { ScheduleSobrecupoAppointmentDto } from './dto/schedule-sobrecupo-appointment.dto';
 import { SearchPatientByDataDto } from './dto/search-patient-by-data.dto';
 import { GetContactStateDto } from './dto/get-contact-state.dto';
+import { UpdatePatientDto } from './dto/update-patient.dto';
 
 @Public()
 @Controller('clients/:clientId')
@@ -103,6 +104,15 @@ export class DentalinkController {
     @Body() getTreatmentsDto: GetTreatmentsDto,
   ) {
     return await this.dentalinkService.getPatientTreatments(clientId, getTreatmentsDto);
+  }
+
+  @Post('patients/update')
+  @HttpCode(HttpStatus.OK)
+  async updatePatient(
+    @Param('clientId') clientId: string,
+    @Body() updatePatientDto: UpdatePatientDto,
+  ) {
+    return await this.dentalinkService.updatePatient(clientId, updatePatientDto);
   }
 
   // ============================
