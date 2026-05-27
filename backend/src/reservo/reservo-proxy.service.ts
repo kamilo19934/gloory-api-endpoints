@@ -1,4 +1,5 @@
 import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import * as moment from 'moment-timezone';
 import { ClientsService } from '../clients/clients.service';
 import { formatearTelefono, obtenerPaisDesdeTimezone } from '../utils/phone.util';
 import { ReservoService } from '../integrations/reservo/reservo.service';
@@ -111,10 +112,7 @@ export class ReservoProxyService {
     const result = await this.reservoService.getPatientByUuid(uuid, config);
 
     if (!result.success) {
-      throw new HttpException(
-        result.error || 'Error obteniendo paciente',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException(result.error || 'Error obteniendo paciente', HttpStatus.BAD_REQUEST);
     }
 
     return result.data;
@@ -128,10 +126,7 @@ export class ReservoProxyService {
     const pais = obtenerPaisDesdeTimezone(client.timezone || 'America/Santiago');
     const telefonoResult = formatearTelefono(dto.telefono, pais);
     if (!telefonoResult.isValid) {
-      throw new HttpException(
-        `Teléfono inválido: ${telefonoResult.error}`,
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException(`Teléfono inválido: ${telefonoResult.error}`, HttpStatus.BAD_REQUEST);
     }
 
     // Mapear campos simplificados a los de Reservo
@@ -187,7 +182,9 @@ export class ReservoProxyService {
     const transformed = this.transformAvailability(result.data || []);
 
     if (transformed.length === 0) {
-      return { message: `No se encontró disponibilidad para la fecha ${dto.fecha}. Intenta con otra fecha o profesional.` };
+      return {
+        message: `No se encontró disponibilidad para la fecha ${dto.fecha}. Intenta con otra fecha o profesional.`,
+      };
     }
 
     return transformed;
@@ -196,8 +193,18 @@ export class ReservoProxyService {
   private transformAvailability(data: any[]) {
     const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const MESES = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ];
 
     const formatFecha = (fechaStr: string): string => {
@@ -355,13 +362,13 @@ export class ReservoProxyService {
       throw new HttpException(result.error || 'Error creando cita', HttpStatus.BAD_REQUEST);
     }
 
-    return this.transformAppointmentResponse(result.data);
+    return this.transformAppointmentResponse(result.data, this.resolveTz(config));
   }
 
-  private transformAppointmentResponse(data: any) {
+  private transformAppointmentResponse(data: any, tz = 'America/Santiago') {
     return {
       status: data.status,
-      citas: (data.citas || []).map(this.transformCita),
+      citas: (data.citas || []).map((c: any) => this.transformCita(c, tz)),
       link: data.link,
       valor_pago: data.valor_pago,
       countdown: data.countdown,
@@ -402,7 +409,8 @@ export class ReservoProxyService {
       return { message: `No se encontraron citas para el paciente "${dto.id_paciente}"` };
     }
 
-    return result.data.map(this.transformCita);
+    const tz = this.resolveTz(config);
+    return result.data.map((c) => this.transformCita(c, tz));
   }
 
   async getFutureAppointments(clientId: string, dto: ReservoGetAppointmentsDto) {
@@ -413,17 +421,35 @@ export class ReservoProxyService {
       return { message: result.error || 'No se encontraron citas futuras para este paciente' };
     }
 
-    return (result.data || []).map(this.transformCita);
+    const tz = this.resolveTz(config);
+    return (result.data || []).map((c) => this.transformCita(c, tz));
   }
 
-  private transformCita(cita: any) {
+  /**
+   * Resuelve la zona horaria de la clínica (validada, fallback Santiago).
+   * No confiamos en cita.zona_horaria: para algunos clientes llega como "UTC"
+   * o como un valor no-IANA, y moment-timezone trata las zonas desconocidas
+   * como UTC silenciosamente (dejaría la hora 4h adelantada).
+   */
+  private resolveTz(config: ReservoConfig): string {
+    const tz = config.timezone || 'America/Santiago';
+    return moment.tz.zone(tz) ? tz : 'America/Santiago';
+  }
+
+  private transformCita(cita: any, clinicTz = 'America/Santiago') {
+    // Reservo entrega inicio/fin en UTC (sufijo Z) y la zona en cita.zona_horaria.
+    // Usamos esa zona si es IANA válida; si no, la zona configurada de la clínica.
+    // Sin esto, el agente recibía la hora cruda en UTC (ej. 17:00Z) y la leía
+    // literal como "17:00" en vez de las 13:00 locales.
+    const zone = moment.tz.zone(cita.zona_horaria) ? cita.zona_horaria : clinicTz;
+    const toLocal = (iso: string) => (iso ? moment.utc(iso).tz(zone).format() : iso);
     return {
       uuid: cita.uuid,
       agenda: cita.agenda,
       sucursal: cita.sucursal,
-      zona_horaria: cita.zona_horaria,
-      inicio: cita.inicio,
-      fin: cita.fin,
+      zona_horaria: zone,
+      inicio: toLocal(cita.inicio),
+      fin: toLocal(cita.fin),
       estado: cita.estado,
       estado_pago: cita.estado_pago,
       profesional: cita.profesional,

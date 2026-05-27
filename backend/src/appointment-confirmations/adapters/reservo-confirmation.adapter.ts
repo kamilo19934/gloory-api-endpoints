@@ -4,10 +4,7 @@ import { Client } from '../../clients/entities/client.entity';
 import { ConfirmationConfig } from '../entities/confirmation-config.entity';
 import { ReservoService } from '../../integrations/reservo/reservo.service';
 import { ReservoConfig } from '../../integrations/reservo/reservo.types';
-import {
-  IConfirmationAdapter,
-  FetchedAppointment,
-} from './confirmation-adapter.interface';
+import { IConfirmationAdapter, FetchedAppointment } from './confirmation-adapter.interface';
 
 @Injectable()
 export class ReservoConfirmationAdapter implements IConfirmationAdapter {
@@ -48,13 +45,9 @@ export class ReservoConfirmationAdapter implements IConfirmationAdapter {
 
     // Filtrar solo citas No Confirmadas (NC)
     // Las citas en lista de espera NO se deben notificar (según doc de Reservo)
-    const ncAppointments = appointments.filter(
-      (apt) => apt.estado?.codigo === 'NC',
-    );
+    const ncAppointments = appointments.filter((apt) => apt.estado?.codigo === 'NC');
 
-    this.logger.log(
-      `📋 [Reservo] ${ncAppointments.length} citas con estado NC (No Confirmado)`,
-    );
+    this.logger.log(`📋 [Reservo] ${ncAppointments.length} citas con estado NC (No Confirmado)`);
 
     const fetched: FetchedAppointment[] = [];
 
@@ -65,9 +58,16 @@ export class ReservoConfirmationAdapter implements IConfirmationAdapter {
         const sucursal = apt.sucursal;
         const tratamientos = apt.tratamientos || [];
 
-        // Convertir inicio UTC a hora local
-        const inicioLocal = moment.utc(apt.inicio).tz(apt.zona_horaria || tz);
-        const finLocal = moment.utc(apt.fin).tz(apt.zona_horaria || tz);
+        // Convertir inicio/fin (UTC) a hora local. Usamos apt.zona_horaria si es
+        // IANA válida; si no, la zona configurada de la clínica. Validamos porque
+        // moment-timezone trata las zonas desconocidas como UTC silenciosamente.
+        const zone = moment.tz.zone(apt.zona_horaria)
+          ? apt.zona_horaria
+          : moment.tz.zone(tz)
+            ? tz
+            : 'America/Santiago';
+        const inicioLocal = moment.utc(apt.inicio).tz(zone);
+        const finLocal = moment.utc(apt.fin).tz(zone);
         const fechaCita = inicioLocal.format('YYYY-MM-DD');
         const horaInicio = inicioLocal.format('HH:mm:ss');
         const horaFin = finLocal.format('HH:mm:ss');
@@ -85,8 +85,7 @@ export class ReservoConfirmationAdapter implements IConfirmationAdapter {
             email_paciente: cliente?.mail || '',
             telefono_paciente: cliente?.telefono_1 || cliente?.telefono_2 || '',
             id_tratamiento: tratamientos[0]?.uuid || '',
-            nombre_tratamiento:
-              tratamientos.map((t) => t.nombre).join(', ') || 'Sin tratamiento',
+            nombre_tratamiento: tratamientos.map((t) => t.nombre).join(', ') || 'Sin tratamiento',
             fecha: fechaCita,
             hora_inicio: horaInicio,
             hora_fin: horaFin,
@@ -108,10 +107,7 @@ export class ReservoConfirmationAdapter implements IConfirmationAdapter {
     return fetched;
   }
 
-  async confirmAppointmentOnPlatform(
-    client: Client,
-    platformAppointmentId: string,
-  ): Promise<void> {
+  async confirmAppointmentOnPlatform(client: Client, platformAppointmentId: string): Promise<void> {
     const integration = client.getIntegration('reservo');
     if (!integration) return;
 

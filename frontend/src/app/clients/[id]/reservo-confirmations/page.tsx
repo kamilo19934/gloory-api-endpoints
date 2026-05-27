@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { Fragment, useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import { ExecutionLogDetails } from '@/components/ExecutionLogDetails';
 import {
   clientsApi,
   reservoConfirmationsApi,
@@ -27,6 +28,8 @@ import {
   FiX,
   FiSettings,
   FiPlay,
+  FiPlusCircle,
+  FiMinusCircle,
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -43,6 +46,7 @@ export default function ReservoConfirmationsPage() {
   const [editingConfig, setEditingConfig] = useState<ReservoConfirmationConfig | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [selectedConfirmations, setSelectedConfirmations] = useState<Set<string>>(new Set());
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [processingAction, setProcessingAction] = useState(false);
   const [triggeringConfig, setTriggeringConfig] = useState<string | null>(null);
 
@@ -266,8 +270,10 @@ export default function ReservoConfirmationsPage() {
       const result = await reservoConfirmationsApi.validateGHL(clientId);
       if (result.valid) {
         toast.success('Todos los custom fields estan configurados');
-      } else {
+      } else if (result.missing && result.missing.length > 0) {
         toast.error(`Faltan ${result.missing.length} campos: ${result.missing.join(', ')}`);
+      } else {
+        toast.error(result.message || 'No se pudieron validar los custom fields');
       }
     } catch (error: any) {
       toast.error('Error: ' + (error.response?.data?.message || error.message));
@@ -297,6 +303,18 @@ export default function ReservoConfirmationsPage() {
 
   const clearSelection = () => {
     setSelectedConfirmations(new Set());
+  };
+
+  const toggleExpandRow = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   // ============================================
@@ -707,6 +725,7 @@ export default function ReservoConfirmationsPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-2 py-3 w-8" aria-label="Detalle"></th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     {/* checkbox */}
                   </th>
@@ -735,7 +754,23 @@ export default function ReservoConfirmationsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredPending.map((confirmation) => (
-                  <tr key={confirmation.id} className="hover:bg-gray-50">
+                  <Fragment key={confirmation.id}>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-2 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpandRow(confirmation.id)}
+                        className="text-gray-500 hover:text-purple-600 focus:outline-none"
+                        title={expandedRows.has(confirmation.id) ? 'Ocultar detalle de ejecución' : 'Ver detalle de ejecución'}
+                        aria-label={expandedRows.has(confirmation.id) ? 'Ocultar detalle' : 'Ver detalle'}
+                      >
+                        {expandedRows.has(confirmation.id) ? (
+                          <FiMinusCircle className="w-5 h-5" />
+                        ) : (
+                          <FiPlusCircle className="w-5 h-5" />
+                        )}
+                      </button>
+                    </td>
                     <td className="px-3 py-3">
                       {confirmation.status === ReservoConfirmationStatus.PENDING && (
                         <input
@@ -801,10 +836,18 @@ export default function ReservoConfirmationsPage() {
                       )}
                     </td>
                   </tr>
+                  {expandedRows.has(confirmation.id) && (
+                    <tr>
+                      <td colSpan={9} className="p-0 border-t border-gray-100">
+                        <ExecutionLogDetails log={confirmation.executionLog} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
                 {filteredPending.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                       No hay confirmaciones pendientes
                     </td>
                   </tr>

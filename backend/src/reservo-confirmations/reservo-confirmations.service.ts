@@ -507,7 +507,15 @@ export class ReservoConfirmationsService {
     const sucursal = apt.sucursal;
     const tratamientos = apt.tratamientos || [];
 
-    const tz = apt.zona_horaria || timezone;
+    // Reservo entrega inicio/fin en UTC (sufijo Z) y la zona de la cita en
+    // apt.zona_horaria. Usamos esa zona si es IANA válida; si no, caemos a la
+    // zona configurada de la clínica. Validamos porque moment-timezone trata
+    // las zonas desconocidas como UTC silenciosamente (dejaría la hora en GMT0).
+    const tz = moment.tz.zone(apt.zona_horaria)
+      ? apt.zona_horaria
+      : moment.tz.zone(timezone)
+        ? timezone
+        : 'America/Santiago';
     const inicioLocal = moment.utc(apt.inicio).tz(tz);
     const finLocal = moment.utc(apt.fin).tz(tz);
 

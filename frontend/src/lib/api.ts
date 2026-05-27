@@ -674,6 +674,26 @@ export interface UpdateConfirmationConfigDto {
   order?: number;
 }
 
+export type ExecutionStepStatus = 'success' | 'error' | 'skipped' | 'warning';
+
+export type ExecutionStepName =
+  | 'resolve_ghl_credentials'
+  | 'find_or_create_contact'
+  | 'update_contact_custom_fields'
+  | 'update_platform_status';
+
+export interface ExecutionStepEntry {
+  attempt: number;
+  step: ExecutionStepName;
+  status: ExecutionStepStatus;
+  startedAt: string;
+  endedAt: string;
+  durationMs: number;
+  errorMessage?: string;
+  httpStatus?: number;
+  metadata?: Record<string, any>;
+}
+
 export enum ConfirmationStatus {
   PENDING = 'pending',
   PROCESSING = 'processing',
@@ -714,6 +734,7 @@ export interface PendingConfirmation {
   ghlAppointmentId?: string;
   errorMessage?: string;
   attempts: number;
+  executionLog?: ExecutionStepEntry[] | null;
   processedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -1008,6 +1029,7 @@ export interface ReservoPendingConfirmation {
   ghlContactId?: string;
   errorMessage?: string;
   attempts: number;
+  executionLog?: ExecutionStepEntry[] | null;
   processedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -1114,7 +1136,7 @@ export const reservoConfirmationsApi = {
 
   validateGHL: async (
     clientId: string,
-  ): Promise<{ valid: boolean; message: string; missing: string[]; required: string[] }> => {
+  ): Promise<{ valid: boolean; message: string; missing?: string[]; required?: string[] }> => {
     const response = await api.get(`/clients/${clientId}/reservo-confirmations/validate-ghl`);
     return response.data;
   },

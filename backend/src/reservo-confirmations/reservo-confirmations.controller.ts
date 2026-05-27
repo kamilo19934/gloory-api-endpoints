@@ -65,6 +65,13 @@ export class ReservoConfirmationsController {
       if (ghlConfig.ghlOAuthMode && ghlConfig.ghlLocationId) {
         return { locationId: ghlConfig.ghlLocationId };
       }
+      // Modo PIT: token estático en la integración gohighlevel (paridad con Dentalink)
+      if (ghlConfig.ghlAccessToken && ghlConfig.ghlLocationId) {
+        return {
+          locationId: ghlConfig.ghlLocationId,
+          pitToken: ghlConfig.ghlAccessToken,
+        };
+      }
     }
 
     if (reservoConfig.ghlEnabled && reservoConfig.ghlAccessToken && reservoConfig.ghlLocationId) {
