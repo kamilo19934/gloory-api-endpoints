@@ -5,8 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import EndpointCard from '@/components/EndpointCard';
-import { clientsApi, Client, EndpointDefinition, IntegrationType } from '@/lib/api';
-import { FiArrowLeft, FiLoader, FiCheckCircle, FiXCircle, FiSettings, FiFileText, FiEye, FiEyeOff } from 'react-icons/fi';
+import { clientsApi, whatsappApi, Client, EndpointDefinition, IntegrationType, WhatsAppGroup } from '@/lib/api';
+import { FiArrowLeft, FiLoader, FiCheckCircle, FiXCircle, FiSettings, FiFileText, FiEye, FiEyeOff, FiMessageSquare } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 export default function ClientDetailPage() {
@@ -15,20 +15,24 @@ export default function ClientDetailPage() {
   
   const [client, setClient] = useState<Client | null>(null);
   const [endpoints, setEndpoints] = useState<EndpointDefinition[]>([]);
+  const [whatsappGroups, setWhatsappGroups] = useState<WhatsAppGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
+  const [settingUpNotion, setSettingUpNotion] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
 
   const loadClientData = useCallback(async () => {
     try {
       setLoading(true);
-      const [clientData, endpointsData] = await Promise.all([
+      const [clientData, endpointsData, groupsData] = await Promise.all([
         clientsApi.getById(clientId),
         clientsApi.getEndpoints(clientId),
+        whatsappApi.getGroups(clientId).catch(() => [] as WhatsAppGroup[]),
       ]);
       setClient(clientData);
       setEndpoints(endpointsData);
+      setWhatsappGroups(groupsData.filter((g) => g.status === 'active'));
     } catch (error) {
       toast.error('Error al cargar los datos del cliente');
       console.error(error);
@@ -71,6 +75,20 @@ export default function ClientDetailPage() {
       console.error(error);
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleSetupNotion = async () => {
+    try {
+      setSettingUpNotion(true);
+      const result = await clientsApi.setupNotion(clientId);
+      toast.success(result.message);
+      await loadClientData();
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 'Error al crear en Notion';
+      toast.error(message);
+    } finally {
+      setSettingUpNotion(false);
     }
   };
 
@@ -133,6 +151,16 @@ export default function ClientDetailPage() {
                   <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
                     Reservo
                   </span>
+                )}
+                {whatsappGroups.length > 0 && (
+                  <Link
+                    href="/settings/whatsapp/groups"
+                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 hover:bg-green-200 transition-colors"
+                    title="Ver grupos de WhatsApp vinculados"
+                  >
+                    <FiMessageSquare className="mr-1" />
+                    WhatsApp ({whatsappGroups.length} {whatsappGroups.length === 1 ? 'grupo' : 'grupos'})
+                  </Link>
                 )}
               </div>
             </div>
@@ -259,7 +287,31 @@ export default function ClientDetailPage() {
               <FiFileText className="mr-2" />
               Ver Logs de API
             </Link>
-            
+
+            {!client.notionPageId || client.notionOnboardingStatus === 'failed' ? (
+              <button
+                onClick={handleSetupNotion}
+                disabled={settingUpNotion || client.notionOnboardingStatus === 'pending'}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
+              >
+                {settingUpNotion || client.notionOnboardingStatus === 'pending' ? (
+                  <>
+                    <FiLoader className="animate-spin mr-2" />
+                    Creando en Notion...
+                  </>
+                ) : client.notionOnboardingStatus === 'failed' ? (
+                  'Reintentar Notion'
+                ) : (
+                  'Crear en Notion'
+                )}
+              </button>
+            ) : client.notionOnboardingStatus === 'complete' ? (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
+                <FiCheckCircle className="mr-1 text-green-600" />
+                Notion OK
+              </span>
+            ) : null}
+
             {connectionStatus !== null && (
               <div className="flex items-center">
                 {connectionStatus ? (

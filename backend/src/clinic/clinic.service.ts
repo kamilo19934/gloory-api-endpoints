@@ -10,9 +10,7 @@ import { ReservoConfig } from '../integrations/reservo/reservo.types';
 
 interface DentalinkResponse<T> {
   data: T[];
-  links?:
-    | { rel: string; href: string; method: string }[]
-    | Record<string, string | null>;
+  links?: { rel: string; href: string; method: string }[] | Record<string, string | null>;
 }
 
 @Injectable()
@@ -125,11 +123,7 @@ export class ClinicService {
     if (typeof response.links === 'object') {
       const linksObj = response.links as Record<string, string | null>;
       // Buscar 'next', 'siguiente', o 'Next' (case-insensitive)
-      const nextUrl =
-        linksObj.next ||
-        linksObj.siguiente ||
-        linksObj.Next ||
-        null;
+      const nextUrl = linksObj.next || linksObj.siguiente || linksObj.Next || null;
       this.logger.debug(`🔗 Formato objeto - next URL: ${nextUrl}`);
       return nextUrl;
     }
@@ -502,18 +496,15 @@ export class ClinicService {
           );
 
           // MediLink v6 no retorna contratos_sucursal, obtenerlos desde v5/profesionales/{id}/contratos
-          this.logger.log(
-            `📋 Obteniendo contratos por profesional desde MediLink v5...`,
-          );
+          this.logger.log(`📋 Obteniendo contratos por profesional desde MediLink v5...`);
           const BATCH_CONTRATOS = 5; // Llamadas paralelas por lote
           for (let i = 0; i < profesionalesData.length; i += BATCH_CONTRATOS) {
             const batch = profesionalesData.slice(i, i + BATCH_CONTRATOS);
             const contratosResults = await Promise.allSettled(
               batch.map((prof) =>
-                axios.get(
-                  `${this.MEDILINK_BASE_URL}profesionales/${prof.id}/contratos`,
-                  { headers },
-                ),
+                axios.get(`${this.MEDILINK_BASE_URL}profesionales/${prof.id}/contratos`, {
+                  headers,
+                }),
               ),
             );
 
@@ -523,9 +514,7 @@ export class ClinicService {
                 const contratos = result.value.data?.data || [];
                 const sucursalIds = [
                   ...new Set(
-                    contratos
-                      .filter((c: any) => c.habilitado === 1)
-                      .map((c: any) => c.id_sucursal),
+                    contratos.filter((c: any) => c.habilitado === 1).map((c: any) => c.id_sucursal),
                   ),
                 ];
                 prof.contratos_sucursal = sucursalIds;
@@ -659,7 +648,8 @@ export class ClinicService {
     const partes: string[] = [];
     if (sucursalesNuevas > 0) partes.push(`${sucursalesNuevas} sucursales nuevas`);
     if (profesionalesNuevos > 0) partes.push(`${profesionalesNuevos} profesionales nuevos`);
-    if (profesionalesActualizados > 0) partes.push(`${profesionalesActualizados} profesionales actualizados`);
+    if (profesionalesActualizados > 0)
+      partes.push(`${profesionalesActualizados} profesionales actualizados`);
 
     const mensaje =
       partes.length === 0

@@ -11,10 +11,7 @@ import {
 import { Public } from '../auth/decorators/public.decorator';
 import { InternalTokenGuard } from './guards/internal-token.guard';
 import { InternalService } from './internal.service';
-import {
-  ProvisionClientDto,
-  ProvisionClientResponseDto,
-} from './dto/provision-client.dto';
+import { ProvisionClientDto, ProvisionClientResponseDto } from './dto/provision-client.dto';
 import {
   TestConnectionDto,
   TestConnectionResponseDto,
@@ -45,9 +42,7 @@ export class InternalController {
    */
   @Post('clients/provision')
   @HttpCode(HttpStatus.OK)
-  async provisionClient(
-    @Body() dto: ProvisionClientDto,
-  ): Promise<ProvisionClientResponseDto> {
+  async provisionClient(@Body() dto: ProvisionClientDto): Promise<ProvisionClientResponseDto> {
     return this.internalService.provisionClient(dto);
   }
 
@@ -58,9 +53,7 @@ export class InternalController {
    */
   @Post('integrations/test-connection')
   @HttpCode(HttpStatus.OK)
-  async testConnection(
-    @Body() dto: TestConnectionDto,
-  ): Promise<TestConnectionResponseDto> {
+  async testConnection(@Body() dto: TestConnectionDto): Promise<TestConnectionResponseDto> {
     return this.internalService.testConnection(dto);
   }
 
@@ -74,9 +67,6 @@ export class InternalController {
     @Param('gloory_business_id') gloory_business_id: string,
     @Body() dto: UpdateIntegrationCredentialsDto,
   ) {
-    return this.internalService.updateIntegrationCredentials(
-      gloory_business_id,
-      dto,
-    );
+    return this.internalService.updateIntegrationCredentials(gloory_business_id, dto);
   }
 }

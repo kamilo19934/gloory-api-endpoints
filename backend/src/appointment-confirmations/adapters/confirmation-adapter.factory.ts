@@ -38,7 +38,9 @@ export class ConfirmationAdapterFactory {
       return this.adapters.get('medilink');
     }
     // Fallback para clientes legacy que solo tienen apiKey
-    this.logger.warn(`⚠️ Cliente ${client.id} sin integración conocida, usando Dentalink por defecto`);
+    this.logger.warn(
+      `⚠️ Cliente ${client.id} sin integración conocida, usando Dentalink por defecto`,
+    );
     return this.adapters.get('dentalink');
   }
 

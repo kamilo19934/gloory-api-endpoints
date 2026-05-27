@@ -276,12 +276,9 @@ export class ClientApiLogsService {
       // 6. Clientes conectados (activos con al menos 1 integración habilitada)
       this.clientRepository
         .createQueryBuilder('client')
-        .innerJoin(
-          'client.integrations',
-          'integration',
-          'integration.isEnabled = :enabled',
-          { enabled: true },
-        )
+        .innerJoin('client.integrations', 'integration', 'integration.isEnabled = :enabled', {
+          enabled: true,
+        })
         .where('client.isActive = :active', { active: true })
         .getCount(),
 
@@ -310,10 +307,7 @@ export class ClientApiLogsService {
       successToday,
       clientErrorToday,
       serverErrorToday,
-      successRate:
-        totalToday > 0
-          ? Math.round((successToday / totalToday) * 100)
-          : 0,
+      successRate: totalToday > 0 ? Math.round((successToday / totalToday) * 100) : 0,
       avgResponseTime: Math.round(parseFloat(avgDuration?.avg || '0')),
       topEndpoints: topEndpoints.map((r) => ({
         endpoint: r.endpoint,

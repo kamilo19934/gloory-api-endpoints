@@ -23,6 +23,8 @@ import { ClientLoggingInterceptor } from './client-api-logs/interceptors/client-
 import { DashboardModule } from './dashboard/dashboard.module';
 import { InternalModule } from './internal/internal.module';
 import { ToolRegistryModule } from './tool-registry/tool-registry.module';
+import { WhatsAppModule } from './whatsapp/whatsapp.module';
+import { NotionModule } from './notion/notion.module';
 
 @Module({
   imports: [
@@ -118,6 +120,8 @@ import { ToolRegistryModule } from './tool-registry/tool-registry.module';
     DashboardModule, // Dashboard de monitoreo para ingeniería
     InternalModule, // Endpoints internos server-to-server (gloory-ai-server → gloory-api-endpoints)
     ToolRegistryModule, // Registry de tools por plataforma (consumido por gloory-ai-server)
+    WhatsAppModule, // WhatsApp group AI agent management (Baileys)
+    NotionModule, // Notion onboarding (crear cliente + 29 tareas de implementación)
   ],
   providers: [
     // Aplicar JwtAuthGuard globalmente

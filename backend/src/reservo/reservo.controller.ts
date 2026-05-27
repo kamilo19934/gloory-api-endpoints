@@ -37,19 +37,13 @@ export class ReservoController {
   }
 
   @Get('patients/:uuid')
-  async getPatientByUuid(
-    @Param('clientId') clientId: string,
-    @Param('uuid') uuid: string,
-  ) {
+  async getPatientByUuid(@Param('clientId') clientId: string, @Param('uuid') uuid: string) {
     return await this.reservoProxyService.getPatientByUuid(clientId, uuid);
   }
 
   @Post('patients')
   @HttpCode(HttpStatus.CREATED)
-  async createPatient(
-    @Param('clientId') clientId: string,
-    @Body() dto: ReservoCreatePatientDto,
-  ) {
+  async createPatient(@Param('clientId') clientId: string, @Body() dto: ReservoCreatePatientDto) {
     return await this.reservoProxyService.createPatient(clientId, dto);
   }
 
@@ -95,10 +89,7 @@ export class ReservoController {
 
   @Post('sucursales')
   @HttpCode(HttpStatus.OK)
-  async getSucursales(
-    @Param('clientId') clientId: string,
-    @Body() dto: ReservoGetSucursalesDto,
-  ) {
+  async getSucursales(@Param('clientId') clientId: string, @Body() dto: ReservoGetSucursalesDto) {
     return await this.reservoProxyService.getSucursales(clientId, dto);
   }
 

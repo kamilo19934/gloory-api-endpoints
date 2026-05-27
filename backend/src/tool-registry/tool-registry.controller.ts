@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Query,
-  BadRequestException,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Query, BadRequestException, UseGuards } from '@nestjs/common';
 import { Public } from '../auth/decorators/public.decorator';
 import { InternalTokenGuard } from '../internal/guards/internal-token.guard';
 import { ToolRegistryService } from './tool-registry.service';

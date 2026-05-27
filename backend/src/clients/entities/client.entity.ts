@@ -37,6 +37,20 @@ export class Client {
   gloory_business_id: string | null;
 
   /**
+   * ID de la página del cliente en Notion.
+   * Se llena cuando se ejecuta POST /api/clients/:id/setup-notion
+   */
+  @Column({ type: 'varchar', nullable: true })
+  notionPageId: string | null;
+
+  /**
+   * Estado del onboarding en Notion.
+   * null = no iniciado, pending = creando tareas, complete = OK, failed = error (reintentable)
+   */
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  notionOnboardingStatus: string | null;
+
+  /**
    * Integraciones configuradas para este cliente
    */
   @OneToMany(() => ClientIntegration, (integration) => integration.client, {

@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { Fragment, useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import { ExecutionLogDetails } from '@/components/ExecutionLogDetails';
 import {
   clientsApi,
   appointmentConfirmationsApi,
@@ -28,6 +29,8 @@ import {
   FiX,
   FiSettings,
   FiChevronDown,
+  FiPlusCircle,
+  FiMinusCircle,
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -102,6 +105,7 @@ export default function AppointmentConfirmationsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedConfirmations, setSelectedConfirmations] = useState<Set<string>>(new Set());
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Filtros
   const [filters, setFilters] = useState({
@@ -292,6 +296,18 @@ export default function AppointmentConfirmationsPage() {
       newSelected.add(id);
     }
     setSelectedConfirmations(newSelected);
+  };
+
+  const toggleExpandRow = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const handleSetupGHL = async () => {
@@ -1106,6 +1122,7 @@ export default function AppointmentConfirmationsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-2 py-3 w-8" aria-label="Detalle"></th>
                     <th className="px-4 py-3 text-center">
                       <input
                         type="checkbox"
@@ -1143,7 +1160,23 @@ export default function AppointmentConfirmationsPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredPending.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
+                    <Fragment key={item.id}>
+                    <tr className="hover:bg-gray-50">
+                      <td className="px-2 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpandRow(item.id)}
+                          className="text-gray-500 hover:text-primary-600 focus:outline-none"
+                          title={expandedRows.has(item.id) ? 'Ocultar detalle de ejecución' : 'Ver detalle de ejecución'}
+                          aria-label={expandedRows.has(item.id) ? 'Ocultar detalle' : 'Ver detalle'}
+                        >
+                          {expandedRows.has(item.id) ? (
+                            <FiMinusCircle className="w-5 h-5" />
+                          ) : (
+                            <FiPlusCircle className="w-5 h-5" />
+                          )}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-center">
                         <input
                           type="checkbox"
@@ -1229,6 +1262,14 @@ export default function AppointmentConfirmationsPage() {
                         )}
                       </td>
                     </tr>
+                    {expandedRows.has(item.id) && (
+                      <tr>
+                        <td colSpan={9} className="p-0 border-t border-gray-100">
+                          <ExecutionLogDetails log={item.executionLog} />
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

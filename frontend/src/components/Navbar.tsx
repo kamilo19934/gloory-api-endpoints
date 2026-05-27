@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiHome, FiDatabase, FiLogOut, FiUser, FiZap } from 'react-icons/fi';
+import { FiHome, FiDatabase, FiLogOut, FiUser, FiZap, FiMessageSquare } from 'react-icons/fi';
 import { useAuth } from './AuthProvider';
 
 export default function Navbar() {
@@ -57,6 +57,17 @@ export default function Navbar() {
               >
                 <FiZap className="mr-2" />
                 GHL OAuth
+              </Link>
+              <Link
+                href="/settings/whatsapp"
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  pathname?.startsWith('/settings/whatsapp')
+                    ? 'border-primary-500 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                <FiMessageSquare className="mr-2" />
+                WhatsApp
               </Link>
             </div>
           </div>

@@ -301,7 +301,11 @@ export class ClientsService {
     const client = await this.findOne(clientId);
 
     // Try new integrations first (all HealthAtom types)
-    for (const type of [IntegrationType.DENTALINK, IntegrationType.MEDILINK, IntegrationType.DENTALINK_MEDILINK]) {
+    for (const type of [
+      IntegrationType.DENTALINK,
+      IntegrationType.MEDILINK,
+      IntegrationType.DENTALINK_MEDILINK,
+    ]) {
       const integration = await this.getClientIntegration(clientId, type);
       if (integration?.config?.apiKey) {
         return integration.config.apiKey;

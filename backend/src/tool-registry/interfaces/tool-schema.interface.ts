@@ -13,12 +13,7 @@ export type ToolTarget = 'external' | 'server';
 export type ToolCategory = 'read' | 'write';
 export type ToolMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-export type ToolFieldType =
-  | 'string'
-  | 'integer'
-  | 'float'
-  | 'boolean'
-  | 'array';
+export type ToolFieldType = 'string' | 'integer' | 'float' | 'boolean' | 'array';
 
 export interface ToolFieldDefinition {
   type: ToolFieldType;

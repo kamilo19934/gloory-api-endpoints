@@ -55,7 +55,10 @@ export class ReservoService {
     } catch (error) {
       const message = error.response?.data?.errores || error.message;
       this.logger.error(`Error buscando paciente: ${JSON.stringify(message)}`);
-      return { success: false, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      return {
+        success: false,
+        error: typeof message === 'string' ? message : JSON.stringify(message),
+      };
     }
   }
 
@@ -79,7 +82,10 @@ export class ReservoService {
     } catch (error) {
       const message = error.response?.data?.errores || error.message;
       this.logger.error(`Error obteniendo paciente: ${JSON.stringify(message)}`);
-      return { success: false, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      return {
+        success: false,
+        error: typeof message === 'string' ? message : JSON.stringify(message),
+      };
     }
   }
 
@@ -110,7 +116,10 @@ export class ReservoService {
     } catch (error) {
       const message = error.response?.data?.errores || error.message;
       this.logger.error(`Error creando paciente: ${JSON.stringify(message)}`);
-      return { success: false, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      return {
+        success: false,
+        error: typeof message === 'string' ? message : JSON.stringify(message),
+      };
     }
   }
 
@@ -140,7 +149,10 @@ export class ReservoService {
     } catch (error) {
       const message = error.response?.data?.errores || error.message;
       this.logger.error(`Error obteniendo citas: ${JSON.stringify(message)}`);
-      return { success: false, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      return {
+        success: false,
+        error: typeof message === 'string' ? message : JSON.stringify(message),
+      };
     }
   }
 
@@ -190,7 +202,10 @@ export class ReservoService {
     } catch (error) {
       const message = error.response?.data?.errores || error.message;
       this.logger.error(`Error obteniendo citas por fecha: ${JSON.stringify(message)}`);
-      return { success: false, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      return {
+        success: false,
+        error: typeof message === 'string' ? message : JSON.stringify(message),
+      };
     }
   }
 
@@ -296,9 +311,12 @@ export class ReservoService {
       // Manejar errores específicos de Reservo
       const errores = error.response?.data?.errores;
       if (errores) {
-        const errorMsg = typeof errores === 'string'
-          ? errores
-          : Object.entries(errores).map(([k, v]) => `${k}: ${(v as string[]).join(', ')}`).join('; ');
+        const errorMsg =
+          typeof errores === 'string'
+            ? errores
+            : Object.entries(errores)
+                .map(([k, v]) => `${k}: ${(v as string[]).join(', ')}`)
+                .join('; ');
         this.logger.error(`Error de Reservo al actualizar cita: ${errorMsg}`);
         return { success: false, error: errorMsg };
       }
@@ -338,9 +356,15 @@ export class ReservoService {
       return { success: true, data: response.data };
     } catch (error) {
       const responseData = error.response?.data;
-      this.logger.error(`Error creando cita - Status: ${error.response?.status} - Response: ${JSON.stringify(responseData)}`);
-      const message = responseData?.errores || responseData?.message || responseData || error.message;
-      return { success: false, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      this.logger.error(
+        `Error creando cita - Status: ${error.response?.status} - Response: ${JSON.stringify(responseData)}`,
+      );
+      const message =
+        responseData?.errores || responseData?.message || responseData || error.message;
+      return {
+        success: false,
+        error: typeof message === 'string' ? message : JSON.stringify(message),
+      };
     }
   }
 
@@ -399,7 +423,10 @@ export class ReservoService {
       const errores = error.response?.data?.errores;
       const message = errores || error.message;
       this.logger.error(`Error obteniendo disponibilidad: ${JSON.stringify(message)}`);
-      return { success: false, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      return {
+        success: false,
+        error: typeof message === 'string' ? message : JSON.stringify(message),
+      };
     }
   }
 
@@ -417,7 +444,12 @@ export class ReservoService {
   async getProfessionals(
     agendaUuid: string,
     config: ReservoConfig,
-    filters?: { uuid_profesional?: string; uuid_sucursal?: string; uuid_tratamiento?: string; search_text?: string },
+    filters?: {
+      uuid_profesional?: string;
+      uuid_sucursal?: string;
+      uuid_tratamiento?: string;
+      search_text?: string;
+    },
   ): Promise<ReservoOperationResult<ReservoProfessional[]>> {
     try {
       this.logger.log(`Obteniendo profesionales para agenda ${agendaUuid}`);
@@ -449,7 +481,10 @@ export class ReservoService {
     } catch (error) {
       const message = error.response?.data?.errores || error.message;
       this.logger.error(`Error obteniendo profesionales: ${JSON.stringify(message)}`);
-      return { success: false, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      return {
+        success: false,
+        error: typeof message === 'string' ? message : JSON.stringify(message),
+      };
     }
   }
 
@@ -466,7 +501,12 @@ export class ReservoService {
   async getTreatments(
     agendaUuid: string,
     config: ReservoConfig,
-    filters?: { uuid_profesional?: string; uuid_sucursal?: string; uuid_tratamiento?: string; search_text?: string },
+    filters?: {
+      uuid_profesional?: string;
+      uuid_sucursal?: string;
+      uuid_tratamiento?: string;
+      search_text?: string;
+    },
   ): Promise<ReservoOperationResult<ReservoTreatment[]>> {
     try {
       this.logger.log(`Obteniendo tratamientos para agenda ${agendaUuid}`);
@@ -498,7 +538,10 @@ export class ReservoService {
     } catch (error) {
       const message = error.response?.data?.errores || error.message;
       this.logger.error(`Error obteniendo tratamientos: ${JSON.stringify(message)}`);
-      return { success: false, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      return {
+        success: false,
+        error: typeof message === 'string' ? message : JSON.stringify(message),
+      };
     }
   }
 
@@ -513,7 +556,12 @@ export class ReservoService {
   async getSucursales(
     agendaUuid: string,
     config: ReservoConfig,
-    filters?: { uuid_profesional?: string; uuid_sucursal?: string; uuid_tratamiento?: string; search_text?: string },
+    filters?: {
+      uuid_profesional?: string;
+      uuid_sucursal?: string;
+      uuid_tratamiento?: string;
+      search_text?: string;
+    },
   ): Promise<ReservoOperationResult<ReservoSucursal[]>> {
     try {
       this.logger.log(`Obteniendo sucursales para agenda ${agendaUuid}`);
@@ -545,7 +593,10 @@ export class ReservoService {
     } catch (error) {
       const message = error.response?.data?.errores || error.message;
       this.logger.error(`Error obteniendo sucursales: ${JSON.stringify(message)}`);
-      return { success: false, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      return {
+        success: false,
+        error: typeof message === 'string' ? message : JSON.stringify(message),
+      };
     }
   }
 
@@ -583,7 +634,10 @@ export class ReservoService {
     } catch (error) {
       const message = error.response?.data?.errores || error.message;
       this.logger.error(`Error obteniendo previsionales: ${JSON.stringify(message)}`);
-      return { success: false, error: typeof message === 'string' ? message : JSON.stringify(message) };
+      return {
+        success: false,
+        error: typeof message === 'string' ? message : JSON.stringify(message),
+      };
     }
   }
 

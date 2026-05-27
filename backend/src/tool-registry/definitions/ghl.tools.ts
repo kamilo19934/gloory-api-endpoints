@@ -12,8 +12,7 @@ export const GHL_TOOLS: ToolSchema[] = [
   // ============================
   {
     name: 'listar_profesionales',
-    description:
-      'Lista los profesionales activos del negocio (mapeados desde calendarios GHL).',
+    description: 'Lista los profesionales activos del negocio (mapeados desde calendarios GHL).',
     target: 'server',
     endpoint: '/api/v1/assistant/professionals',
     method: 'POST',

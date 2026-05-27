@@ -16,10 +16,7 @@ import { GHLOAuthModule } from '../gohighlevel/oauth/ghl-oauth.module';
     // ReservoModule is @Global() so no explicit import needed
   ],
   controllers: [ReservoConfirmationsController],
-  providers: [
-    ReservoConfirmationsService,
-    ReservoGhlSetupService,
-  ],
+  providers: [ReservoConfirmationsService, ReservoGhlSetupService],
   exports: [ReservoConfirmationsService],
 })
 export class ReservoConfirmationsModule {}

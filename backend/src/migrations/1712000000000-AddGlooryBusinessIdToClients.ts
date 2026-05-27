@@ -14,16 +14,11 @@ import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
  *
  * Backwards compatible: los endpoints existentes no cambian, nada se rompe.
  */
-export class AddGlooryBusinessIdToClients1712000000000
-  implements MigrationInterface
-{
+export class AddGlooryBusinessIdToClients1712000000000 implements MigrationInterface {
   name = 'AddGlooryBusinessIdToClients1712000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const hasColumn = await queryRunner.hasColumn(
-      'clients',
-      'gloory_business_id',
-    );
+    const hasColumn = await queryRunner.hasColumn('clients', 'gloory_business_id');
 
     if (hasColumn) {
       // Ya existe (ej: corrida previa parcial o synchronize previo). No-op.
@@ -42,10 +37,7 @@ export class AddGlooryBusinessIdToClients1712000000000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const hasColumn = await queryRunner.hasColumn(
-      'clients',
-      'gloory_business_id',
-    );
+    const hasColumn = await queryRunner.hasColumn('clients', 'gloory_business_id');
 
     if (!hasColumn) {
       return;

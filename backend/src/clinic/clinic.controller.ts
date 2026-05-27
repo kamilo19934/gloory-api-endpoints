@@ -375,5 +375,4 @@ export class ClinicController {
     const forceSync = body?.force === true;
     return this.clinicService.sync(clientId, forceSync);
   }
-
 }

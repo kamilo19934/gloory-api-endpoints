@@ -36,7 +36,14 @@ export class GoHighLevelController {
   @Post('branches')
   async createBranch(
     @Param('clientId') clientId: string,
-    @Body() body: { nombre: string; direccion?: string; telefono?: string; ciudad?: string; comuna?: string },
+    @Body()
+    body: {
+      nombre: string;
+      direccion?: string;
+      telefono?: string;
+      ciudad?: string;
+      comuna?: string;
+    },
   ) {
     const branch = await this.ghlProxyService.createBranch(clientId, body);
     return { mensaje: 'Sede creada exitosamente', sucursal: branch };
@@ -46,17 +53,21 @@ export class GoHighLevelController {
   async updateBranch(
     @Param('clientId') clientId: string,
     @Param('branchId') branchId: string,
-    @Body() body: { nombre?: string; direccion?: string; telefono?: string; ciudad?: string; comuna?: string },
+    @Body()
+    body: {
+      nombre?: string;
+      direccion?: string;
+      telefono?: string;
+      ciudad?: string;
+      comuna?: string;
+    },
   ) {
     const branch = await this.ghlProxyService.updateBranch(clientId, parseInt(branchId, 10), body);
     return { mensaje: 'Sede actualizada', sucursal: branch };
   }
 
   @Delete('branches/:branchId')
-  async deleteBranch(
-    @Param('clientId') clientId: string,
-    @Param('branchId') branchId: string,
-  ) {
+  async deleteBranch(@Param('clientId') clientId: string, @Param('branchId') branchId: string) {
     await this.ghlProxyService.deleteBranch(clientId, parseInt(branchId, 10));
     return { mensaje: 'Sede eliminada exitosamente' };
   }
@@ -108,7 +119,11 @@ export class GoHighLevelController {
     @Param('calendarId', ParseIntPipe) calendarId: number,
     @Body() body: { especialidad: string },
   ) {
-    const calendar = await this.ghlProxyService.updateCalendarSpecialty(clientId, calendarId, body.especialidad);
+    const calendar = await this.ghlProxyService.updateCalendarSpecialty(
+      clientId,
+      calendarId,
+      body.especialidad,
+    );
     return { mensaje: 'Especialidad actualizada', calendario: calendar };
   }
 
@@ -118,7 +133,11 @@ export class GoHighLevelController {
     @Param('calendarId', ParseIntPipe) calendarId: number,
     @Body() body: { branchIds: number[] },
   ) {
-    const calendar = await this.ghlProxyService.assignCalendarToBranches(clientId, calendarId, body.branchIds);
+    const calendar = await this.ghlProxyService.assignCalendarToBranches(
+      clientId,
+      calendarId,
+      body.branchIds,
+    );
     return { mensaje: 'Sedes asignadas', calendario: calendar };
   }
 
@@ -137,7 +156,11 @@ export class GoHighLevelController {
     @Param('clientId') clientId: string,
     @Body() body: { especialidad: string; id_sucursal?: number },
   ) {
-    return await this.ghlProxyService.getCalendarsBySpecialty(clientId, body.especialidad, body.id_sucursal);
+    return await this.ghlProxyService.getCalendarsBySpecialty(
+      clientId,
+      body.especialidad,
+      body.id_sucursal,
+    );
   }
 
   @Get('stats')
@@ -147,10 +170,7 @@ export class GoHighLevelController {
 
   @Post('sync')
   @HttpCode(HttpStatus.OK)
-  async syncCalendars(
-    @Param('clientId') clientId: string,
-    @Body() body?: { force?: boolean },
-  ) {
+  async syncCalendars(@Param('clientId') clientId: string, @Body() body?: { force?: boolean }) {
     return await this.ghlProxyService.syncCalendars(clientId, body?.force === true);
   }
 
@@ -175,7 +195,8 @@ export class GoHighLevelController {
   @HttpCode(HttpStatus.OK)
   async createAppointment(
     @Param('clientId') clientId: string,
-    @Body() body: {
+    @Body()
+    body: {
       user_id: string;
       profesional: number;
       fecha: string;
@@ -192,10 +213,7 @@ export class GoHighLevelController {
 
   @Post('appointments/cancel')
   @HttpCode(HttpStatus.OK)
-  async cancelAppointment(
-    @Param('clientId') clientId: string,
-    @Body() body: { event_id: string },
-  ) {
+  async cancelAppointment(@Param('clientId') clientId: string, @Body() body: { event_id: string }) {
     return await this.ghlProxyService.cancelAppointment(clientId, body);
   }
 

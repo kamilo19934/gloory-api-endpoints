@@ -16,10 +16,7 @@ import { HealthAtomService } from '../integrations/healthatom/healthatom.service
 import { ReservoService } from '../integrations/reservo/reservo.service';
 import { GoHighLevelService } from '../integrations/gohighlevel/gohighlevel.service';
 import { IntegrationType } from '../integrations/common/interfaces';
-import {
-  ProvisionClientDto,
-  ProvisionClientResponseDto,
-} from './dto/provision-client.dto';
+import { ProvisionClientDto, ProvisionClientResponseDto } from './dto/provision-client.dto';
 import {
   TestConnectionDto,
   TestConnectionResponseDto,
@@ -61,12 +58,8 @@ export class InternalService {
    * Si ya existe un Client con el mismo `gloory_business_id`, lo retorna
    * sin error (permite reintentos seguros desde gloory-ai-server).
    */
-  async provisionClient(
-    dto: ProvisionClientDto,
-  ): Promise<ProvisionClientResponseDto> {
-    this.logger.log(
-      `🔧 Provisioning client para business ${dto.gloory_business_id}`,
-    );
+  async provisionClient(dto: ProvisionClientDto): Promise<ProvisionClientResponseDto> {
+    this.logger.log(`🔧 Provisioning client para business ${dto.gloory_business_id}`);
 
     // 1. Idempotencia: buscar si ya existe
     const existing = await this.clientsRepository.findOne({
@@ -75,9 +68,7 @@ export class InternalService {
     });
 
     if (existing) {
-      this.logger.log(
-        `✓ Client ya existe (id: ${existing.id}), retornando existente`,
-      );
+      this.logger.log(`✓ Client ya existe (id: ${existing.id}), retornando existente`);
 
       // Si se pasó una integración y el cliente no la tiene, agregarla
       let integration: ClientIntegration | undefined;
@@ -175,14 +166,9 @@ export class InternalService {
         });
       } catch (err: any) {
         // Rollback: si falla la integración, eliminar el Client
-        this.logger.error(
-          `Error creando integración, revirtiendo Client ${savedClient.id}`,
-          err,
-        );
+        this.logger.error(`Error creando integración, revirtiendo Client ${savedClient.id}`, err);
         await this.clientsRepository.remove(savedClient);
-        throw new InternalServerErrorException(
-          `No se pudo crear la integración: ${err.message}`,
-        );
+        throw new InternalServerErrorException(`No se pudo crear la integración: ${err.message}`);
       }
     }
 
@@ -208,9 +194,7 @@ export class InternalService {
    * Valida credenciales contra la API externa sin guardar nada.
    * Retorna un preview con stats básicos (nombre de clínica, # sucursales, etc.).
    */
-  async testConnection(
-    dto: TestConnectionDto,
-  ): Promise<TestConnectionResponseDto> {
+  async testConnection(dto: TestConnectionDto): Promise<TestConnectionResponseDto> {
     this.logger.log(`🔍 Test-connection para plataforma ${dto.platform}`);
 
     try {
@@ -322,9 +306,7 @@ export class InternalService {
     return {
       ok: true,
       preview: {
-        agendas_count: Array.isArray(credentials.agendas)
-          ? credentials.agendas.length
-          : 0,
+        agendas_count: Array.isArray(credentials.agendas) ? credentials.agendas.length : 0,
       },
     };
   }
@@ -383,23 +365,17 @@ export class InternalService {
       );
     }
 
-    const integration = client.integrations?.find(
-      (i) => i.integrationType === dto.platform,
-    );
+    const integration = client.integrations?.find((i) => i.integrationType === dto.platform);
 
     if (!integration) {
-      throw new ConflictException(
-        `El cliente no tiene una integración ${dto.platform}`,
-      );
+      throw new ConflictException(`El cliente no tiene una integración ${dto.platform}`);
     }
 
     // Merge: solo actualiza los campos que vengan
     integration.config = { ...integration.config, ...dto.credentials };
     const updated = await this.integrationsRepository.save(integration);
 
-    this.logger.log(
-      `🔐 Credenciales actualizadas para ${gloory_business_id} (${dto.platform})`,
-    );
+    this.logger.log(`🔐 Credenciales actualizadas para ${gloory_business_id} (${dto.platform})`);
 
     return { ok: true, updatedAt: updated.updatedAt };
   }

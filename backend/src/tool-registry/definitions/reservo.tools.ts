@@ -12,8 +12,7 @@ export const RESERVO_TOOLS: ToolSchema[] = [
   // ============================
   {
     name: 'listar_profesionales',
-    description:
-      'Lista los profesionales activos del negocio que pueden recibir agendamientos IA.',
+    description: 'Lista los profesionales activos del negocio que pueden recibir agendamientos IA.',
     target: 'server',
     endpoint: '/api/v1/assistant/professionals',
     method: 'POST',
@@ -60,8 +59,7 @@ export const RESERVO_TOOLS: ToolSchema[] = [
   },
   {
     name: 'buscar_disponibilidad',
-    description:
-      'Busca disponibilidad en una agenda específica de Reservo en un rango de fechas.',
+    description: 'Busca disponibilidad en una agenda específica de Reservo en un rango de fechas.',
     target: 'external',
     endpoint: '/api/clients/{clientId}/reservo/availability',
     method: 'POST',
@@ -210,8 +208,7 @@ export const RESERVO_TOOLS: ToolSchema[] = [
     method: 'POST',
     category: 'write',
     requires_validation: true,
-    validation_rules:
-      'VALIDACIONES: 1. Confirmar con el paciente antes de cancelar.',
+    validation_rules: 'VALIDACIONES: 1. Confirmar con el paciente antes de cancelar.',
     fields: {
       cita_uuid: {
         type: 'string',

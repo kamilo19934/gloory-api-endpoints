@@ -31,22 +31,16 @@ export class InternalTokenGuard implements CanActivate {
     const expectedToken = this.config.get<string>('GLOORY_INTERNAL_TOKEN');
 
     if (!expectedToken) {
-      this.logger.error(
-        'GLOORY_INTERNAL_TOKEN no está configurado en el servidor',
-      );
+      this.logger.error('GLOORY_INTERNAL_TOKEN no está configurado en el servidor');
       throw new UnauthorizedException('Servicio no configurado correctamente');
     }
 
     if (!providedToken) {
-      throw new UnauthorizedException(
-        'Falta header X-Gloory-Internal-Token',
-      );
+      throw new UnauthorizedException('Falta header X-Gloory-Internal-Token');
     }
 
     if (providedToken !== expectedToken) {
-      this.logger.warn(
-        `Intento de acceso interno con token inválido desde ${request.ip}`,
-      );
+      this.logger.warn(`Intento de acceso interno con token inválido desde ${request.ip}`);
       throw new UnauthorizedException('Token interno inválido');
     }
 

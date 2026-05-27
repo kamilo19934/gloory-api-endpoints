@@ -1,12 +1,4 @@
-import {
-  IsString,
-  IsInt,
-  IsBoolean,
-  Min,
-  Max,
-  Matches,
-  IsOptional,
-} from 'class-validator';
+import { IsString, IsInt, IsBoolean, Min, Max, Matches, IsOptional } from 'class-validator';
 
 export class CreateReservoConfigDto {
   @IsString()

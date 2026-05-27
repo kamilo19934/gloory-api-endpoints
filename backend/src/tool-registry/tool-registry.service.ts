@@ -1,14 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { IntegrationType } from '../integrations/common/interfaces';
-import {
-  ToolRegistryResponse,
-  ToolSchema,
-} from './interfaces/tool-schema.interface';
+import { ToolRegistryResponse, ToolSchema } from './interfaces/tool-schema.interface';
 import { DENTALINK_TOOLS } from './definitions/dentalink.tools';
-import {
-  MEDILINK_TOOLS,
-  DENTALINK_MEDILINK_TOOLS,
-} from './definitions/medilink.tools';
+import { MEDILINK_TOOLS, DENTALINK_MEDILINK_TOOLS } from './definitions/medilink.tools';
 import { RESERVO_TOOLS } from './definitions/reservo.tools';
 import { GHL_TOOLS } from './definitions/ghl.tools';
 

@@ -82,10 +82,7 @@ function matchesLocalFormat(digits: string, config: CountryPhoneConfig): boolean
  * @param codigoPais Código ISO del país del cliente (ej: 'CL', 'PE'). Default: 'CL'
  * @returns PhoneFormatResult con el número formateado o error
  */
-export function formatearTelefono(
-  telefono: string,
-  codigoPais: string = 'CL',
-): PhoneFormatResult {
+export function formatearTelefono(telefono: string, codigoPais: string = 'CL'): PhoneFormatResult {
   try {
     if (!telefono || telefono.trim() === '') {
       return {
