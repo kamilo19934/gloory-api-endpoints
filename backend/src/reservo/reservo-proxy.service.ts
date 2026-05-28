@@ -8,6 +8,8 @@ import {
   ReservoAgenda,
   ReservoCreateAppointmentPayload,
 } from '../integrations/reservo/reservo.types';
+import { GHLService } from '../dentalink/ghl.service';
+import { GoHighLevelConfig } from '../integrations/gohighlevel/gohighlevel.types';
 import { SearchPatientDto } from './dto/search-patient.dto';
 import { ReservoSearchAvailabilityDto } from './dto/search-availability.dto';
 import { ReservoCreateAppointmentDto } from './dto/create-appointment.dto';
@@ -26,6 +28,7 @@ export class ReservoProxyService {
   constructor(
     private readonly clientsService: ClientsService,
     private readonly reservoService: ReservoService,
+    private readonly ghlService: GHLService,
   ) {}
 
   private async getReservoConfig(clientId: string): Promise<ReservoConfig> {
@@ -40,6 +43,33 @@ export class ReservoProxyService {
     }
 
     return integration.config as ReservoConfig;
+  }
+
+  /**
+   * Resuelve la config GHL del cliente probando, en orden:
+   *  1. Integration "gohighlevel" estándar.
+   *  2. Campos GHL embebidos en la integration "reservo".
+   * Devuelve undefined si no hay calendar configurado (sin calendar no podemos espejar).
+   */
+  private resolveGhlConfig(client: any): GoHighLevelConfig | undefined {
+    const ghl = client.integrations?.find((i: any) => i.integrationType === 'gohighlevel');
+    if (ghl?.config?.ghlLocationId) {
+      return ghl.config as GoHighLevelConfig;
+    }
+
+    const reservo = client.integrations?.find((i: any) => i.integrationType === 'reservo');
+    const cfg = reservo?.config;
+    if (cfg?.ghlLocationId && (cfg.ghlAccessToken || cfg.ghlOAuthMode)) {
+      return {
+        ghlAccessToken: cfg.ghlAccessToken || '',
+        ghlLocationId: cfg.ghlLocationId,
+        ghlCalendarId: cfg.ghlCalendarId,
+        ghlOAuthMode: cfg.ghlOAuthMode === true,
+        timezone: cfg.timezone || client.timezone,
+      };
+    }
+
+    return undefined;
   }
 
   /**
@@ -338,7 +368,15 @@ export class ReservoProxyService {
   // ============================
 
   async createAppointment(clientId: string, dto: ReservoCreateAppointmentDto) {
-    const config = await this.getReservoConfig(clientId);
+    const client = await this.clientsService.findOne(clientId);
+    const reservoIntegration = client.getIntegration('reservo');
+    if (!reservoIntegration) {
+      throw new HttpException(
+        'Este cliente no tiene integración con Reservo configurada',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const config = reservoIntegration.config as ReservoConfig;
     const agenda = this.resolveAgenda(config, dto.agenda_id);
 
     const payload: ReservoCreateAppointmentPayload = {
@@ -362,7 +400,49 @@ export class ReservoProxyService {
       throw new HttpException(result.error || 'Error creando cita', HttpStatus.BAD_REQUEST);
     }
 
+    if (dto.user_id) {
+      setImmediate(() => {
+        this.mirrorCitaToGHL(client, dto, agenda, config).catch((error) =>
+          this.logger.error(`Error espejando cita Reservo en GHL: ${error.message}`),
+        );
+      });
+    }
+
     return this.transformAppointmentResponse(result.data, this.resolveTz(config));
+  }
+
+  /**
+   * Espeja en GHL una cita recién creada en Reservo.
+   * No-op si el cliente no tiene `ghlCalendarId` configurado.
+   * Duración fija de 30min — Reservo no expone duración del tratamiento de forma trivial;
+   * el evento en GHL es solo un marcador, los datos canónicos viven en Reservo.
+   */
+  private async mirrorCitaToGHL(
+    client: any,
+    dto: ReservoCreateAppointmentDto,
+    agenda: ReservoAgenda,
+    reservoConfig: ReservoConfig,
+  ): Promise<void> {
+    const ghlCfg = this.resolveGhlConfig(client);
+    if (!ghlCfg?.ghlCalendarId) {
+      this.logger.warn(
+        `⚠️ Mirror GHL omitido (Reservo): cliente sin ghlCalendarId configurado (location=${ghlCfg?.ghlLocationId ?? 'n/a'})`,
+      );
+      return;
+    }
+    if (!ghlCfg.timezone) {
+      ghlCfg.timezone = reservoConfig.timezone || client.timezone;
+    }
+
+    const customFields = [{ key: 'clinica', field_value: agenda.nombre }];
+
+    await this.ghlService.integrarCita(ghlCfg, {
+      userId: dto.user_id!,
+      fecha: dto.fecha,
+      hora_inicio: dto.hora.length === 5 ? `${dto.hora}:00` : dto.hora,
+      duracion: 30,
+      customFields,
+    });
   }
 
   private transformAppointmentResponse(data: any, tz = 'America/Santiago') {

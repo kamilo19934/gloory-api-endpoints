@@ -6,6 +6,7 @@
 export interface GoHighLevelConfig {
   ghlAccessToken: string;
   ghlLocationId: string;
+  ghlCalendarId?: string; // calendar destino para mirror de citas creadas via plataforma
   ghlOAuthMode?: boolean; // true = usar OAuth Marketplace, false/undefined = usar PIT token (default)
   timezone?: string; // default 'America/Santiago'
 }

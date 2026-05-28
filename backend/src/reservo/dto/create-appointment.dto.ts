@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsNotEmpty, Matches } from 'class-validator';
+import { IsString, IsNumber, IsNotEmpty, IsOptional, Matches } from 'class-validator';
 
 export class ReservoCreateAppointmentDto {
   @IsNumber()
@@ -30,4 +30,12 @@ export class ReservoCreateAppointmentDto {
   @IsString()
   @IsNotEmpty({ message: 'El UUID del paciente es requerido' })
   uuid_paciente: string;
+
+  /**
+   * GHL contact ID — si está presente y el cliente tiene `ghlCalendarId`
+   * configurado, la cita se espeja en GoHighLevel en background.
+   */
+  @IsOptional()
+  @IsString()
+  user_id?: string;
 }

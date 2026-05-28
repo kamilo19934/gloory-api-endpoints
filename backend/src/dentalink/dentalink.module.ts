@@ -10,6 +10,6 @@ import { GHLOAuthModule } from '../gohighlevel/oauth/ghl-oauth.module';
   imports: [ClientsModule, EndpointsModule, GHLOAuthModule],
   controllers: [DentalinkController],
   providers: [DentalinkService, GHLService],
-  exports: [DentalinkService],
+  exports: [DentalinkService, GHLService],
 })
 export class DentalinkModule {}

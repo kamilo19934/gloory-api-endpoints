@@ -1148,7 +1148,6 @@ export class DentalinkService {
 
     const client = await this.clientsService.findOne(clientId);
     const apiKey = this.resolveApiKey(client);
-    const timezone = client.timezone;
     const apisToTry = this.getApisToUse(client);
 
     const headers = {
@@ -1257,36 +1256,24 @@ export class DentalinkService {
             `✅ Cita creada exitosamente en ${api.type.toUpperCase()} con ID ${idCita}`,
           );
 
-          // Integración con GHL (si está habilitado y se proporcionó user_id)
-          if (client.ghlEnabled && params.user_id) {
-            this.logger.log('🔗 Iniciando integración con GHL en background...');
-
-            // Ejecutar en background sin bloquear respuesta
-            setImmediate(async () => {
-              try {
-                await this.ghlService.integrarCita(
-                  {
-                    accessToken: client.ghlAccessToken,
-                    calendarId: client.ghlCalendarId,
-                    locationId: client.ghlLocationId,
-                  },
-                  {
-                    userId: params.user_id,
-                    fecha: params.fecha,
-                    hora_inicio: params.hora_inicio,
-                    duracion,
-                    id_profesional: params.id_profesional,
-                    id_sucursal: params.id_sucursal,
-                    comentario: params.comentario,
-                  },
-                  api.baseUrl,
-                  headers,
-                  timezone,
-                );
-              } catch (error) {
-                this.logger.error(`Error integrando con GHL: ${error.message}`);
-                // No fallar la cita si GHL falla
-              }
+          if (params.user_id) {
+            setImmediate(() => {
+              this.mirrorCitaToGHL(
+                client,
+                api,
+                headers,
+                {
+                  userId: params.user_id!,
+                  idProfesional: params.id_profesional,
+                  idSucursal: params.id_sucursal,
+                  fecha: params.fecha,
+                  horaInicio: params.hora_inicio,
+                  duracion,
+                  comentario: params.comentario,
+                },
+              ).catch((error) =>
+                this.logger.error(`Error espejando cita en GHL: ${error.message}`),
+              );
             });
           }
 
@@ -1344,7 +1331,6 @@ export class DentalinkService {
 
     const client = await this.clientsService.findOne(clientId);
     const apiKey = this.resolveApiKey(client);
-    const timezone = client.timezone;
     const apisToTry = this.getApisToUse(client);
 
     const headers = {
@@ -1451,34 +1437,24 @@ export class DentalinkService {
             `✅ Cita de videoconsulta creada exitosamente en ${api.type.toUpperCase()} con ID ${idCita}`,
           );
 
-          // Integración con GHL (si está habilitado y se proporcionó user_id)
-          if (client.ghlEnabled && params.user_id) {
-            this.logger.log('🔗 Iniciando integración con GHL en background...');
-
-            setImmediate(async () => {
-              try {
-                await this.ghlService.integrarCita(
-                  {
-                    accessToken: client.ghlAccessToken,
-                    calendarId: client.ghlCalendarId,
-                    locationId: client.ghlLocationId,
-                  },
-                  {
-                    userId: params.user_id,
-                    fecha: params.fecha,
-                    hora_inicio: params.hora_inicio,
-                    duracion,
-                    id_profesional: params.id_profesional,
-                    id_sucursal: params.id_sucursal,
-                    comentario: params.comentario,
-                  },
-                  api.baseUrl,
-                  headers,
-                  timezone,
-                );
-              } catch (error) {
-                this.logger.error(`Error integrando con GHL: ${error.message}`);
-              }
+          if (params.user_id) {
+            setImmediate(() => {
+              this.mirrorCitaToGHL(
+                client,
+                api,
+                headers,
+                {
+                  userId: params.user_id!,
+                  idProfesional: params.id_profesional,
+                  idSucursal: params.id_sucursal,
+                  fecha: params.fecha,
+                  horaInicio: params.hora_inicio,
+                  duracion,
+                  comentario: params.comentario,
+                },
+              ).catch((error) =>
+                this.logger.error(`Error espejando videoconsulta en GHL: ${error.message}`),
+              );
             });
           }
 
@@ -1535,7 +1511,6 @@ export class DentalinkService {
 
     const client = await this.clientsService.findOne(clientId);
     const apiKey = this.resolveApiKey(client);
-    const timezone = client.timezone;
     const apisToTry = this.getApisToUse(client);
 
     const headers = {
@@ -1640,34 +1615,24 @@ export class DentalinkService {
             `✅ Cita de sobrecupo creada exitosamente en ${api.type.toUpperCase()} con ID ${idCita}`,
           );
 
-          // Integración con GHL (si está habilitado y se proporcionó user_id)
-          if (client.ghlEnabled && params.user_id) {
-            this.logger.log('🔗 Iniciando integración con GHL en background...');
-
-            setImmediate(async () => {
-              try {
-                await this.ghlService.integrarCita(
-                  {
-                    accessToken: client.ghlAccessToken,
-                    calendarId: client.ghlCalendarId,
-                    locationId: client.ghlLocationId,
-                  },
-                  {
-                    userId: params.user_id,
-                    fecha: params.fecha,
-                    hora_inicio: params.hora_inicio,
-                    duracion,
-                    id_profesional: params.id_profesional,
-                    id_sucursal: params.id_sucursal,
-                    comentario: params.comentario,
-                  },
-                  api.baseUrl,
-                  headers,
-                  timezone,
-                );
-              } catch (error) {
-                this.logger.error(`Error integrando con GHL: ${error.message}`);
-              }
+          if (params.user_id) {
+            setImmediate(() => {
+              this.mirrorCitaToGHL(
+                client,
+                api,
+                headers,
+                {
+                  userId: params.user_id!,
+                  idProfesional: params.id_profesional,
+                  idSucursal: params.id_sucursal,
+                  fecha: params.fecha,
+                  horaInicio: params.hora_inicio,
+                  duracion,
+                  comentario: params.comentario,
+                },
+              ).catch((error) =>
+                this.logger.error(`Error espejando sobrecupo en GHL: ${error.message}`),
+              );
             });
           }
 
@@ -2217,6 +2182,7 @@ export class DentalinkService {
         return {
           ghlAccessToken: cfg.ghlAccessToken || '',
           ghlLocationId: cfg.ghlLocationId,
+          ghlCalendarId: cfg.ghlCalendarId,
           ghlOAuthMode: cfg.ghlOAuthMode === true,
           timezone: cfg.timezone || client.timezone,
         };
@@ -2228,12 +2194,92 @@ export class DentalinkService {
       return {
         ghlAccessToken: client.ghlAccessToken || '',
         ghlLocationId: client.ghlLocationId,
+        ghlCalendarId: client.ghlCalendarId,
         ghlOAuthMode: false,
         timezone: client.timezone,
       };
     }
 
     return undefined;
+  }
+
+  /**
+   * Espeja en GHL una cita recién creada en Dentalink/MediLink.
+   * Pensado para correr en background (`setImmediate`). El caller no debe esperarlo
+   * ni dejar que su error se propague a la respuesta del POST original.
+   *
+   * No-op si el cliente no tiene `ghlCalendarId` resuelto o no se pasó `userId`.
+   */
+  private async mirrorCitaToGHL(
+    client: any,
+    api: { type: string; baseUrl: string },
+    headers: Record<string, string>,
+    cita: {
+      userId: string;
+      idProfesional: number;
+      idSucursal: number;
+      fecha: string;
+      horaInicio: string;
+      duracion: number;
+      comentario?: string;
+    },
+  ): Promise<void> {
+    const ghlCfg = this.resolveGhlConfig(client);
+    if (!ghlCfg?.ghlCalendarId) {
+      this.logger.warn(
+        `⚠️ Mirror GHL omitido: cliente sin ghlCalendarId configurado (location=${ghlCfg?.ghlLocationId ?? 'n/a'})`,
+      );
+      return;
+    }
+    if (!ghlCfg.timezone) {
+      ghlCfg.timezone = client.timezone;
+    }
+
+    // Resolver nombres del profesional y sucursal desde la API correspondiente
+    let nombreProfesional = `Profesional ${cita.idProfesional}`;
+    let nombreSucursal = `Sucursal ${cita.idSucursal}`;
+
+    try {
+      if (api.type === 'dentalink') {
+        const profResp = await axios.get(`${api.baseUrl}dentistas`, { headers });
+        const prof = (profResp.data?.data || []).find((p: any) => p.id === cita.idProfesional);
+        if (prof) {
+          const apellido = prof.apellido || prof.apellidos || '';
+          nombreProfesional = `${prof.nombre || 'Desconocido'} ${apellido}`.trim();
+        }
+      } else {
+        const profResp = await axios.get(
+          `https://api.medilink2.healthatom.com/api/v6/profesionales/${cita.idProfesional}`,
+          { headers },
+        );
+        const prof = profResp.data?.data;
+        if (prof) {
+          const apellido = prof.apellido || prof.apellidos || '';
+          nombreProfesional = `${prof.nombre || 'Desconocido'} ${apellido}`.trim();
+        }
+      }
+
+      const sucResp = await axios.get(`${api.baseUrl}sucursales/${cita.idSucursal}`, { headers });
+      nombreSucursal = sucResp.data?.data?.nombre || nombreSucursal;
+    } catch (error) {
+      this.logger.warn(`⚠️ No se pudieron resolver nombres para mirror GHL: ${error.message}`);
+    }
+
+    const customFields: Array<{ key: string; field_value: string }> = [
+      { key: 'doctor', field_value: nombreProfesional },
+      { key: 'clinica', field_value: nombreSucursal },
+    ];
+    if (cita.comentario) {
+      customFields.push({ key: 'comentario', field_value: cita.comentario });
+    }
+
+    await this.ghlService.integrarCita(ghlCfg, {
+      userId: cita.userId,
+      fecha: cita.fecha,
+      hora_inicio: cita.horaInicio,
+      duracion: cita.duracion,
+      customFields,
+    });
   }
 
   private mapGhlChannelType(type: string | null): string | null {

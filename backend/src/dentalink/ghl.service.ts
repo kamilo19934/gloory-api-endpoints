@@ -1,12 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
 import * as moment from 'moment-timezone';
 import { GHLApiClient } from '../gohighlevel/oauth/ghl-api-client.service';
+import { GoHighLevelConfig } from '../integrations/gohighlevel/gohighlevel.types';
 
-interface GHLConfig {
-  accessToken: string;
-  calendarId: string;
-  locationId: string;
+export interface IntegrarCitaPayload {
+  userId: string; // GHL contact ID (lo provee el caller como `user_id`)
+  fecha: string; // YYYY-MM-DD
+  hora_inicio: string; // HH:mm o HH:mm:ss
+  duracion: number; // minutos
+  title?: string; // default 'Cita Médica'
+  customFields?: Array<{ key: string; field_value: string }>; // opcional: actualiza contacto antes de crear cita
 }
 
 @Injectable()
@@ -16,117 +19,91 @@ export class GHLService {
   constructor(private readonly ghlApiClient: GHLApiClient) {}
 
   /**
-   * Integra una cita con GoHighLevel (se ejecuta en background).
-   *
-   * Esta ruta es legacy/PIT: usa `client.ghlEnabled + client.ghlAccessToken`.
-   * No participa del flujo OAuth Marketplace, así que las llamadas usan
-   * `requestWithToken` del wrapper (sin retry on-401, sólo backoff en 429).
+   * Llamada a GHL respetando el modo del cliente:
+   * - OAuth (ghlOAuthMode=true) → wrapper resuelve el token de la location y maneja retry on-401.
+   * - PIT (default) → usa el ghlAccessToken explícito.
    */
-  async integrarCita(
-    config: GHLConfig,
-    citaData: {
-      userId: string;
-      fecha: string;
-      hora_inicio: string;
-      duracion: number;
-      id_profesional: number;
-      id_sucursal: number;
-      comentario?: string;
-    },
-    dentalinkApiUrl: string,
-    dentalinkHeaders: any,
-    timezone: string,
-  ): Promise<void> {
-    try {
-      // 1. Obtener nombres del profesional y sucursal desde Dentalink (no GHL)
-      let nombreProfesional = `Profesional ${citaData.id_profesional}`;
-      let nombreSucursal = `Sucursal ${citaData.id_sucursal}`;
+  private async callGHL<T = any>(
+    config: GoHighLevelConfig,
+    axiosConfig: Parameters<GHLApiClient['request']>[1],
+  ): Promise<T> {
+    if (config.ghlOAuthMode) {
+      return this.ghlApiClient.request<T>(config.ghlLocationId, axiosConfig);
+    }
+    return this.ghlApiClient.requestWithToken<T>(config.ghlAccessToken, axiosConfig);
+  }
 
-      try {
-        const profResp = await axios.get(`${dentalinkApiUrl}dentistas`, {
-          headers: dentalinkHeaders,
-        });
-        if (profResp.status === 200) {
-          const profesionales = profResp.data?.data || [];
-          const prof = profesionales.find((p: any) => p.id === citaData.id_profesional);
-          if (prof) {
-            const apellido = prof.apellido || prof.apellidos || '';
-            nombreProfesional = `${prof.nombre || 'Desconocido'} ${apellido}`.trim();
-          }
-        }
-
-        const sucResp = await axios.get(`${dentalinkApiUrl}sucursales/${citaData.id_sucursal}`, {
-          headers: dentalinkHeaders,
-        });
-        if (sucResp.status === 200) {
-          nombreSucursal = sucResp.data?.data?.nombre || nombreSucursal;
-        }
-      } catch (error) {
-        this.logger.warn(`⚠️ Error obteniendo nombres: ${error.message}`);
-      }
-
-      // 2. Actualizar contacto con custom fields
-      const customFields: any[] = [
-        { key: 'doctor', field_value: nombreProfesional },
-        { key: 'clinica', field_value: nombreSucursal },
-      ];
-
-      if (citaData.comentario) {
-        customFields.push({ key: 'comentario', field_value: citaData.comentario });
-      }
-
-      this.logger.log(`🌐 Actualizando contacto ${citaData.userId} en GHL`);
-
-      await this.ghlApiClient.requestWithToken(config.accessToken, {
-        method: 'PUT',
-        url: `/contacts/${citaData.userId}`,
-        data: { customFields },
-      });
-      this.logger.log(`✅ Contacto actualizado en GHL: ${nombreProfesional} - ${nombreSucursal}`);
-
-      // 3. Obtener assignedUserId del calendar (Version 2021-04-15 para calendars)
-      this.logger.log(`🌐 Obteniendo calendar ${config.calendarId}`);
-
-      const calendarData = await this.ghlApiClient.requestWithToken<{ calendar?: any }>(
-        config.accessToken,
-        {
-          method: 'GET',
-          url: `/calendars/${config.calendarId}`,
-          headers: { Version: '2021-04-15' },
-        },
+  /**
+   * Espeja una cita recién creada (Dentalink/MediLink/Reservo) en GoHighLevel.
+   *
+   * Pasos:
+   *  1. (opcional) PUT /contacts/{userId} con `customFields` si el caller los provee.
+   *  2. GET /calendars/{ghlCalendarId} → resuelve `assignedUserId` (primer teamMember).
+   *  3. POST /calendars/events/appointments con `appointmentStatus: 'new'`.
+   *
+   * Requiere que `config.ghlCalendarId` esté definido. Soporta tanto OAuth como PIT
+   * via `callGHL`. Diseñado para correr en background (`setImmediate`) — el caller
+   * debe capturar errores para no propagarlos a la respuesta del POST original.
+   */
+  async integrarCita(config: GoHighLevelConfig, payload: IntegrarCitaPayload): Promise<void> {
+    if (!config.ghlCalendarId) {
+      this.logger.warn(
+        `⚠️ No se puede espejar cita en GHL: ghlCalendarId no configurado para location ${config.ghlLocationId}`,
       );
+      return;
+    }
+
+    const timezone = config.timezone || 'America/Santiago';
+
+    try {
+      // 1. Actualizar contacto con custom fields (opcional)
+      if (payload.customFields && payload.customFields.length > 0) {
+        this.logger.log(`🌐 Actualizando contacto ${payload.userId} en GHL`);
+        await this.callGHL(config, {
+          method: 'PUT',
+          url: `/contacts/${payload.userId}`,
+          data: { customFields: payload.customFields },
+        });
+        this.logger.log('✅ Contacto actualizado en GHL');
+      }
+
+      // 2. Resolver assignedUserId del calendar (Version 2021-04-15 para calendars)
+      this.logger.log(`🌐 Obteniendo calendar ${config.ghlCalendarId}`);
+      const calendarData = await this.callGHL<{ calendar?: any }>(config, {
+        method: 'GET',
+        url: `/calendars/${config.ghlCalendarId}`,
+        headers: { Version: '2021-04-15' },
+      });
 
       const teamMembers = calendarData?.calendar?.teamMembers || [];
       const assignedUserId: string | null = teamMembers[0]?.userId || null;
-
       if (!assignedUserId) {
         this.logger.error('❌ No se pudo obtener assignedUserId del calendar');
         return;
       }
-      this.logger.log(`✅ Obtenido assignedUserId: ${assignedUserId}`);
+      this.logger.log(`✅ assignedUserId: ${assignedUserId}`);
 
-      // 4. Crear appointment en GHL
-      const inicioMoment = moment.tz(`${citaData.fecha} ${citaData.hora_inicio}`, timezone);
-      const finMoment = inicioMoment.clone().add(citaData.duracion, 'minutes');
+      // 3. Crear appointment en GHL
+      const inicioMoment = moment.tz(`${payload.fecha} ${payload.hora_inicio}`, timezone);
+      const finMoment = inicioMoment.clone().add(payload.duracion, 'minutes');
 
       const appointmentPayload = {
-        title: 'Cita Médica',
+        title: payload.title || 'Cita Médica',
         overrideLocationConfig: true,
         appointmentStatus: 'new',
         ignoreDateRange: true,
         ignoreFreeSlotValidation: true,
-        calendarId: config.calendarId,
-        locationId: config.locationId,
+        calendarId: config.ghlCalendarId,
+        locationId: config.ghlLocationId,
         assignedUserId,
-        contactId: citaData.userId,
+        contactId: payload.userId,
         startTime: inicioMoment.format(),
         endTime: finMoment.format(),
       };
 
-      this.logger.log('📤 Payload para crear appointment en GHL:');
-      this.logger.log(JSON.stringify(appointmentPayload, null, 2));
+      this.logger.log(`📤 Creando appointment en GHL: ${JSON.stringify(appointmentPayload)}`);
 
-      await this.ghlApiClient.requestWithToken(config.accessToken, {
+      await this.callGHL(config, {
         method: 'POST',
         url: '/calendars/events/appointments',
         data: appointmentPayload,
@@ -139,13 +116,7 @@ export class GHLService {
 
       if (error.response) {
         this.logger.error(`📛 Status: ${error.response.status}`);
-        this.logger.error(`📛 Response completa de GHL:`);
-        this.logger.error(JSON.stringify(error.response.data, null, 2));
-
-        if (error.config?.data) {
-          this.logger.error(`📛 Payload que se intentó enviar:`);
-          this.logger.error(error.config.data);
-        }
+        this.logger.error(`📛 Response GHL: ${JSON.stringify(error.response.data)}`);
       }
 
       throw error;
