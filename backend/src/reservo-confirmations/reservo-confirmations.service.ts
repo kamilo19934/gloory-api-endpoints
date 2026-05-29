@@ -56,13 +56,22 @@ export class ReservoConfirmationsService {
       if (ghlConfig.ghlOAuthMode && ghlConfig.ghlLocationId) {
         return { locationId: ghlConfig.ghlLocationId };
       }
+      if (ghlConfig.ghlAccessToken && ghlConfig.ghlLocationId) {
+        return { locationId: ghlConfig.ghlLocationId, pitToken: ghlConfig.ghlAccessToken };
+      }
     }
 
-    if (reservoConfig.ghlEnabled && reservoConfig.ghlAccessToken && reservoConfig.ghlLocationId) {
-      return {
-        locationId: reservoConfig.ghlLocationId,
-        pitToken: reservoConfig.ghlAccessToken,
-      };
+    // GHL embebido en el config de la integration Reservo
+    if (reservoConfig.ghlEnabled && reservoConfig.ghlLocationId) {
+      if (reservoConfig.ghlOAuthMode) {
+        return { locationId: reservoConfig.ghlLocationId };
+      }
+      if (reservoConfig.ghlAccessToken) {
+        return {
+          locationId: reservoConfig.ghlLocationId,
+          pitToken: reservoConfig.ghlAccessToken,
+        };
+      }
     }
 
     return null;

@@ -12,6 +12,7 @@ export interface ReservoConfig {
   ghlAccessToken?: string;
   ghlCalendarId?: string;
   ghlLocationId?: string;
+  ghlOAuthMode?: boolean; // true = OAuth Marketplace (token via cron), false/undefined = PIT
 }
 
 export interface ReservoAgenda {

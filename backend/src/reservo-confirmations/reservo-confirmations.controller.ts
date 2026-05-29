@@ -74,11 +74,16 @@ export class ReservoConfirmationsController {
       }
     }
 
-    if (reservoConfig.ghlEnabled && reservoConfig.ghlAccessToken && reservoConfig.ghlLocationId) {
-      return {
-        locationId: reservoConfig.ghlLocationId,
-        pitToken: reservoConfig.ghlAccessToken,
-      };
+    if (reservoConfig.ghlEnabled && reservoConfig.ghlLocationId) {
+      if (reservoConfig.ghlOAuthMode) {
+        return { locationId: reservoConfig.ghlLocationId };
+      }
+      if (reservoConfig.ghlAccessToken) {
+        return {
+          locationId: reservoConfig.ghlLocationId,
+          pitToken: reservoConfig.ghlAccessToken,
+        };
+      }
     }
 
     return null;
