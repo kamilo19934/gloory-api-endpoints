@@ -14,6 +14,8 @@ import { ClientsService } from '../clients/clients.service';
 import { IntegrationRegistryService } from '../integrations/integration-registry.service';
 import { HealthAtomService } from '../integrations/healthatom/healthatom.service';
 import { ReservoService } from '../integrations/reservo/reservo.service';
+import { DentalsoftService } from '../integrations/dentalsoft/dentalsoft.service';
+import { SacmedService } from '../integrations/sacmed/sacmed.service';
 import { GoHighLevelService } from '../integrations/gohighlevel/gohighlevel.service';
 import { IntegrationType } from '../integrations/common/interfaces';
 import { ProvisionClientDto, ProvisionClientResponseDto } from './dto/provision-client.dto';
@@ -46,6 +48,8 @@ export class InternalService {
     private readonly registryService: IntegrationRegistryService,
     private readonly healthAtomService: HealthAtomService,
     private readonly reservoService: ReservoService,
+    private readonly dentalsoftService: DentalsoftService,
+    private readonly sacmedService: SacmedService,
     private readonly ghlService: GoHighLevelService,
   ) {}
 
@@ -207,6 +211,12 @@ export class InternalService {
         case IntegrationType.RESERVO:
           return await this.testReservoConnection(dto.credentials);
 
+        case IntegrationType.DENTALSOFT:
+          return await this.testDentalsoftConnection(dto.credentials);
+
+        case IntegrationType.SACMED:
+          return await this.testSacmedConnection(dto.credentials);
+
         case IntegrationType.GOHIGHLEVEL:
           return await this.testGhlConnection(dto.credentials);
 
@@ -307,6 +317,68 @@ export class InternalService {
       ok: true,
       preview: {
         agendas_count: Array.isArray(credentials.agendas) ? credentials.agendas.length : 0,
+      },
+    };
+  }
+
+  private async testDentalsoftConnection(
+    credentials: Record<string, any>,
+  ): Promise<TestConnectionResponseDto> {
+    const clientId = credentials.clientId as string | undefined;
+    const clientSecret = credentials.clientSecret as string | undefined;
+    const scopeRaw = credentials.scope;
+    const scope = typeof scopeRaw === 'number' ? scopeRaw : Number(scopeRaw);
+
+    if (!clientId || !clientSecret || !scope || Number.isNaN(scope)) {
+      return {
+        ok: false,
+        error: 'Faltan clientId, clientSecret o scope en las credenciales',
+      };
+    }
+
+    const result = await this.dentalsoftService.testConnection({
+      clientId,
+      clientSecret,
+      scope,
+      baseUrl: credentials.baseUrl,
+      timezone: credentials.timezone || 'America/Santiago',
+    });
+
+    if (!result.connected) {
+      return { ok: false, error: result.message };
+    }
+
+    return {
+      ok: true,
+      preview: {
+        branches_count: result.branches ?? 0,
+        professionals_count: result.professionals ?? 0,
+      },
+    };
+  }
+
+  private async testSacmedConnection(
+    credentials: Record<string, any>,
+  ): Promise<TestConnectionResponseDto> {
+    const apiKey = credentials.apiKey as string | undefined;
+    if (!apiKey) {
+      return { ok: false, error: 'Falta apiKey en las credenciales' };
+    }
+
+    const result = await this.sacmedService.testConnection({
+      apiKey,
+      baseUrl: credentials.baseUrl,
+      timezone: credentials.timezone || 'America/Santiago',
+    });
+
+    if (!result.connected) {
+      return { ok: false, error: result.message };
+    }
+
+    return {
+      ok: true,
+      preview: {
+        services_count: result.services ?? 0,
       },
     };
   }

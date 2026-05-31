@@ -286,6 +286,181 @@ export class IntegrationRegistryService {
       ],
     });
 
+    // Registrar Dentalsoft
+    this.register({
+      type: IntegrationType.DENTALSOFT,
+      name: 'Dentalsoft',
+      description:
+        'Sistema dental Dentalsoft con autenticación OAuth (client_credentials) y soporte de agenda, pacientes y especialidades',
+      logo: '/integrations/dentalsoft.png',
+      capabilities: [
+        IntegrationCapability.AVAILABILITY,
+        IntegrationCapability.PATIENTS,
+        IntegrationCapability.APPOINTMENTS,
+        IntegrationCapability.CLINIC_CONFIG,
+      ],
+      requiredFields: [
+        {
+          key: 'clientId',
+          label: 'Client ID',
+          type: 'string',
+          description: 'Client ID OAuth proporcionado por Dentalsoft',
+          placeholder: 'Ingresa el Client ID',
+        },
+        {
+          key: 'clientSecret',
+          label: 'Client Secret',
+          type: 'password',
+          description: 'Client Secret OAuth proporcionado por Dentalsoft',
+          placeholder: 'Ingresa el Client Secret',
+        },
+        {
+          key: 'scope',
+          label: 'Scope (ID de Clínica)',
+          type: 'number',
+          description: 'ID de la clínica target en Dentalsoft (campo scope del OAuth)',
+          placeholder: 'Ej: 123',
+        },
+      ],
+      optionalFields: [
+        {
+          key: 'baseUrl',
+          label: 'Base URL (override)',
+          type: 'string',
+          description:
+            'URL base de la API (default: https://api.dentalsoft.cl/external). Usar https://api-test.dentalsoft.cl/external para sandbox.',
+          placeholder: 'https://api.dentalsoft.cl/external',
+        },
+        {
+          key: 'timezone',
+          label: 'Zona Horaria',
+          type: 'select',
+          description: 'Zona horaria para las operaciones',
+          defaultValue: 'America/Santiago',
+          options: [
+            { value: 'America/Santiago', label: 'Chile (Santiago)' },
+            { value: 'America/Lima', label: 'Perú (Lima)' },
+            { value: 'America/Bogota', label: 'Colombia (Bogotá)' },
+            { value: 'America/Mexico_City', label: 'México (Ciudad de México)' },
+            { value: 'America/Buenos_Aires', label: 'Argentina (Buenos Aires)' },
+          ],
+        },
+        {
+          key: 'ghlEnabled',
+          label: 'Integración GoHighLevel',
+          type: 'boolean',
+          description: 'Sincronizar citas con GoHighLevel',
+          defaultValue: false,
+        },
+        {
+          key: 'ghlAccessToken',
+          label: 'GHL Access Token',
+          type: 'password',
+          description: 'Token de acceso de GoHighLevel',
+        },
+        {
+          key: 'ghlCalendarId',
+          label: 'GHL Calendar ID',
+          type: 'string',
+          description: 'ID del calendario en GoHighLevel',
+        },
+        {
+          key: 'ghlLocationId',
+          label: 'GHL Location ID',
+          type: 'string',
+          description: 'ID de la ubicación en GoHighLevel',
+        },
+        {
+          key: 'ghlOAuthMode',
+          label: 'GHL OAuth Mode',
+          type: 'boolean',
+          description: 'true = OAuth Marketplace; false/undefined = PIT',
+          defaultValue: false,
+        },
+      ],
+    });
+
+    // Registrar Sacmed
+    this.register({
+      type: IntegrationType.SACMED,
+      name: 'Sacmed',
+      description:
+        'Microservicio de disponibilidad médica Sacmed (centros médicos). Autenticación vía API Key (X-ApiKey) con soporte de servicios, especialidades, profesionales, pacientes, disponibilidad y citas.',
+      logo: '/integrations/sacmed.png',
+      capabilities: [
+        IntegrationCapability.AVAILABILITY,
+        IntegrationCapability.PATIENTS,
+        IntegrationCapability.APPOINTMENTS,
+        IntegrationCapability.CLINIC_CONFIG,
+      ],
+      requiredFields: [
+        {
+          key: 'apiKey',
+          label: 'API Key',
+          type: 'password',
+          description: 'API Key de Sacmed (se envía en el header X-ApiKey)',
+          placeholder: 'Ingresa tu API Key de Sacmed',
+        },
+      ],
+      optionalFields: [
+        {
+          key: 'baseUrl',
+          label: 'Base URL (override)',
+          type: 'string',
+          description:
+            'URL base de la API (default: producción). Usar la URL de TEST (availability-ms-test-...) para sandbox.',
+          placeholder:
+            'https://availability-ms-prod-860551794565.southamerica-west1.run.app/api/v1',
+        },
+        {
+          key: 'timezone',
+          label: 'Zona Horaria',
+          type: 'select',
+          description: 'Zona horaria para las operaciones',
+          defaultValue: 'America/Santiago',
+          options: [
+            { value: 'America/Santiago', label: 'Chile (Santiago)' },
+            { value: 'America/Lima', label: 'Perú (Lima)' },
+            { value: 'America/Bogota', label: 'Colombia (Bogotá)' },
+            { value: 'America/Mexico_City', label: 'México (Ciudad de México)' },
+            { value: 'America/Buenos_Aires', label: 'Argentina (Buenos Aires)' },
+          ],
+        },
+        {
+          key: 'ghlEnabled',
+          label: 'Integración GoHighLevel',
+          type: 'boolean',
+          description: 'Sincronizar citas con GoHighLevel',
+          defaultValue: false,
+        },
+        {
+          key: 'ghlAccessToken',
+          label: 'GHL Access Token',
+          type: 'password',
+          description: 'Token de acceso de GoHighLevel',
+        },
+        {
+          key: 'ghlCalendarId',
+          label: 'GHL Calendar ID',
+          type: 'string',
+          description: 'ID del calendario en GoHighLevel',
+        },
+        {
+          key: 'ghlLocationId',
+          label: 'GHL Location ID',
+          type: 'string',
+          description: 'ID de la ubicación en GoHighLevel',
+        },
+        {
+          key: 'ghlOAuthMode',
+          label: 'GHL OAuth Mode',
+          type: 'boolean',
+          description: 'true = OAuth Marketplace; false/undefined = PIT',
+          defaultValue: false,
+        },
+      ],
+    });
+
     // Registrar GoHighLevel
     this.register({
       type: IntegrationType.GOHIGHLEVEL,

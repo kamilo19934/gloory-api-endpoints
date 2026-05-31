@@ -4,6 +4,8 @@ import { ToolRegistryResponse, ToolSchema } from './interfaces/tool-schema.inter
 import { DENTALINK_TOOLS } from './definitions/dentalink.tools';
 import { MEDILINK_TOOLS, DENTALINK_MEDILINK_TOOLS } from './definitions/medilink.tools';
 import { RESERVO_TOOLS } from './definitions/reservo.tools';
+import { DENTALSOFT_TOOLS } from './definitions/dentalsoft.tools';
+import { SACMED_TOOLS } from './definitions/sacmed.tools';
 import { GHL_TOOLS } from './definitions/ghl.tools';
 
 /**
@@ -21,6 +23,8 @@ export class ToolRegistryService {
     [IntegrationType.MEDILINK]: MEDILINK_TOOLS,
     [IntegrationType.DENTALINK_MEDILINK]: DENTALINK_MEDILINK_TOOLS,
     [IntegrationType.RESERVO]: RESERVO_TOOLS,
+    [IntegrationType.DENTALSOFT]: DENTALSOFT_TOOLS,
+    [IntegrationType.SACMED]: SACMED_TOOLS,
     [IntegrationType.GOHIGHLEVEL]: GHL_TOOLS,
   };
 
@@ -29,6 +33,8 @@ export class ToolRegistryService {
     [IntegrationType.MEDILINK]: '1.0.0',
     [IntegrationType.DENTALINK_MEDILINK]: '1.0.0',
     [IntegrationType.RESERVO]: '1.0.0',
+    [IntegrationType.DENTALSOFT]: '1.0.0',
+    [IntegrationType.SACMED]: '1.0.0',
     [IntegrationType.GOHIGHLEVEL]: '1.0.0',
   };
 

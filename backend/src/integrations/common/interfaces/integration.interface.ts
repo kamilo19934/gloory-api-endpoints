@@ -6,6 +6,8 @@ export enum IntegrationType {
   MEDILINK = 'medilink',
   DENTALINK_MEDILINK = 'dentalink_medilink', // Modo dual: usa ambas APIs
   RESERVO = 'reservo',
+  DENTALSOFT = 'dentalsoft',
+  SACMED = 'sacmed',
   GOHIGHLEVEL = 'gohighlevel',
 }
 

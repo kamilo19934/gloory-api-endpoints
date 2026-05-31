@@ -1,0 +1,1322 @@
+SACMED - Availability Microservice
+ v1 
+OAS 3.0
+/swagger/v1/swagger.json
+Microservicio encargado de la gestión de disponibilidad médica.
+
+Expone servicios REST para:
+
+Reserva online: servicios, especialidades y profesionales.
+Gestión de pacientes: consulta y creación.
+Disponibilidad de slots y eventos médicos.
+La autenticación se realiza mediante el header X-ApiKey.
+
+Contact Contacto técnico Equipo SACMED
+Sitio web SACMED
+Servers
+
+https://availability-ms-test-860551794565.southamerica-west1.run.app/ - URL de TEST
+
+Authorize
+Base de API
+
+
+GET
+/
+
+District
+
+
+GET
+/api/v1/district
+Obtiene todas las comunas utilizadas en SACMED
+
+
+Devuelve la lista completa de comunas registradas
+
+Parameters
+Try it out
+No parameters
+
+Responses
+Code	Description	Links
+200	
+OK
+
+Media type
+
+text/plain
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "districtId": 0,
+    "name": "string"
+  }
+]
+No links
+Reserva online
+
+
+GET
+/api/v1/service/by-company
+Lista servicios por empresa (reserva online)
+
+
+Obtiene el catálogo de servicios activos configurados para la empresa asociada al X-ApiKey.
+
+Parameters
+Try it out
+No parameters
+
+Responses
+Code	Description	Links
+200	
+OK
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "serviceId": 101,
+    "name": "Consulta Médica General",
+    "serviceTypeId": 12
+  }
+]
+No links
+400	
+Bad Request
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+401	
+Unauthorized
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+500	
+Internal Server Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+
+GET
+/api/v1/specialty/by-service/{serviceId}
+Lista especialidades por servicio (reserva online)
+
+
+Devuelve especialidades asociadas al servicio indicado.
+
+Parameters
+Try it out
+Name	Description
+serviceId *
+integer($int32)
+(path)
+Identificador del servicio
+
+serviceId
+Responses
+Code	Description	Links
+200	
+OK
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "specialtyId": 7,
+    "serviceId": 101,
+    "name": "Medicina General",
+    "benefits": [
+      {
+        "benefitId": 501,
+        "name": "Consulta General"
+      },
+      {
+        "benefitId": 502,
+        "name": "Control Preventivo"
+      }
+    ]
+  }
+]
+No links
+400	
+Bad Request
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+401	
+Unauthorized
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+500	
+Internal Server Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+
+GET
+/api/v1/practitioners
+Lista especialistas (reserva online)
+
+
+Devuelve especialistas autorizados para reserva online
+
+Parameters
+Try it out
+No parameters
+
+Responses
+Code	Description	Links
+200	
+OK
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "practitioners": [
+    {
+      "identification": "string",
+      "userId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "name": "string",
+      "services": [
+        {
+          "service_Id": 0,
+          "name": "string",
+          "specialties": [
+            {
+              "specialty_Id": 0,
+              "name": "string"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+No links
+400	
+Bad Request
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+401	
+Unauthorized
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+500	
+Internal Server Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+
+GET
+/api/v1/practitioner/by-specialty/{specialtyId}
+Lista especialistas por especialidad (reserva online)
+
+
+Devuelve especialistas vinculados a la especialidad indicada.
+
+Parameters
+Try it out
+Name	Description
+specialtyId *
+integer($int32)
+(path)
+Identificador de la especialidad
+
+specialtyId
+Responses
+Code	Description	Links
+200	
+OK
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "userId": "00000000-0000-0000-0000-000000000000",
+    "specialties": [
+      7,
+      8
+    ],
+    "fullName": "Dra. Camila Salazar",
+    "specialtyId": 7,
+    "allowRol": true
+  }
+]
+No links
+400	
+Bad Request
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+401	
+Unauthorized
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+500	
+Internal Server Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+
+GET
+/api/v1/patient
+Lista de pacientes de una empresa o filtra por un paciente en particular
+
+
+Busca pacientes por RUT (identification) o lista todos los de la empresa si se omite el parámetro.
+
+Parameters
+Try it out
+Name	Description
+identification
+string
+(query)
+identification
+Responses
+Code	Description	Links
+200	
+OK
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "firstName": "Martina Isabel",
+    "paternalLastName": "Muñoz",
+    "maternalLastName": "Soto",
+    "identification": "12345678-9",
+    "nationalityId": 1,
+    "phone": "222345678",
+    "mobilePhone": "+56912345678",
+    "occupation": "Estudiante",
+    "email": "martina.munoz@example.com",
+    "arrivalMode": "Derivación médica",
+    "birthDay": "1998-03-15T00:00:00Z",
+    "addressDTO": {
+      "street": "Av. Providencia",
+      "number": "1234",
+      "districtId": 101
+    }
+  }
+]
+No links
+400	
+Bad Request
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+401	
+Unauthorized
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+404	
+Not Found
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+500	
+Internal Server Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+
+POST
+/api/v1/patient
+Crear paciente (reserva online).
+
+
+Crea un paciente en SACMED validando campos requeridos por configuración de empresa.
+
+Parameters
+Try it out
+No parameters
+
+Request body
+
+application/json
+Example Value
+Schema
+{
+  "firstName": "Martina Isabel",
+  "paternalLastName": "Muñoz",
+  "maternalLastName": "Soto",
+  "identification": "12345678-9",
+  "nationalityId": 1,
+  "phone": "222345678",
+  "mobilePhone": "+56912345678",
+  "occupation": "Estudiante",
+  "email": "martina.munoz@example.com",
+  "arrivalMode": "Derivación médica",
+  "birthDay": "1998-03-15T00:00:00Z",
+  "addressDTO": {
+    "street": "Av. Providencia",
+    "number": "1234",
+    "districtId": 101
+  }
+}
+Responses
+Code	Description	Links
+200	
+OK
+
+No links
+201	
+Created
+
+No links
+400	
+Bad Request
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+401	
+Unauthorized
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+408	
+Request Timeout
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+422	
+Unprocessable Content
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "errors": {
+    "additionalProp1": [
+      "string"
+    ],
+    "additionalProp2": [
+      "string"
+    ],
+    "additionalProp3": [
+      "string"
+    ]
+  },
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+500	
+Internal Server Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+Disponibilidad
+
+
+POST
+/api/v1/availability/by-practitioner
+Disponibilidad por especialista (slots).
+
+
+Consulta slots disponibles por especialista para un rango de fechas en UTC.
+
+Parameters
+Try it out
+No parameters
+
+Request body
+
+application/json
+Example Value
+Schema
+{
+  "from": "2025-09-10T00:00:00",
+  "to": "2025-09-17T23:59:59",
+  "specialtyId": 7,
+  "customDuration": 30,
+  "userIds": [
+    "00000000-0000-0000-0000-000000000000",
+    "00000000-0000-0000-0000-000000000000"
+  ]
+}
+Responses
+Code	Description	Links
+200	
+OK
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "start": "string",
+  "end": "string",
+  "duration": 0,
+  "address": "string"
+}
+No links
+400	
+Bad Request
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+401	
+Unauthorized
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+500	
+Internal Server Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+Eventos
+
+
+POST
+/api/v1/events
+Crear evento (cita).
+
+
+Crea una cita y sincroniza el evento en SACMED.
+
+Parameters
+Try it out
+No parameters
+
+Request body
+
+application/json
+Example Value
+Schema
+{
+  "userId": "00000000-0000-0000-0000-000000000000",
+  "start": "2025-09-12T14:30:00Z",
+  "end": "2025-09-12T15:00:00Z",
+  "patientIdentification": "12345678-9",
+  "phone": "+56912345678",
+  "email": "paciente@example.com",
+  "serviceId": 1,
+  "specialtyId": 7
+}
+Responses
+Code	Description	Links
+201	
+Created
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+{
+  "eventId": 0
+}
+No links
+400	
+Bad Request
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+401	
+Unauthorized
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+422	
+Unprocessable Content
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "errors": {
+    "additionalProp1": [
+      "string"
+    ],
+    "additionalProp2": [
+      "string"
+    ],
+    "additionalProp3": [
+      "string"
+    ]
+  },
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+500	
+Internal Server Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+502	
+Bad Gateway
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+
+GET
+/api/v1/events/by-practitioner/identification/{identification}/fechas/{from}/{to}
+Eventos por especialista (rango de fechas).
+
+
+Lista eventos del especialista (por RUT) entre fechas dadas.
+
+Parameters
+Try it out
+Name	Description
+identification *
+string
+(path)
+identification
+from *
+string
+(path)
+from
+to *
+string
+(path)
+to
+Responses
+Code	Description	Links
+200	
+OK
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "eventId": 101,
+    "userId": "00000000-0000-0000-0000-000000000000",
+    "start": "2025-09-15T10:00:00Z",
+    "end": "2025-09-15T10:30:00Z",
+    "statusEventId": 2,
+    "statusEvent": "Confirmado",
+    "statusPaidId": 1,
+    "statusPaid": "Pagado",
+    "patient": {
+      "identification": "98765432-1",
+      "firstName": "Isidora",
+      "paternalLastName": "Valdés",
+      "maternalLastName": "Contreras",
+      "mobilePhone": "+56987654321",
+      "email": "isidora.valdes@example.com"
+    },
+    "practitioner": {
+      "identification": "12345678-5",
+      "firstName": "Pamela",
+      "lastName": "Gil",
+      "email": "pamela.gil@example.com"
+    }
+  }
+]
+No links
+400	
+Bad Request
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+404	
+Not Found
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+500	
+Internal Server Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+Public
+
+
+GET
+/api/v1/events/by-patient/identification/{identification}
+Obtiene eventos por paciente
+
+
+Retorna la lista de citas asociadas a un paciente usando su RUT, DNI u otra identificación.
+
+Parameters
+Try it out
+Name	Description
+identification *
+string
+(path)
+identification
+Responses
+Code	Description	Links
+200	
+OK
+
+Media type
+
+application/json
+Controls Accept header.
+Example Value
+Schema
+[
+  {
+    "eventId": 101,
+    "userId": "00000000-0000-0000-0000-000000000000",
+    "start": "2025-09-15T10:00:00Z",
+    "end": "2025-09-15T10:30:00Z",
+    "statusEventId": 2,
+    "statusEvent": "Confirmado",
+    "statusPaidId": 1,
+    "statusPaid": "Pagado",
+    "patient": {
+      "identification": "98765432-1",
+      "firstName": "Isidora",
+      "paternalLastName": "Valdés",
+      "maternalLastName": "Contreras",
+      "mobilePhone": "+56987654321",
+      "email": "isidora.valdes@example.com"
+    },
+    "practitioner": {
+      "identification": "12345678-5",
+      "firstName": "Pamela",
+      "lastName": "Gil",
+      "email": "pamela.gil@example.com"
+    }
+  }
+]
+No links
+404	
+Not Found
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+500	
+Internal Server Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+
+PUT
+/api/v1/events/status
+Actualiza el estado de una cita médica
+
+
+Permite cambiar el estado de un evento: confirmado (2) o cancelado (7).
+
+Parameters
+Try it out
+No parameters
+
+Request body
+
+application/json
+Example Value
+Schema
+{
+  "eventId": 1032,
+  "statusEventId": 2
+}
+Responses
+Code	Description	Links
+204	
+No Content
+
+No links
+400	
+Bad Request
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+403	
+Forbidden
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+404	
+Not Found
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+422	
+Unprocessable Content
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "errors": {
+    "additionalProp1": [
+      "string"
+    ],
+    "additionalProp2": [
+      "string"
+    ],
+    "additionalProp3": [
+      "string"
+    ]
+  },
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}
+No links
+500	
+Internal Server Error
+
+Media type
+
+application/json
+Example Value
+Schema
+{
+  "type": "string",
+  "title": "string",
+  "status": 0,
+  "detail": "string",
+  "instance": "string",
+  "additionalProp1": "string",
+  "additionalProp2": "string",
+  "additionalProp3": "string"
+}

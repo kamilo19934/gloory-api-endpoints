@@ -4,14 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Gloory API Endpoints** is a multi-tenant API proxy system for healthcare integrations. It manages multiple clients, each with their own API keys, and proxies requests to Dentalink, MediLink, Reservo, and GoHighLevel. The system includes JWT authentication, API logging, clinic data caching, appointment confirmation workflows, and GHL OAuth Marketplace support.
+**Gloory API Endpoints** is a multi-tenant API proxy system for healthcare integrations. It manages multiple clients, each with their own API keys, and proxies requests to Dentalink, MediLink, Reservo, Dentalsoft, Sacmed, and GoHighLevel. The system includes JWT authentication, API logging, clinic data caching, appointment confirmation workflows, and GHL OAuth Marketplace support.
 
 ## Technology Stack
 
-- **Backend**: NestJS 10, TypeORM, PostgreSQL (prod) / SQLite (dev), JWT Auth, `@nestjs/schedule` for cron
+- **Backend**: NestJS 10, TypeORM (with migrations), PostgreSQL (prod) / SQLite (dev), JWT Auth, `@nestjs/schedule` for cron, Baileys (`@whiskeysockets/baileys`) for WhatsApp
 - **Frontend**: Next.js 14 (App Router), React 18, TailwindCSS, axios, react-hot-toast
 - **Languages**: TypeScript throughout
 - **No MongoDB** — purely SQL-based with TypeORM
+- **Sibling service**: `gloory-ai-server` consumes the `/internal/*` and `/tool-registry` endpoints via the `X-Gloory-Internal-Token` shared secret
 
 ## Project Structure
 
@@ -61,6 +62,11 @@ gloory-api-endpoints/
 │   │   │   ├── reservo-proxy.service.ts  # Agendas, patients, appointments
 │   │   │   └── dto/
 │   │   │
+│   │   ├── dentalsoft/                   # Dentalsoft proxy
+│   │   │   ├── dentalsoft-proxy.service.ts  # Patients, appointments, availability
+│   │   │   ├── dentalsoft.controller.ts
+│   │   │   └── dto/
+│   │   │
 │   │   ├── clinic/                       # Clinic data caching
 │   │   │   └── entities/                 # Branch, Professional (synced from APIs)
 │   │   │
@@ -81,6 +87,31 @@ gloory-api-endpoints/
 │   │   │   └── dto/
 │   │   │
 │   │   ├── dashboard/                    # Engineering monitoring stats
+│   │   │
+│   │   ├── internal/                     # Server-to-server endpoints (gloory-ai-server)
+│   │   │   ├── guards/                   # InternalTokenGuard (X-Gloory-Internal-Token)
+│   │   │   ├── internal.controller.ts    # Provisioning, credential updates
+│   │   │   └── dto/
+│   │   │
+│   │   ├── tool-registry/                # Static tool schemas per platform
+│   │   │   ├── definitions/              # dentalink/medilink/reservo/ghl tools
+│   │   │   ├── interfaces/
+│   │   │   └── tool-registry.controller.ts
+│   │   │
+│   │   ├── notion/                       # Notion onboarding (client + 29 tasks)
+│   │   │   ├── notion.service.ts
+│   │   │   └── templates/                # implementation-tasks.ts (29 task templates)
+│   │   │
+│   │   ├── whatsapp/                     # WhatsApp Baileys integration
+│   │   │   ├── whatsapp-connection.service.ts  # QR pairing, SSE for QR stream
+│   │   │   ├── whatsapp-group.service.ts        # Group management
+│   │   │   ├── whatsapp-message.service.ts      # Message handling
+│   │   │   ├── helpers/                  # Webhook idempotency, etc.
+│   │   │   ├── entities/
+│   │   │   └── dto/
+│   │   │
+│   │   ├── migrations/                   # TypeORM migrations (production)
+│   │   ├── data-source.ts                # CLI DataSource (migrations only — NOT app runtime)
 │   │   │
 │   │   └── utils/                        # Phone formatting, helpers
 │   │
@@ -113,6 +144,7 @@ gloory-api-endpoints/
 │   │   │   ├── GHLLocationSelector.tsx   # OAuth/PIT location selector + calendar preview
 │   │   │   ├── GHLIntegrationSection.tsx # Legacy GHL config UI
 │   │   │   ├── IntegrationBadges.tsx     # Integration status badges
+│   │   │   ├── ExecutionLogDetails.tsx   # Confirmation execution log viewer
 │   │   │   ├── AuthProvider.tsx          # Auth context + axios interceptor
 │   │   │   ├── Navbar.tsx
 │   │   │   ├── ClientCard.tsx
@@ -145,6 +177,12 @@ npm run format           # Prettier
 npm run test             # Jest tests
 npm run test -- file.spec.ts  # Run single test
 npm run test:cov         # Coverage
+
+# TypeORM migrations (production — env vars must be set in shell)
+npm run migration:generate -- src/migrations/NameOfMigration
+npm run migration:run
+npm run migration:revert
+npm run migration:show
 ```
 
 ### Frontend (`cd frontend`)
@@ -168,15 +206,19 @@ npm run dev:frontend     # Start frontend dev
 The backend follows NestJS modular architecture. Key modules loaded in `app.module.ts`:
 
 **Global Singletons** (shared services):
-- `IntegrationsModule` — Registry of all integration types (Dentalink, MediLink, dual, Reservo, GHL)
+- `IntegrationsModule` — Registry of all integration types (Dentalink, MediLink, dual, Reservo, Dentalsoft, GHL)
 - `HealthAtomModule` — Unified Dentalink + MediLink API handler with dual-mode fallback
 - `ReservoModule` — Reservo reservation system API handler
+- `DentalsoftModule` — Dentalsoft OAuth client_credentials API handler (token cache in-memory)
+- `SacmedModule` — Sacmed availability-microservice API handler (API Key via `X-ApiKey`)
 - `GoHighLevelModule` — GHL API handler
 - `GHLOAuthModule` — GHL Marketplace OAuth token lifecycle
 
 **Proxy Controllers** (route handlers for external APIs):
 - `GoHighLevelProxyModule` — GHL calendars, appointments, branches, availability, sync
 - `ReservoProxyModule` — Reservo agendas, patients, appointments, availability
+- `DentalsoftProxyModule` — Dentalsoft patients, appointments, availability, professionals, specialties, branches
+- `SacmedProxyModule` — Sacmed services, specialties, practitioners, districts, availability, patients, appointments
 
 **Core Modules**:
 - `ClientsModule` — Multi-tenant client management with JSON integration configs
@@ -185,8 +227,15 @@ The backend follows NestJS modular architecture. Key modules loaded in `app.modu
 - `ClinicModule` — Local cache of branches/professionals with sync & pagination
 - `AppointmentConfirmationsModule` — Dentalink → GHL appointment sync
 - `ReservoConfirmationsModule` — Reservo → GHL appointment sync (independent from above)
+- `SacmedConfirmationsModule` — Sacmed → GHL appointment sync (independent; per-practitioner fan-out)
 - `ClientApiLogsModule` — Global request logging interceptor + cron cleanup
 - `DashboardModule` — Engineering monitoring stats endpoint
+
+**Sibling-service & onboarding modules**:
+- `InternalModule` — Server-to-server endpoints called by `gloory-ai-server` (provisioning, credential test/update). Public to the JWT guard but locked behind `InternalTokenGuard` checking `X-Gloory-Internal-Token`
+- `ToolRegistryModule` — Returns static tool schemas per platform from `tool-registry/definitions/` (Dentalink, MediLink, dual, Reservo, Dentalsoft, Sacmed, GHL). Consumed by `gloory-ai-server`; same `InternalTokenGuard` protection
+- `NotionModule` — Triggered after onboarding to create the Notion client page + 29 implementation tasks (fire-and-forget); state tracked via `notionOnboardingStatus` on `Client`
+- `WhatsAppModule` — Baileys-based WhatsApp connection (QR pairing via SSE), group/message management, and webhook with response-ID idempotency cache (5 min TTL)
 
 **Auth**:
 - `AuthModule` / `UsersModule` — JWT + Passport, bcrypt passwords
@@ -197,7 +246,7 @@ The backend follows NestJS modular architecture. Key modules loaded in `app.modu
 
 ### Integration Registry Pattern
 
-`IntegrationRegistryService` defines 5 integration types: `DENTALINK`, `MEDILINK`, `DENTALINK_MEDILINK` (dual mode), `RESERVO`, `GOHIGHLEVEL`. Each has required/optional fields and capability flags. Clients store integration configs as JSON, accessed via `client.getIntegration('type')`.
+`IntegrationRegistryService` defines 7 integration types: `DENTALINK`, `MEDILINK`, `DENTALINK_MEDILINK` (dual mode), `RESERVO`, `DENTALSOFT`, `SACMED`, `GOHIGHLEVEL`. Each has required/optional fields and capability flags. Clients store integration configs as JSON, accessed via `client.getIntegration('type')`.
 
 ### Dual-Mode HealthAtom
 
@@ -217,12 +266,21 @@ Two authentication modes:
 
 `ReservoProxyService` maps simple numeric agenda IDs (1, 2, 3) to Reservo UUIDs stored in client config. Handles phone normalization via `formatearTelefono()` utility.
 
-### Confirmation Systems (Two Independent Implementations)
+### Dentalsoft Integration
+
+`DentalsoftService` authenticates via OAuth `client_credentials` (`client_id` + `client_secret` + `scope` = clinic ID). Access tokens are cached in-memory per `(clientId|scope)` with a 60s refresh margin — no DB persistence, no cron. The block length (5 or 15 min) is also cached in-memory, used to translate `bloques → minutos` when mirroring an appointment to GHL. The proxy uses the same `resolveGhlConfig()` pattern as Reservo to find the GHL config either in the standalone `gohighlevel` integration or embedded in the Dentalsoft config (`ghl*` fields).
+
+### Sacmed Integration
+
+`SacmedService` authenticates via a static **API Key** sent in the `X-ApiKey` header (≠ Reservo's `Authorization: Token`). The base URL is configurable (`baseUrl`, default production `availability-ms-prod-...`; a TEST URL exists). IDs: services/specialties/districts are numeric, professionals use UUIDs (`userId`), events (appointments) use numeric IDs. The business logic ported from the original AWS Lambdas lives in `SacmedProxyService`: `serviceTypeId → modalidad` mapping (1=Presencial, 2=Telemedicina), availability search with multi-week retry (up to 4 weeks) + field renaming, Chilean RUT validation (reuses `utils/rut.util.ts`), future-appointment filtering with timezone formatting, and appointment payload mapping. GHL mirroring uses the same `resolveGhlConfig()` pattern as Reservo (standalone `gohighlevel` integration or embedded `ghl*` fields).
+
+### Confirmation Systems (Three Independent Implementations)
 
 1. **AppointmentConfirmationsModule** — Syncs Dentalink appointments → GHL
 2. **ReservoConfirmationsModule** — Syncs Reservo appointments → GHL
+3. **SacmedConfirmationsModule** — Syncs Sacmed appointments → GHL
 
-Both use scheduled cron jobs but have completely separate entities, logic, and configuration. Each normalizes appointments to a common format, creates/updates GHL contacts, and schedules GHL calendar appointments.
+All use scheduled cron jobs but have completely separate entities, logic, and configuration. Each normalizes appointments to a common format, creates/updates GHL contacts, and schedules GHL calendar appointments. **Sacmed-specific**: since Sacmed has no "list all events by date range" endpoint, the auto-fetch fans out — it lists practitioners, then fetches each one's events for the target day via `events/by-practitioner/.../fechas/{from}/{to}`.
 
 ### Clinic Data Synchronization
 
@@ -238,13 +296,19 @@ Both use scheduled cron jobs but have completely separate entities, logic, and c
 | `AppointmentConfirmationsService` | Every 30 min | Send appointment reminders |
 | `ReservoConfirmationsService` | Every hour | Fetch new Reservo appointments |
 | `ReservoConfirmationsService` | Every 30 min | Process pending Reservo confirmations |
+| `SacmedConfirmationsService` | Every hour | Process pending Sacmed confirmations |
+| `SacmedConfirmationsService` | Every 30 min | Fetch new Sacmed appointments (per-practitioner fan-out) |
 
 ### Database Configuration
 
-TypeORM with dual DB support:
-- **Dev**: SQLite (`DATABASE_TYPE=sqlite`, `DATABASE_PATH=./database.sqlite`)
-- **Prod**: PostgreSQL (`DATABASE_TYPE=postgres`, `DATABASE_URL` or individual vars)
-- Auto-sync in dev, disabled in prod (use `DB_SYNC=true` for initial setup only)
+TypeORM with dual DB support. The runtime default in `app.module.ts` is **postgres** — switch to SQLite for dev with `DATABASE_TYPE=sqlite`.
+- **Dev**: SQLite (`DATABASE_TYPE=sqlite`, `DATABASE_PATH=./database.sqlite`) — `synchronize: true`
+- **Prod**: PostgreSQL (`DATABASE_TYPE=postgres`, `DATABASE_URL` or individual vars) — `synchronize: false` unless `DB_SYNC=true` is set for a one-shot bootstrap
+- Postgres pool is tuned in code (`max: 20`, statement timeout 60s) — don't override at the connection-string level
+
+### Migrations
+
+Migrations live in `backend/src/migrations/` and are run via `data-source.ts` (a CLI-only DataSource — **separate from the runtime config in `app.module.ts`**, and always `synchronize: false`). Use migration commands for any prod schema change; do **not** rely on `synchronize` in production. Env vars (`DATABASE_URL` or `DATABASE_HOST` set, plus `DATABASE_SSL=true` if the DB needs it) must be exported in the shell when running migration commands.
 
 ### Authentication
 
@@ -263,6 +327,19 @@ Login via `POST /api/auth/login` returns JWT token. Frontend stores in localStor
 
 Edit `backend/src/endpoints/endpoint-config.ts` → add to `AVAILABLE_ENDPOINTS` array. Endpoint automatically appears in frontend and API. If custom logic needed, add handler in `dentalink.controller.ts`.
 
+### Adding New Tools (gloory-ai-server registry)
+
+When adding a tool to `backend/src/tool-registry/definitions/<platform>.tools.ts`, also:
+1. Add the matching entry to `backend/src/endpoints/endpoint-config.ts` so the client UI shows it
+2. Update `DOCUMENTACION-TOOLS.md` at the repo root
+3. For GHL tools, use the contact's `user_id` field as the contact ID
+
+Tool schemas are static (defined in code) — clients can't toggle them. Adding a tool requires redeploying this service so `gloory-ai-server` can re-sync.
+
+### Internal Server-to-Server Authentication
+
+Routes under `/internal/*` and `/tool-registry` are marked `@Public()` (bypass the global `JwtAuthGuard`) but protected by `InternalTokenGuard` (in `backend/src/internal/guards/`), which requires the `X-Gloory-Internal-Token` header to match a shared secret. These are **not** for browser clients — only `gloory-ai-server` should call them. When adding new server-to-server routes, follow the same `@Public()` + `@UseGuards(InternalTokenGuard)` combo.
+
 ### Frontend Structure
 
 **Pages** (Next.js App Router):
@@ -278,6 +355,7 @@ Edit `backend/src/endpoints/endpoint-config.ts` → add to `AVAILABLE_ENDPOINTS`
 - `/clients/[id]/logs` — API request logs viewer
 - `/clients/[id]/confirmations` — Dentalink confirmation config & queue
 - `/clients/[id]/reservo-confirmations` — Reservo confirmation config & queue
+- `/clients/[id]/sacmed-confirmations` — Sacmed confirmation config & queue
 
 **Key Components**:
 - `IntegrationSelector` (656 lines) — Complex multi-integration config with mutual exclusivity for HealthAtom types, dynamic field rendering, config caching on toggle, and batch updates
@@ -290,13 +368,19 @@ Edit `backend/src/endpoints/endpoint-config.ts` → add to `AVAILABLE_ENDPOINTS`
 
 - **Global Auth**: All routes require JWT — use `@Public()` for exceptions. GHL proxy is fully public.
 - **Dual Mode**: Some clients use both Dentalink + MediLink — check `client.getIntegration('dentalink_medilink')`
-- **Two Confirmation Systems**: Dentalink and Reservo confirmations are completely independent modules with separate entities and cron jobs
+- **Three Confirmation Systems**: Dentalink, Reservo, and Sacmed confirmations are completely independent modules with separate entities and cron jobs
+- **Sacmed has no global event list**: confirmation fetch fans out per-practitioner (`events/by-practitioner/.../fechas/{from}/{to}`) — there's no "all events by date range" endpoint
+- **Sacmed auth differs**: Sacmed uses an API Key in the `X-ApiKey` header, not `Authorization: Token` like Reservo
 - **GHL ID Resolution**: Calendar/professional IDs are actual database IDs, not positional indices — never use array index
 - **Case-Insensitive Search**: Specialty search uses `LOWER()` in QueryBuilder to handle Spanish accents in both PostgreSQL and SQLite
 - **API Field Differences**: Dentalink `apellidos` vs MediLink `apellido` — normalize in service layer
 - **React Batching**: IntegrationSelector uses batch `onConfigChange(changes)` with multiple keys in a single call to avoid state loss
 - **Pagination**: Clinic sync handles pagination automatically with safety limits — don't fetch all at once
 - **Endpoint Config**: Changes to `endpoint-config.ts` immediately affect both backend routes and frontend UI
+- **Tool Registry vs Endpoint Config**: They're parallel registries — `endpoint-config.ts` drives the client-facing API/UI, `tool-registry/definitions/` drives the tools `gloory-ai-server` advertises to its agents. Adding a tool usually means editing both (plus `DOCUMENTACION-TOOLS.md`).
+- **Internal token guard**: Routes for `gloory-ai-server` are `@Public()` (to skip JWT) but locked by `InternalTokenGuard` — don't drop one without the other or you expose internal endpoints
+- **Data source duality**: `app.module.ts` (runtime) and `data-source.ts` (CLI migrations) are independent — don't try to share config between them; the CLI always uses `synchronize: false` even in dev
+- **Appointment mirroring**: Appointments created via the normal client endpoints (Dentalink/MediLink/Reservo) are automatically mirrored into GHL when the client has an active GHL integration — don't add a second sync path
 
 ## Environment Variables
 
@@ -304,11 +388,26 @@ Edit `backend/src/endpoints/endpoint-config.ts` → add to `AVAILABLE_ENDPOINTS`
 ```bash
 PORT=3001
 NODE_ENV=development
-DATABASE_TYPE=sqlite          # or 'postgres'
+DATABASE_TYPE=sqlite          # or 'postgres' (default if unset)
 DATABASE_PATH=./database.sqlite
 # DATABASE_URL=postgresql://user:pass@host:5432/db
+# DATABASE_SSL=true            # Required for Railway/Render
+# DB_SYNC=true                 # One-shot bootstrap in prod (then remove)
 CORS_ORIGIN=http://localhost:3000
 JWT_SECRET=your-secret
+
+# Internal server-to-server (gloory-ai-server)
+GLOORY_INTERNAL_TOKEN=shared-secret
+
+# Notion onboarding (optional — endpoint 400s without these)
+NOTION_API_KEY=
+NOTION_CLIENTS_DB_ID=
+NOTION_TASKS_DB_ID=
+
+# GHL OAuth Marketplace (optional)
+GHL_CLIENT_ID=
+GHL_CLIENT_SECRET=
+GHL_REDIRECT_URI=
 ```
 
 ### Frontend `.env.local`

@@ -9,6 +9,7 @@ import { ClientsModule } from '../clients/clients.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { HealthAtomModule } from '../integrations/healthatom/healthatom.module';
 import { ReservoModule } from '../integrations/reservo/reservo.module';
+import { DentalsoftModule } from '../integrations/dentalsoft/dentalsoft.module';
 import { GoHighLevelModule } from '../integrations/gohighlevel/gohighlevel.module';
 
 /**
@@ -23,6 +24,7 @@ import { GoHighLevelModule } from '../integrations/gohighlevel/gohighlevel.modul
     IntegrationsModule,
     HealthAtomModule,
     ReservoModule,
+    DentalsoftModule,
     GoHighLevelModule,
   ],
   controllers: [InternalController],

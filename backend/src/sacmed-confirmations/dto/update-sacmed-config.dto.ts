@@ -1,0 +1,33 @@
+import { IsString, IsInt, IsBoolean, Min, Max, Matches, IsOptional } from 'class-validator';
+
+export class UpdateSacmedConfigDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  daysBeforeAppointment?: number;
+
+  @IsString()
+  @Matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, {
+    message: 'timeToSend debe estar en formato HH:mm (ej: 09:00)',
+  })
+  @IsOptional()
+  timeToSend?: string;
+
+  @IsString()
+  @IsOptional()
+  ghlCalendarId?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isEnabled?: boolean;
+
+  @IsInt()
+  @Min(1)
+  @Max(3)
+  @IsOptional()
+  order?: number;
+}

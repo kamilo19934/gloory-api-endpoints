@@ -40,3 +40,38 @@ export function validarFormatoRut(rut: string): boolean {
   const rutRegex = /^\d{1,8}-[\dkK]$/;
   return rutRegex.test(formatearRut(rut));
 }
+
+/**
+ * Limpia un RUT dejando solo dígitos y el dígito verificador (K), en mayúscula
+ */
+export function limpiarRut(rut: string): string {
+  return rut.replace(/[^\dkK]/g, '').toUpperCase();
+}
+
+/**
+ * Calcula el dígito verificador de un cuerpo de RUT (módulo 11)
+ */
+export function calcularDigitoVerificador(cuerpo: string): string {
+  const reversed = cuerpo.split('').reverse().map(Number);
+  const factors = [2, 3, 4, 5, 6, 7];
+  const total = reversed.reduce((acc, d, i) => acc + d * factors[i % 6], 0);
+  const remainder = 11 - (total % 11);
+  if (remainder === 11) return '0';
+  if (remainder === 10) return 'K';
+  return String(remainder);
+}
+
+/**
+ * Valida un RUT chileno completo (formato + dígito verificador con módulo 11)
+ * @param rut RUT a validar (con o sin puntos/guión)
+ * @returns true si el RUT es válido
+ */
+export function validarRut(rut: string): boolean {
+  const limpio = limpiarRut(rut);
+  if (limpio.length < 2 || !/^\d+$/.test(limpio.slice(0, -1))) {
+    return false;
+  }
+  const cuerpo = limpio.slice(0, -1);
+  const dv = limpio.slice(-1);
+  return calcularDigitoVerificador(cuerpo) === dv.toUpperCase();
+}

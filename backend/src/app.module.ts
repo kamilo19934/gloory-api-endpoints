@@ -10,11 +10,16 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { HealthAtomModule } from './integrations/healthatom/healthatom.module';
 import { ReservoModule } from './integrations/reservo/reservo.module';
 import { ReservoProxyModule } from './reservo/reservo-proxy.module';
+import { DentalsoftModule } from './integrations/dentalsoft/dentalsoft.module';
+import { DentalsoftProxyModule } from './dentalsoft/dentalsoft-proxy.module';
+import { SacmedModule } from './integrations/sacmed/sacmed.module';
+import { SacmedProxyModule } from './sacmed/sacmed-proxy.module';
 import { GoHighLevelModule } from './integrations/gohighlevel/gohighlevel.module';
 import { GoHighLevelProxyModule } from './gohighlevel/gohighlevel-proxy.module';
 import { GHLOAuthModule } from './gohighlevel/oauth/ghl-oauth.module';
 import { AppointmentConfirmationsModule } from './appointment-confirmations/appointment-confirmations.module';
 import { ReservoConfirmationsModule } from './reservo-confirmations/reservo-confirmations.module';
+import { SacmedConfirmationsModule } from './sacmed-confirmations/sacmed-confirmations.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -107,6 +112,10 @@ import { NotionModule } from './notion/notion.module';
     HealthAtomModule, // Unified HealthAtom service (Dentalink + MediLink)
     ReservoModule, // Reservo integration service (Global)
     ReservoProxyModule, // Reservo proxy controller for client routes
+    DentalsoftModule, // Dentalsoft integration service (Global)
+    DentalsoftProxyModule, // Dentalsoft proxy controller for client routes
+    SacmedModule, // Sacmed integration service (Global)
+    SacmedProxyModule, // Sacmed proxy controller for client routes
     GoHighLevelModule, // GoHighLevel integration service (Global)
     GoHighLevelProxyModule, // GoHighLevel proxy controller for client routes
     GHLOAuthModule, // GoHighLevel OAuth Marketplace (migración gradual)
@@ -116,6 +125,7 @@ import { NotionModule } from './notion/notion.module';
     ClinicModule,
     AppointmentConfirmationsModule,
     ReservoConfirmationsModule, // Reservo confirmations (independent from Dentalink)
+    SacmedConfirmationsModule, // Sacmed confirmations (independent cron module)
     ClientApiLogsModule, // API Logs module (with cron cleanup)
     DashboardModule, // Dashboard de monitoreo para ingeniería
     InternalModule, // Endpoints internos server-to-server (gloory-ai-server → gloory-api-endpoints)

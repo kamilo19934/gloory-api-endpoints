@@ -1,0 +1,4856 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "API OAuth Dentalsoft 10",
+    "description": "Api para comunicación con aplicaciones a través de protocolo OAuth",
+    "version": "1.4.1",
+    "x-logo": {
+      "url": "https://dentalsoft.cl/portal/img/logo.png",
+      "altText": "Logo dentalsoft"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.dentalsoft.cl/external",
+      "description": "Entrada consulta información para clientes en https://t.dentalsoft.cl"
+    },
+    {
+      "url": "https://d.api.dentalsoft.cl/external",
+      "description": "Entrada consulta información para clientes en https://d.dentalsoft.cl"
+    },
+    {
+      "url": "https://api-test.dentalsoft.cl/external",
+      "description": "Entrada para ambiente de pruebas"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Autenticación",
+      "description": "Endpoints para solicitud de token de acceso"
+    },
+    {
+      "name": "Agenda",
+      "description": "Endpoints para obtención de información de agenda y creación de citas"
+    },
+    {
+      "name": "Convenio",
+      "description": "Endpoints para obtención de información convenios"
+    },
+    {
+      "name": "Especialidad",
+      "description": "Endpoints para obtención de información especialidades"
+    },
+    {
+      "name": "Horario",
+      "description": "Endpoints para obtención de información de horarios"
+    },
+    {
+      "name": "Paciente",
+      "description": "Endpoints para obtención de información de paciente"
+    },
+    {
+      "name": "Pago",
+      "description": "Endpoints para obtención de información de pagos"
+    },
+    {
+      "name": "Prestación",
+      "description": "Endpoints para obtención de información de prestaciones"
+    },
+    {
+      "name": "Presupuesto",
+      "description": "Endpoints para obtención de información de presupuestos"
+    },
+    {
+      "name": "Profesional",
+      "description": "Endpoints para obtención de información de profesionales de la clínica"
+    },
+    {
+      "name": "Sala",
+      "description": "Endpoints para obtención de información de salas"
+    },
+    {
+      "name": "Sucursal",
+      "description": "Endpoints para obtención de información de sucursales"
+    },
+    {
+      "name": "Usuario",
+      "description": "Endpoints para obtención de información de usuarios"
+    },
+    {
+      "name": "Lista espera",
+      "description": "Endpoints para obtención de información de listas de espera. Requiere módulo Docencia habilitado."
+    },
+    {
+      "name": "modelo_paciente",
+      "x-displayName": "Modelo Paciente",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/Paciente\" />"
+    },
+    {
+      "name": "modelo_cita",
+      "x-displayName": "Modelo Cita",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/Cita\" />"
+    },
+    {
+      "name": "modelo_profesional",
+      "x-displayName": "Modelo Profesional",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/Profesional\" />"
+    },
+    {
+      "name": "modelo_sucursal",
+      "x-displayName": "Modelo Sucursal",
+      "description": "<SchemaDefinition schemaRef=\"#/components/schemas/Sucursal\" />"
+    }
+  ],
+  "x-tagGroups": [
+    {
+      "name": "Autenticación",
+      "tags": [
+        "Autenticación"
+      ]
+    },
+    {
+      "name": "General",
+      "tags": [
+        "Agenda",
+        "Convenio",
+        "Especialidad",
+        "Horario",
+        "Paciente",
+        "Pago",
+        "Profesional",
+        "Prestación",
+        "Presupuesto",
+        "Sala",
+        "Sucursal",
+        "Usuario",
+        "Lista espera"
+      ]
+    },
+    {
+      "name": "Modelos",
+      "tags": [
+        "modelo_paciente",
+        "modelo_profesional",
+        "modelo_cita",
+        "modelo_sucursal"
+      ]
+    }
+  ],
+  "paths": {
+    "/external/access_token": {
+      "post": {
+        "security": [],
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Obtención token acceso",
+        "description": "Obtiene token de acceso para utilización de api",
+        "servers": [
+          {
+            "url": "https://api.dentalsoft.cl",
+            "description": "Entrada para manejo de sesiones para clientes en https://t.dentalsoft.cl"
+          },
+          {
+            "url": "https://d.api.dentalsoft.cl",
+            "description": "Entrada para manejo de sesiones para clientes en https://d.dentalsoft.cl"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "grant_type",
+                  "client_id",
+                  "client_secret",
+                  "scope"
+                ],
+                "properties": {
+                  "grant_type": {
+                    "type": "string",
+                    "enum": [
+                      "client_credentials"
+                    ],
+                    "description": "Tipo de solicitud de acceso."
+                  },
+                  "client_id": {
+                    "type": "string",
+                    "description": "Id de acceso de la aplicación cliente."
+                  },
+                  "client_secret": {
+                    "type": "string",
+                    "description": "Contraseña de acceso de la aplicación cliente."
+                  },
+                  "scope": {
+                    "type": "integer",
+                    "description": "Clínica target."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token de acceso generado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "token_type": {
+                      "type": "string",
+                      "description": "Tipo de autenticación"
+                    },
+                    "expires_in": {
+                      "type": "string",
+                      "description": "Tiempo de expiración"
+                    },
+                    "access_token": {
+                      "type": "string",
+                      "description": "Token para acceso del usuario"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Código de error",
+                      "example": "invalid_scope"
+                    },
+                    "error_description": {
+                      "type": "string",
+                      "description": "Descripción del error",
+                      "example": "The requested scope is invalid, unknown, or malformed"
+                    },
+                    "hint": {
+                      "type": "string",
+                      "description": "Tip para solucionar el problema",
+                      "example": "Check the '' scope"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Mensaje de error",
+                      "example": "The requested scope is invalid, unknown, or malformed"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin autorización para usuario o aplicación cliente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Código de error",
+                      "example": "invalid_client"
+                    },
+                    "error_description": {
+                      "type": "string",
+                      "description": "Descripción del error",
+                      "example": "Client authentication failed"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Mensaje de error",
+                      "example": "Client authentication failed"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/agenda/cita/{id}": {
+      "get": {
+        "summary": "Información de la cita",
+        "description": "Trae datos de la cita solicitada con los datos del paciente agendado.",
+        "tags": [
+          "Agenda"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "Id de la cita a consultar",
+            "schema": {
+              "type": "integer",
+              "example": "1234"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cita"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/agenda/bloque/largo": {
+      "get": {
+        "summary": "Largo bloque agenda",
+        "description": "Obtención del largo de bloque de la agenda configurado para la clínica",
+        "tags": [
+          "Agenda"
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "largo": {
+                      "type": "integer",
+                      "enum": [
+                        5,
+                        15
+                      ],
+                      "description": "Largo de 1 bloque de la agenda"
+                    },
+                    "unidad": {
+                      "type": "string",
+                      "description": "Unidad de tiempo del largo",
+                      "example": "minuto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/agenda/disponibilidad/mensual/{id_profesional}/{año}/{mes}/{id_sucursal}/{bloques}": {
+      "get": {
+        "summary": "Disponibilidad Mensual",
+        "description": "Busca la disponibilidad mensual en la sucursal y profesional seleccionado",
+        "tags": [
+          "Agenda"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id_profesional",
+            "description": "El RUT(sin puntos, guión ni dígito verificador) o el DNI del profesional",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "año",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "mes",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          },
+          {
+            "in": "path",
+            "name": "id_sucursal",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "bloques",
+            "description": "La cantidad de bloques que ocupara la cita",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado de días del mes con información de disponibilidad",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "fecha": {
+                        "type": "string",
+                        "description": "Fecha calendario",
+                        "format": "yyyy-mm-dd",
+                        "example": "2021-11-10"
+                      },
+                      "isodow": {
+                        "type": "integer",
+                        "description": "Día de la semana (Comienza con 1 lunes ... 7 Domingo)",
+                        "minimum": 1,
+                        "maximum": 7
+                      },
+                      "dia": {
+                        "type": "integer",
+                        "description": "Día del mes",
+                        "minimum": 1,
+                        "maximum": 31
+                      },
+                      "bloques_disponibles": {
+                        "type": "boolean",
+                        "description": "Marca si el profesional posee o no disponibilidad"
+                      },
+                      "mes": {
+                        "type": "integer",
+                        "description": "Mes númerico",
+                        "minimum": 1,
+                        "maximum": 12
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/agenda/disponibilidad/diaria/{id_profesional}/{fecha}/{idSucursal}/{duracion}": {
+      "get": {
+        "summary": "Disponibilidad diaria",
+        "description": "Disponibilidad horario con los datos entregados, esta considera citas para fechas mayores o iguales a ahora - 1 hora (ej son las 14:30 entonces muestra solo bloques de las 13:30 para adelante si la fecha es igual a hoy)",
+        "tags": [
+          "Agenda"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id_profesional",
+            "description": "El RUT(sin puntos, guión ni dígito verificador) o el DNI del profesional",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "fecha",
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2021-11-16"
+            }
+          },
+          {
+            "in": "path",
+            "name": "idSucursal",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "duracion",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado de horarios disponibles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "inicio": {
+                        "description": "Hora de inicio",
+                        "type": "string",
+                        "example": "10:30"
+                      },
+                      "fin": {
+                        "description": "Hora de fin",
+                        "type": "string",
+                        "example": "11:00"
+                      },
+                      "id_profesional": {
+                        "description": "Id del profesional para la atención",
+                        "type": "integer"
+                      },
+                      "id_sala": {
+                        "description": "Id de la sala para horario disponible",
+                        "type": "integer"
+                      },
+                      "nombre_sala": {
+                        "description": "Nombre de la sala para el horario",
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/agenda/cita": {
+      "post": {
+        "summary": "Creación de cita",
+        "description": "Creación de cita basado en datos entregados, validando disponibilidad y tipo de datos entregados",
+        "tags": [
+          "Agenda"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "sucursal",
+                  "profesional",
+                  "sala",
+                  "paciente",
+                  "fecha",
+                  "inicio",
+                  "bloques",
+                  "observacion"
+                ],
+                "properties": {
+                  "sucursal": {
+                    "description": "Id de la sucursal",
+                    "type": "integer"
+                  },
+                  "profesional": {
+                    "description": "Id del profesional (rut númerico)",
+                    "type": "integer"
+                  },
+                  "sala": {
+                    "description": "Id de la sala",
+                    "type": "integer"
+                  },
+                  "paciente": {
+                    "description": "Id del paciente",
+                    "type": "integer"
+                  },
+                  "fecha": {
+                    "description": "Fecha en la cual se realizará la cita",
+                    "type": "string",
+                    "format": "yyyy-mm-dd",
+                    "example": "2021-11-16"
+                  },
+                  "inicio": {
+                    "description": "Hora de inicio",
+                    "type": "string",
+                    "format": "hh:mm",
+                    "example": "14:30"
+                  },
+                  "bloques": {
+                    "description": "Cantidad de bloques a ocupar",
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "observacion": {
+                    "description": "Observación para la cita",
+                    "type": "string",
+                    "example": "Observación"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cita creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "description": "Mensaje de éxito",
+                      "type": "string"
+                    },
+                    "id_cita": {
+                      "description": "Id de la cita generada",
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/agenda/cita/cambia_estado": {
+      "put": {
+        "summary": "Modifica estado de la cita",
+        "description": "Permite modificar el estado de una cita",
+        "tags": [
+          "Agenda"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "estado"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Id de la cita a modificar"
+                  },
+                  "estado": {
+                    "type": "string",
+                    "enum": [
+                      "notificar_wspp",
+                      "confirmar",
+                      "confirmar_wspp",
+                      "cancelar",
+                      "en_espera"
+                    ],
+                    "description": "Estado al que se modificará la cita."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "mensaje": {
+                      "type": "string",
+                      "example": "Operación realizada con éxito"
+                    },
+                    "id": {
+                      "type": "integer",
+                      "description": "El id de la cita modificada",
+                      "example": 1234
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/agenda/dia_sucursal/{fecha}/{idSucursal}": {
+      "get": {
+        "summary": "Citas diarias en sucursal",
+        "description": "Obtiene un listado de citas para el día y sucursal seleccionados, sin incluir bloqueos.",
+        "tags": [
+          "Agenda"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fecha",
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2021-11-16"
+            }
+          },
+          {
+            "in": "path",
+            "name": "idSucursal",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Cita"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/agenda/informes/horas/efectivas/{fecha_desde}/{fecha_hasta}": {
+      "get": {
+        "summary": "Obtención de horas efectivas de la clínica",
+        "description": "Obtención de detalle para citas de la clínica según filtros utilizados",
+        "tags": [
+          "Agenda"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fecha_desde",
+            "description": "Fecha desde la cual se obtendrán los datos",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fecha_hasta",
+            "description": "Fecha hasta la cual se obtendrán los datos",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id_sucursal",
+            "description": "Id de la sucursal para la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "asistencia",
+            "description": "Filtro para asistencia de la cita",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asistida",
+                "inasistencia"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "id_paciente",
+            "description": "Filtro para id de paciente de la cita",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "estados cita",
+            "description": "Listado separado por ',' (Ej: 1,2) de id de estados de cita (id de estados de cita disponibles se pueden ver en endpoint de estados de cita). Solo las citas con estos estados serán incluidas de la lista.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "no_estados cita",
+            "description": "Listado separado por ',' (Ej: 1,2) de id de estados de cita (id de estados de cita disponibles se pueden ver en endpoint de estados de cita). Las citas con estos estados serán removidas de la lista.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "description": "Datos del reporte",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id_cita": {
+                            "description": "Id de la cita",
+                            "type": "integer"
+                          },
+                          "fecha_cita": {
+                            "description": "Fecha de la cita",
+                            "type": "string",
+                            "format": "yyyy-mm-dd",
+                            "example": "2023-11-16"
+                          },
+                          "hora_cita": {
+                            "description": "Hora de inicio de la cita",
+                            "type": "string",
+                            "format": "hh:mm",
+                            "example": "10:30"
+                          },
+                          "bloques_cita": {
+                            "description": "Número de bloques de la cita",
+                            "type": "integer"
+                          },
+                          "nombre_sala": {
+                            "description": "Nombre de la sala",
+                            "type": "string"
+                          },
+                          "id_sucursal": {
+                            "description": "Id de la sucursal de la cita",
+                            "type": "integer"
+                          },
+                          "es_bloqueo": {
+                            "description": "Indica si la cita es un bloqueo, si esta es bloqueo los datos del paciente serán nulos",
+                            "type": "boolean"
+                          },
+                          "nombre_sucursal": {
+                            "description": "Nombre de la sucursal de la cita",
+                            "type": "string"
+                          },
+                          "ubicacion_sala": {
+                            "description": "Ubicación de la sala",
+                            "type": "string"
+                          },
+                          "id_estado_cita": {
+                            "description": "Id del estado de la cita",
+                            "type": "integer",
+                            "enum": [
+                              0,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9
+                            ]
+                          },
+                          "id_tipo_atencion": {
+                            "description": "Id del tipo de atención",
+                            "type": "integer"
+                          },
+                          "tipo_atencion": {
+                            "description": "Nombre del tipo de atención",
+                            "type": "string"
+                          },
+                          "hora_llegada": {
+                            "description": "Hora de llegada del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "hh:mm",
+                            "example": "10:30"
+                          },
+                          "hora_ingreso_lista_espera": {
+                            "description": "Hora de ingreso a lista de espera",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "hh:mm",
+                            "example": "10:30"
+                          },
+                          "tiempo_espera": {
+                            "description": "Tiempo de espera del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "hh:mm:ss",
+                            "example": "01:30:00"
+                          },
+                          "hora_alta": {
+                            "description": "Hora de alta del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "hh:mm",
+                            "example": "10:30"
+                          },
+                          "tiempo_en_box": {
+                            "description": "Tiempo en box del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "hh:mm:ss",
+                            "example": "00:30:00"
+                          },
+                          "asistencia": {
+                            "description": "Asistencia del paciente",
+                            "type": "string",
+                            "enum": [
+                              "",
+                              "Asistida",
+                              "Inasistencia"
+                            ]
+                          },
+                          "fecha_proxima_cita": {
+                            "description": "Fecha de la próxima cita",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "yyyy-mm-dd",
+                            "example": "2023-11-16"
+                          },
+                          "hora_proxima_cita": {
+                            "description": "Hora de la próxima cita",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "hh:mm",
+                            "example": "10:30"
+                          },
+                          "fecha_deseada": {
+                            "description": "Fecha deseada por el paciente para la cita (solo disponible si fecha deseada esta activa en parametros generales de la clínica)",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "yyyy-mm-dd",
+                            "example": "2023-11-16"
+                          },
+                          "eliminada": {
+                            "description": "Marca si la cita fue eliminada",
+                            "type": "boolean"
+                          },
+                          "motivo_consulta_reserva_web": {
+                            "description": "Motivo de consulta utilizado para la cita agendada desde la reserva web",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "valor_pago_reserva_web": {
+                            "description": "Valor pagado por el paciente al generar la cita en la reserva web (Solo si se configuró un valor para el agendamiento de estas)",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "estado_pago_reserva_web": {
+                            "description": "Estado del pago de la reserva web",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "Cancelada",
+                              "Pagada",
+                              "Pendiente"
+                            ]
+                          },
+                          "identificador_numerico_profesional": {
+                            "description": "Identificador numérico del profesional",
+                            "type": "integer"
+                          },
+                          "digito_verificador_profesional": {
+                            "description": "Dígito verificador del profesional",
+                            "type": "string"
+                          },
+                          "nombre_profesional": {
+                            "description": "Nombre del profesional",
+                            "type": "string"
+                          },
+                          "apellido_paterno_profesional": {
+                            "description": "Apellido paterno del profesional",
+                            "type": "string"
+                          },
+                          "apellido_materno_profesional": {
+                            "description": "Apellido materno del profesional",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_paciente": {
+                            "description": "Id del paciente, si la cita es bloqueo este campo será 0",
+                            "type": "integer"
+                          },
+                          "nombre_paciente": {
+                            "description": "Nombre del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_paterno_paciente": {
+                            "description": "Apellido paterno del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_materno_paciente": {
+                            "description": "Apellido materno del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "fecha_nacimiento_paciente": {
+                            "description": "Fecha de nacimiento del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "yyyy-mm-dd",
+                            "example": "2023-11-16"
+                          },
+                          "prevision_paciente": {
+                            "description": "Previsión del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "sexo_paciente": {
+                            "description": "Sexo del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "Masculino",
+                              "Femenino"
+                            ]
+                          },
+                          "mail_paciente": {
+                            "description": "Mail del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "direccion1_paciente": {
+                            "description": "Dirección 1 del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "direccion2_paciente": {
+                            "description": "Dirección 2 del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "codigo_pais_paciente": {
+                            "description": "Código de país del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "comuna_paciente": {
+                            "description": "Comuna del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "telefono_casa_paciente": {
+                            "description": "Teléfono casa del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "telefono_movil_paciente": {
+                            "description": "Teléfono movil del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "tipo_identificador_paciente": {
+                            "description": "Tipo de identificador del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "identificador_paciente": {
+                            "description": "Identificador del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_convenio_paciente": {
+                            "description": "Id del convenio del paciente",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "convenio_paciente": {
+                            "description": "Nombre del convenio del paciente",
+                            "type": "string"
+                          },
+                          "referencia_paciente": {
+                            "description": "Referencia del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "fecha_creacion": {
+                            "description": "Fecha de creación de la cita",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "yyyy-mm-dd hh:mm",
+                            "example": "2023-11-16"
+                          },
+                          "id_usuario_creacion": {
+                            "description": "Id del usuario que creó la cita",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "tipo_usuario_creacion": {
+                            "description": "Tipo de usuario que creó la cita",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "estado_cita": {
+                            "description": "Estado de la cita",
+                            "type": "string"
+                          },
+                          "nombre_usuario_creacion": {
+                            "description": "Nombre del usuario que creó la cita",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_paterno_usuario_creacion": {
+                            "description": "Apellido paterno del usuario que creó la cita",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_materno_usuario_creacion": {
+                            "description": "Apellido materno del usuario que creó la cita",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/pagination-cursor"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/agenda/informes/horas/asignadas": {
+      "get": {
+        "summary": "Informe de horas asignadas",
+        "description": "Informe de horas asignadas filtradas por fecha de la cita.",
+        "tags": [
+          "Agenda"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id_sucursal",
+            "description": "Id de la sucursal para la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_desde",
+            "description": "Fecha desde la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_hasta",
+            "description": "Fecha hasta la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "description": "Datos del reporte",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id_cita": {
+                            "description": "Id de la cita",
+                            "type": "integer"
+                          },
+                          "id_paciente": {
+                            "description": "Id del paciente",
+                            "type": "integer"
+                          },
+                          "nombre_paciente": {
+                            "description": "Nombre del paciente",
+                            "type": "string"
+                          },
+                          "apellido_paterno_paciente": {
+                            "description": "Apellido paterno del paciente",
+                            "type": "string"
+                          },
+                          "apellido_materno_paciente": {
+                            "description": "Apellido maternos del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "es_bloqueo": {
+                            "description": "Si es un bloqueo",
+                            "type": "boolean"
+                          },
+                          "id_profesional": {
+                            "description": "Id clínica profesional",
+                            "type": "integer"
+                          },
+                          "tipo_identificador_profesional": {
+                            "description": "Tipo de cédula del profesional",
+                            "type": "string"
+                          },
+                          "identificador_profesional": {
+                            "description": "Cédula del profesional",
+                            "type": "string"
+                          },
+                          "nombre_profesional": {
+                            "description": "Nombre del profesional",
+                            "type": "string"
+                          },
+                          "apellido_paterno_profesional": {
+                            "description": "Apellido paterno del profesional",
+                            "type": "string"
+                          },
+                          "apellido_materno_profesional": {
+                            "description": "Apellido materno del profesional",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_sala": {
+                            "description": "Id de la sala",
+                            "type": "integer"
+                          },
+                          "nombre_sala": {
+                            "description": "Nombre de la sala",
+                            "type": "string"
+                          },
+                          "fecha_cita": {
+                            "description": "Fecha de al cita",
+                            "type": "string",
+                            "format": "yyyy-mm-dd"
+                          },
+                          "hora_cita": {
+                            "description": "Hora de la cita",
+                            "type": "string",
+                            "format": "hh24:mm",
+                            "example": "18:30"
+                          },
+                          "cantidad_bloques": {
+                            "description": "Cantidad de bloques de la cita",
+                            "type": "integer"
+                          },
+                          "id_tipo_atencion": {
+                            "description": "Id del tipo de atención",
+                            "type": "integer"
+                          },
+                          "nombre_tipo_atencion": {
+                            "description": "Nombre del tipo de atención",
+                            "type": "string"
+                          },
+                          "id_institucion_paciente": {
+                            "description": "Id de la institución actual del paciente",
+                            "type": "integer"
+                          },
+                          "nombre_institucion_paciente": {
+                            "description": "Nombre de la institución actual del paciente",
+                            "type": "integer"
+                          },
+                          "id_sucursal": {
+                            "description": "Id de la sucursal de la cita",
+                            "type": "integer"
+                          },
+                          "nombre_sucursal": {
+                            "description": "Nombre de la sucursal",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/pagination-cursor"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/agenda/informes/uso/sillones": {
+      "get": {
+        "summary": "Informe de uso de sillones",
+        "description": "Informe que muestra el uso de sillones según el horario de los profesionales, información solo para horarios futuros.",
+        "tags": [
+          "Agenda"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id_sucursal",
+            "description": "Id de la sucursal para la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "description": "Datos del reporte",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id_horario": {
+                            "description": "Id del horario",
+                            "type": "integer"
+                          },
+                          "dia": {
+                            "description": "Día de uso",
+                            "type": "string"
+                          },
+                          "hora_inicio": {
+                            "description": "Hora de inicio del horario",
+                            "type": "string",
+                            "format": "HH24:mm"
+                          },
+                          "hora_fin": {
+                            "description": "Hora de fin del horario",
+                            "type": "string",
+                            "format": "HH24:mm"
+                          },
+                          "fecha_inicio": {
+                            "description": "Fecha de inicio del horario",
+                            "type": "string"
+                          },
+                          "fecha_fin": {
+                            "description": "Fecha de fin del horario",
+                            "type": "string"
+                          },
+                          "id_sala": {
+                            "description": "Id de la sala",
+                            "type": "integer"
+                          },
+                          "nombre_sala": {
+                            "description": "Nombre de la sala",
+                            "type": "string"
+                          },
+                          "es_libre_sala": {
+                            "description": "Si la sala es sin profesional asignado",
+                            "type": "boolean"
+                          },
+                          "id_profesional": {
+                            "description": "El id de la clínica del profesional",
+                            "type": "integer"
+                          },
+                          "identificador_profesional": {
+                            "description": "Cédula del profesional",
+                            "type": "string"
+                          },
+                          "nombre_profesional": {
+                            "description": "Nombre del profesional",
+                            "type": "string"
+                          },
+                          "apellido_paterno_profesional": {
+                            "description": "Apellido paterno del profesional",
+                            "type": "string"
+                          },
+                          "apellido_materno_profesional": {
+                            "description": "Apellido materno del profesional",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_sucursal": {
+                            "description": "Id de la sucursal",
+                            "type": "integer"
+                          },
+                          "nombre_sucursal": {
+                            "description": "Nombre de la sucursal",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/pagination-cursor"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/agenda/estados": {
+      "get": {
+        "summary": "Listado de estados de cita",
+        "description": "Listado de todas los estados de cita actuales",
+        "tags": [
+          "Agenda"
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "object"
+                    ],
+                    "properties": {
+                      "id": {
+                        "description": "Id del estado",
+                        "type": "integer"
+                      },
+                      "nombre": {
+                        "description": "Nombre del estado",
+                        "type": "string"
+                      },
+                      "color": {
+                        "description": "Color para el estado",
+                        "type": "string"
+                      },
+                      "activo": {
+                        "description": "Si el estado se encuentra activo",
+                        "type": "boolean"
+                      },
+                      "predefinida": {
+                        "description": "Si el estado es uno predefinido por el sistema",
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/especialidad/listado": {
+      "get": {
+        "summary": "Listado de especialidades",
+        "description": "Listado de todas las especialidades actuales",
+        "tags": [
+          "Especialidad"
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "object"
+                    ],
+                    "properties": {
+                      "id": {
+                        "description": "Id de la especialidad",
+                        "type": "integer"
+                      },
+                      "nombre": {
+                        "description": "Nombre de la especialidad",
+                        "type": "string"
+                      },
+                      "abreviacion": {
+                        "description": "Abreviación para la especialidad",
+                        "type": [
+                          "string",
+                          "boolean"
+                        ]
+                      },
+                      "activo": {
+                        "description": "Si la especialidad se encuentra activa",
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/profesional/listado": {
+      "get": {
+        "summary": "Listado de profesionales habilitados",
+        "description": "Lista los profesionales que se encuentran habilitados para agendar en la clínica",
+        "tags": [
+          "Profesional"
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profesional"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/profesional/listado/especialidad": {
+      "get": {
+        "summary": "Listado de especialidades para profesionales habilitados",
+        "description": "Lista especialidad y profesional para todos los profesionales que se encuentran habilitados",
+        "tags": [
+          "Profesional"
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id_profesional": {
+                        "description": "Id del profesional",
+                        "type": "integer"
+                      },
+                      "nombre_profesional": {
+                        "description": "Nombre del profesional",
+                        "type": "string"
+                      },
+                      "apellido_paterno_profesional": {
+                        "description": "Apellido paterno del profesional",
+                        "type": "string"
+                      },
+                      "apellido_materno_profesional": {
+                        "description": "Apellido materno del profesional",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "id_especialidad": {
+                        "description": "Id de la especialidad del profesional",
+                        "type": "integer"
+                      },
+                      "nombre_especialidad": {
+                        "description": "Nombre de la especialidad del profesional",
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/paciente/datos": {
+      "get": {
+        "tags": [
+          "Paciente"
+        ],
+        "description": "Búsqueda de paciente por su cédula y tipo de cédula.",
+        "summary": "Búsqueda de paciente",
+        "parameters": [
+          {
+            "name": "cedula",
+            "description": "Cédula del paciente. Esto corresponde a su rut o dni.",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 5
+            }
+          },
+          {
+            "name": "tipo_cedula_texto",
+            "description": "Tipo del identificador del paciente.",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "rut",
+                "dni"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El paciente solicitado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paciente"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/paciente/nuevo": {
+      "post": {
+        "summary": "Creación de paciente",
+        "description": "Creación de paciente nuevo",
+        "tags": [
+          "Paciente"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "cedula",
+                  "tipo_cedula_texto",
+                  "nombre",
+                  "apellido_paterno",
+                  "email",
+                  "celular"
+                ],
+                "properties": {
+                  "cedula": {
+                    "description": "Identificador del paciente",
+                    "type": "string"
+                  },
+                  "tipo_cedula_texto": {
+                    "description": "Nombre del tipo del identificador del paciente",
+                    "type": "string",
+                    "enum": [
+                      "rut",
+                      "dni"
+                    ]
+                  },
+                  "nombre": {
+                    "description": "Nombre del paciente",
+                    "type": "string"
+                  },
+                  "apellido_paterno": {
+                    "description": "Apellido paterno del paciente",
+                    "type": "string"
+                  },
+                  "apellido_materno": {
+                    "description": "Apellido materno del paciente",
+                    "type": "string"
+                  },
+                  "email": {
+                    "description": "Email de contacto del paciente",
+                    "type": "string"
+                  },
+                  "celular": {
+                    "description": "Teléfono celular del paciente",
+                    "type": "string",
+                    "format": "numerico",
+                    "example": "56977889900"
+                  },
+                  "id_referencia": {
+                    "description": "Id de referencia del paciente",
+                    "type": "integer",
+                    "minimum": 1,
+                    "example": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paciente creado con éxito",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mensaje": {
+                      "description": "Mensaje de éxito",
+                      "type": "string"
+                    },
+                    "paciente": {
+                      "description": "Id interno del paciente creado",
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/paciente/lista/{fecha_desde}/{fecha_hasta}": {
+      "get": {
+        "summary": "Obtención de pacientes por fecha de registro",
+        "description": "Listado de pacientes por fecha de registro",
+        "tags": [
+          "Paciente"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fecha_desde",
+            "description": "Fecha desde la cual se obtendrán los datos",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fecha_hasta",
+            "description": "Fecha hasta la cual se obtendrán los datos",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "description": "Datos del reporte",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id_paciente": {
+                            "description": "Id del paciente",
+                            "type": "integer"
+                          },
+                          "nombre": {
+                            "description": "Nombre del paciente",
+                            "type": "string"
+                          },
+                          "apellido_paterno": {
+                            "description": "Apellido paterno del paciente",
+                            "type": "string"
+                          },
+                          "apellido_materno": {
+                            "description": "Apellido materno del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "tipo_identificador": {
+                            "description": "Tipo de cédula del paciente",
+                            "type": "string"
+                          },
+                          "identificador": {
+                            "description": "Cédula del paciente",
+                            "type": "string"
+                          },
+                          "activo": {
+                            "description": "Indica si el paciente se encuentra activo",
+                            "type": "boolean"
+                          },
+                          "email": {
+                            "description": "Email del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "telefono_movil": {
+                            "description": "Teléfono móvil del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "fecha_nacimiento": {
+                            "description": "Fecha de nacimiento del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "yyyy-mm-dd",
+                            "example": "2023-11-16"
+                          },
+                          "fecha_registro": {
+                            "description": "Fecha de registro del paciente",
+                            "type": "string",
+                            "format": "yyyy-mm-dd hh:mm:ss",
+                            "example": "2023-11-16 12:30:00.000000"
+                          },
+                          "genero": {
+                            "description": "Género del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_convenio": {
+                            "description": "Id del convenio del paciente",
+                            "type": "integer"
+                          },
+                          "convenio": {
+                            "description": "Nombre del convenio del paciente",
+                            "type": "string"
+                          },
+                          "nombre_social": {
+                            "description": "Nombre social del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_sucursal": {
+                            "description": "Id de la sucursal donde se registró el paciente",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "nombre_sucursal": {
+                            "description": "Nombre de la sucursal donde se registró el paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_referencia": {
+                            "description": "Id referencia del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "referencia": {
+                            "description": "Referencia del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_aseguradora": {
+                            "description": "Id de la aseguradora del paciente",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "aseguradora": {
+                            "description": "Nombre de la aseguradora del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "direccion": {
+                            "description": "Dirección del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "direccion_2": {
+                            "description": "Segunda dirección del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "comuna": {
+                            "description": "Comuna del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ciudad": {
+                            "description": "Ciudad del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/pagination-cursor"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/presupuesto/informes/datos/gestion/{fecha_desde}/{fecha_hasta}": {
+      "get": {
+        "summary": "Obtención de datos general de un presupuesto",
+        "description": "Obtención de datos general de un presupuesto en el cual se incluyen datos del presupuesto, diagnósticadores, tratamientos y pagos. Este se entrega en formato paginado con un limite de 100 lineas por página.",
+        "tags": [
+          "Presupuesto"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fecha_desde",
+            "description": "Fecha desde la cual se obtendrán los datos",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fecha_hasta",
+            "description": "Fecha hasta la cual se obtendrán los datos",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id_sucursal",
+            "description": "Id de la sucursal para la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "description": "Datos del reporte",
+                      "items": {
+                        "type": "object",
+                        "description": "Datos del presupuesto",
+                        "properties": {
+                          "id_presupuesto": {
+                            "description": "Id del presupuesto",
+                            "type": "integer"
+                          },
+                          "nombre_especialidad": {
+                            "description": "Nombre de la especialidad del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "nombre_convenio": {
+                            "description": "Nombre del convenio del presupuesto",
+                            "type": "string"
+                          },
+                          "nombre_aseguradora": {
+                            "description": "Nombre de la aseguradora del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "fecha_presupuesto": {
+                            "description": "Fecha de creación del presupuesto",
+                            "type": "string",
+                            "format": "yyyy-mm-dd H:i:s",
+                            "example": "2023-11-16 17:53:00"
+                          },
+                          "confirmado": {
+                            "description": "Indica si el presupuesto se encuentra confirmado",
+                            "type": "boolean"
+                          },
+                          "cerrado": {
+                            "description": "Indica si el presupuesto se encuentra cerrado",
+                            "type": "boolean"
+                          },
+                          "id_paciente": {
+                            "description": "Id del paciente del presupuesto",
+                            "type": "integer"
+                          },
+                          "tipo_identificador_paciente": {
+                            "description": "Tipo de identificador del paciente del presupuesto",
+                            "type": "string",
+                            "example": "DNI"
+                          },
+                          "identificador_paciente": {
+                            "description": "Identificador del paciente del presupuesto",
+                            "type": "string"
+                          },
+                          "nombre_paciente": {
+                            "description": "Nombre del paciente del presupuesto",
+                            "type": "string"
+                          },
+                          "apellido_paterno_paciente": {
+                            "description": "Apellido paterno del paciente del presupuesto",
+                            "type": "string"
+                          },
+                          "apellido_materno_paciente": {
+                            "description": "Apellido materno del paciente del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "mail_paciente": {
+                            "description": "Mail del paciente del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "telefono_paciente": {
+                            "description": "Teléfono del paciente del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "telefono_movil_paciente": {
+                            "description": "Teléfono movil del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "referencia_paciente": {
+                            "description": "Referencia del paciente del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "nombre_sucursal": {
+                            "description": "Nombre de la sucursal del presupuesto",
+                            "type": "string"
+                          },
+                          "proxima_cita_paciente": {
+                            "description": "Fecha de la próxima cita del paciente del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "yyyy-mm-dd",
+                            "example": "2023-11-16"
+                          },
+                          "inicio_proxima_cita_paciente": {
+                            "description": "Hora de inicio de la próxima cita del paciente del presupuesto",
+                            "type": "string",
+                            "format": "hh:mm:ss",
+                            "example": "17:30:00"
+                          },
+                          "identificador_numerico_diagnosticador": {
+                            "description": "Identificador numérico del diagnosticador del presupuesto",
+                            "type": "integer"
+                          },
+                          "digito_verificador_diagnosticador": {
+                            "description": "Dígito verificador del diagnosticador del presupuesto",
+                            "type": "string"
+                          },
+                          "nombre_diagnosticador": {
+                            "description": "Nombre del diagnosticador del presupuesto",
+                            "type": "string"
+                          },
+                          "apellido_paterno_diagnosticador": {
+                            "description": "Apellido paterno del diagnosticador del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_materno_diagnosticador": {
+                            "description": "Apellido materno del diagnosticador del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "identificador_numerico_asistente": {
+                            "description": "Identificador numérico del asistente del presupuesto",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "digito_verificador_asistente": {
+                            "description": "Dígito verificador del asistente del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "nombre_asistente": {
+                            "description": "Nombre del asistente del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_paterno_asistente": {
+                            "description": "Apellido paterno del asistente del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_materno_asistente": {
+                            "description": "Apellido materno del asistente del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "monto_total_presupuesto": {
+                            "description": "Monto total del presupuesto",
+                            "type": "integer"
+                          },
+                          "descuento_adicional_presupuesto": {
+                            "description": "Descuento adicional del presupuesto",
+                            "type": "integer"
+                          },
+                          "cargos_presupuesto": {
+                            "description": "Cargos del presupuesto",
+                            "type": "integer"
+                          },
+                          "abonado_presupuesto": {
+                            "description": "Total abonado al presupuesto por el paciente",
+                            "type": "integer"
+                          },
+                          "fecha_ultimo_abono_presupuesto": {
+                            "description": "Fecha del último abono al presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "yyyy-mm-dd hh:mm:ss",
+                            "example": "2023-11-16 12:30"
+                          },
+                          "devoluciones_presupuesto": {
+                            "description": "Total devuelto al paciente del presupuesto",
+                            "type": "integer"
+                          },
+                          "id_tratamiento": {
+                            "description": "Id del tratamiento del presupuesto de tener tratamientos asociados",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "prestaciones_tratadas": {
+                            "description": "Cantidad de prestaciones tratadas del presupuesto",
+                            "type": "integer"
+                          },
+                          "fecha_ultimo_tratamiento": {
+                            "description": "Fecha del último tratamiento del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "yyyy-mm-dd hh:mm:ss",
+                            "example": "2023-11-16 12:30"
+                          },
+                          "ultima_evolucion_presupuesto": {
+                            "description": "Última evolución del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "fecha_ultima_evolucion_presupuesto": {
+                            "description": "Fecha de la última evolución del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "yyyy-mm-dd hh:mm:ss",
+                            "example": "2023-11-16 11:30"
+                          },
+                          "identificador_numerico_profesional_evolucion": {
+                            "description": "Identificador numérico del profesional de la última evolución",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "digito_verificador_profesional_evolucion": {
+                            "description": "Dígito verificador del profesional de la última evolución",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "nombre_profesional_evolucion": {
+                            "description": "Nombre del profesional de la última evolución",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_paterno_profesional_evolucion": {
+                            "description": "Apellido paterno del profesional de la última evolución",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_materno_profesional_evolucion": {
+                            "description": "Apellido materno del profesional de la última evolución",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ultima_observacion_paciente": {
+                            "description": "Última observación generada al paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/pagination-cursor"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/presupuesto/informes/detalle/presupuesto/{fecha_desde}/{fecha_hasta}": {
+      "get": {
+        "summary": "Obtención de detalle de items de presupuestos",
+        "description": "Obtención de detalle de items de presupuestos en fechas seleccionadas. Este se entrega en formato paginado con un limite de 100 lineas por página (10000 para cuando el rango de fechas es 1 día).",
+        "tags": [
+          "Presupuesto"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fecha_desde",
+            "description": "Fecha desde la cual se obtendrán los datos",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fecha_hasta",
+            "description": "Fecha hasta la cual se obtendrán los datos",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id_sucursal",
+            "description": "Id de la sucursal para la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "tipo_fecha",
+            "description": "La fecha de búsqueda a utilizar, esta puede ser la de creación o de tratamiento del item. Por defecto \"creacion\"",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "creacion",
+                "tratamiento"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "description": "Datos del reporte",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id_presupuesto": {
+                            "description": "Id del presupuesto",
+                            "type": "integer"
+                          },
+                          "item_presupuesto": {
+                            "description": "Id del item del presupuesto",
+                            "type": "integer"
+                          },
+                          "fecha_creacion": {
+                            "description": "Fecha de creación",
+                            "type": "string",
+                            "format": "yyyy-mm-dd H:i:s"
+                          },
+                          "id_prestacion": {
+                            "description": "Id de la prestación",
+                            "type": "integer"
+                          },
+                          "id_clinica_prestacion": {
+                            "description": "Id general de la clínica para la prestación",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_clinico_prestacion": {
+                            "description": "Id del convenio para la prestación",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "nombre_prestacion": {
+                            "description": "Nombre de la prestación",
+                            "type": "string"
+                          },
+                          "categoria_prestacion": {
+                            "description": "Categoría de la prestación",
+                            "type": "string"
+                          },
+                          "pieza": {
+                            "description": "Pieza dental asociada a la prestación",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "estado": {
+                            "description": "Estado del item del presupuesto",
+                            "type": "string",
+                            "enum": [
+                              "Iniciada",
+                              "Tratada",
+                              "Sin tratamiento"
+                            ]
+                          },
+                          "fecha_tratamiento": {
+                            "description": "Fecha de tratamiento del item del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "yyyy-mm-dd H:i:s"
+                          },
+                          "identificador_tratante": {
+                            "description": "Identificador del profesional que trató el item del presupuesto",
+                            "type": "string"
+                          },
+                          "nombre_tratante": {
+                            "description": "Nombre del profesional que trató el item del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_paterno_tratante": {
+                            "description": "Apellido paterno del profesional que trató el item del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_materno_tratante": {
+                            "description": "Apellido materno del profesional que trató el item del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "valor": {
+                            "description": "Valor de la prestación",
+                            "type": "integer"
+                          },
+                          "monto_no_afecto": {
+                            "description": "Monto no afecto de la prestación",
+                            "type": "integer"
+                          },
+                          "descuento_prestacion": {
+                            "description": "Descuento aplicado a la prestación",
+                            "type": "integer"
+                          },
+                          "abonado": {
+                            "description": "Monto abonado a la prestación",
+                            "type": "integer"
+                          },
+                          "comision": {
+                            "description": "Comisión aplicada a la prestación",
+                            "type": "integer"
+                          },
+                          "porcentaje_honorario": {
+                            "description": "Configuración del honorario de la prestación (porcentaje o monto fijo)",
+                            "type": "string"
+                          },
+                          "valor_honorario": {
+                            "description": "Valor del honorario de la prestación",
+                            "type": "integer"
+                          },
+                          "descuento_honorario": {
+                            "description": "Descuento aplicado al honorario de la prestación",
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/pagination-cursor"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/pago/informes/ingreso/detallado/{fecha_desde}/{fecha_hasta}": {
+      "get": {
+        "summary": "Obtención de ingresos detallados de la clínica",
+        "description": "Obtención de ingresos detallados (pagos) en fechas seleccionadas incluyendo devoluciones y anulaciones. Este se entrega en formato paginado con un limite de 100 lineas por página.",
+        "tags": [
+          "Pago"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fecha_desde",
+            "description": "Fecha desde la cual se obtendrán los datos",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fecha_hasta",
+            "description": "Fecha hasta la cual se obtendrán los datos",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id_sucursal",
+            "description": "Id de la sucursal para la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "description": "Datos del reporte",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id_comprobante": {
+                            "description": "Id del comprobante",
+                            "type": "integer"
+                          },
+                          "id_movimiento": {
+                            "description": "Id del movimiento, pueden haber múltiples movimientos en un mismo comprobante",
+                            "type": "integer"
+                          },
+                          "movimiento_activo": {
+                            "description": "Si el movimiento se encuentra activo o no, si esta inactivo esto representa cuando se realiza una devolución o anulación de pago, para estos casos el movimiento además se duplicara.",
+                            "type": "boolean"
+                          },
+                          "fecha_movimiento": {
+                            "description": "Fecha de realización del movimiento",
+                            "type": "string",
+                            "format": "yyyy-mm-dd H:i:s"
+                          },
+                          "glosa_movimiento": {
+                            "description": "Descripción del movimiento.",
+                            "type": "string"
+                          },
+                          "id_sucursal": {
+                            "description": "Id de la sucursal donde se realizo el movimiento",
+                            "type": "integer"
+                          },
+                          "sucursal": {
+                            "description": "Nombre de la sucursal donde se realizo el movimiento",
+                            "type": "string"
+                          },
+                          "id_presupuesto": {
+                            "description": "Id del presupuesto asociado, si este es null el pago se realizó a abono libre",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "id_convenio_presupuesto": {
+                            "description": "Indica el id del convenio del presupuesto asociado",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "convenio_presupuesto": {
+                            "description": "Indica el convenio del presupuesto asociado",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "especialidad_presupuesto": {
+                            "description": "Indica la especialidad del presupuesto asociado",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "porcentaje_descuento_presupuesto": {
+                            "description": "Indica el porcentaje de descuento aplicado al presupuesto asociado",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "id_paciente": {
+                            "description": "Id del paciente del presupuesto",
+                            "type": "integer"
+                          },
+                          "tipo_identificador_paciente": {
+                            "description": "Tipo de identificador del paciente del presupuesto",
+                            "type": "string",
+                            "example": "DNI"
+                          },
+                          "identificador_paciente": {
+                            "description": "Identificador del paciente del presupuesto",
+                            "type": "string"
+                          },
+                          "nombre_paciente": {
+                            "description": "Nombre del paciente del presupuesto",
+                            "type": "string"
+                          },
+                          "apellido_paterno_paciente": {
+                            "description": "Apellido paterno del paciente del presupuesto",
+                            "type": "string"
+                          },
+                          "apellido_materno_paciente": {
+                            "description": "Apellido materno del paciente del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "convenio_paciente": {
+                            "description": "Convenio actual del paciente",
+                            "type": "string"
+                          },
+                          "institucion_paciente": {
+                            "description": "Institución actual del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "identificador_numerico_diagnosticador": {
+                            "description": "Identificador numérico del diagnosticador del presupuesto",
+                            "type": "integer"
+                          },
+                          "digito_verificador_diagnosticador": {
+                            "description": "Dígito verificador del diagnosticador del presupuesto",
+                            "type": "string"
+                          },
+                          "nombre_diagnosticador": {
+                            "description": "Nombre del diagnosticador del presupuesto",
+                            "type": "string"
+                          },
+                          "apellido_paterno_diagnosticador": {
+                            "description": "Apellido paterno del diagnosticador del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_materno_diagnosticador": {
+                            "description": "Apellido materno del diagnosticador del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "numero_boleta_electronica": {
+                            "description": "Número de boleta electrónica asociada al comprobante",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_caja": {
+                            "description": "Id de la caja utilizada para realizar el pago",
+                            "type": "string"
+                          },
+                          "caja": {
+                            "description": "Nombre de la caja utilizada para la realización del pago",
+                            "type": "string"
+                          },
+                          "id_banco": {
+                            "description": "Id del banco asociado al movimiento al realizar el pago",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "banco": {
+                            "description": "Nombre del banco asociado al movimiento al realizar el pago",
+                            "type": "string"
+                          },
+                          "numero_documento_referencia": {
+                            "description": "Número de documento de referencia asociado al movimiento al realizar el pago",
+                            "type": "string"
+                          },
+                          "fecha_vencimiento_documento": {
+                            "description": "Fecha de vencimiento del movimiento, para movimiento de formas de pagos no efectivo, este corresponde a la fecha en que debería cobrarse el documento, para documentos efectivo este es igual a la fecha de generación",
+                            "type": "string",
+                            "format": "yyyy-mm-dd hh:mm:ss",
+                            "example": "2023-11-16 11:30"
+                          },
+                          "id_forma_pago": {
+                            "description": "Id de la forma de pago utilizada",
+                            "type": "string"
+                          },
+                          "forma_pago": {
+                            "description": "Nombre de la forma de pago utilizada",
+                            "type": "integer"
+                          },
+                          "valor_total_movimiento": {
+                            "description": "Valor total del movimiento",
+                            "type": "integer"
+                          },
+                          "porcentaje_comision_movimiento": {
+                            "description": "El porcentaje de la comisión para el movimiento",
+                            "type": "number"
+                          },
+                          "valor_comision_movimiento": {
+                            "description": "El valor correspondiente a la comisión del movimiento",
+                            "type": "integer"
+                          },
+                          "valor_ajuste_movimiento": {
+                            "description": "Valor del ajuste de pesos para el movimiento, este valor aplica solo a efectivo",
+                            "type": "integer"
+                          },
+                          "id_usuario_receptor": {
+                            "description": "Id del usuario receptor del movimiento",
+                            "type": "integer"
+                          },
+                          "nombre_receptor": {
+                            "description": "Nombre del usuario receptor del movimiento",
+                            "type": "string"
+                          },
+                          "apellido_paterno_receptor": {
+                            "description": "Apellido paterno del usuario receptor del movimiento",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_materno_receptor": {
+                            "description": "Apellido materno del usuario receptor del movimiento",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/pagination-cursor"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/pago/informes/abono/por/prestacion": {
+      "get": {
+        "summary": "Informe abono por prestación",
+        "description": "Detalle de los pagos realizados por prestación.",
+        "tags": [
+          "Pago"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id_sucursal",
+            "description": "Id de la sucursal para la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_desde",
+            "description": "Fecha desde la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_hasta",
+            "description": "Fecha hasta la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "description": "Datos del reporte",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id_abono": {
+                            "description": "Id del abono",
+                            "type": "integer"
+                          },
+                          "valor_abono": {
+                            "description": "Valor del abono",
+                            "type": "integer"
+                          },
+                          "fecha_abono": {
+                            "description": "Fecha del abono",
+                            "type": "string",
+                            "format": "yyy-mm-dd HH:ii:ss"
+                          },
+                          "id_sucursal": {
+                            "description": "Id sucursal abono",
+                            "type": "integer"
+                          },
+                          "nombre_sucursal": {
+                            "description": "Nombre de la sucursal abono",
+                            "type": "string"
+                          },
+                          "numero_comprobante": {
+                            "description": "Número del comprobante dentalsoft del abono",
+                            "type": "integer"
+                          },
+                          "numero_referencia_comprobante": {
+                            "description": "Número de referencia del comprobante del abono",
+                            "type": "string"
+                          },
+                          "id_paciente": {
+                            "description": "Id del paciente del abono",
+                            "type": "integer"
+                          },
+                          "identificador_paciente": {
+                            "description": "Identificador del paciente",
+                            "type": "string"
+                          },
+                          "nombre_paciente": {
+                            "description": "Nombre del paciente",
+                            "type": "string"
+                          },
+                          "apellido_paterno_paciente": {
+                            "description": "Apellido paterno del paciente",
+                            "type": "string"
+                          },
+                          "apellido_materno_paciente": {
+                            "description": "Apellido materno del paciente",
+                            "type": "string"
+                          },
+                          "id_convenio": {
+                            "description": "Id del convenio del paciente",
+                            "type": "integer"
+                          },
+                          "nombre_convenio": {
+                            "description": "Nombre del convenio del paciente",
+                            "type": "string"
+                          },
+                          "id_presupuesto": {
+                            "description": "Id del presupuesto a pagar, de estar en 0 es un abono libre",
+                            "type": "integer"
+                          },
+                          "item_presupuesto": {
+                            "description": "Item de presupuesto a pagar, de estar en 0 es un abono libre",
+                            "type": "integer"
+                          },
+                          "id_diagnosticador": {
+                            "description": "Id clínica del profesional del presupuesto",
+                            "type": "integer"
+                          },
+                          "nombre_diagnosticador": {
+                            "description": "Nombre del profesional del presupuesto",
+                            "type": "string"
+                          },
+                          "apellido_paterno_diagnosticador": {
+                            "description": "Apellido paterno del profesional del presupuesto",
+                            "type": "string"
+                          },
+                          "apellido_materno_diagnosticador": {
+                            "description": "Apellido materno del profesional del presupuesto",
+                            "type": "string"
+                          },
+                          "id_especialidad_presupuesto": {
+                            "description": "Id de la especialidad del presupuesto",
+                            "type": "integer"
+                          },
+                          "nombre_especialidad_presupuesto": {
+                            "description": "Nombre de la especialidad del presupuesto",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_prestacion": {
+                            "description": "Id de la prestación a pagar",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "nombre_prestacion": {
+                            "description": "Nombre de la prestación a pagar",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "valor_prestacion": {
+                            "description": "Valor total de la prestación",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "estado_prestacion": {
+                            "description": "Estado de la prestación pagada",
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "Iniciada",
+                              "Tratada",
+                              "Sin tratamiento"
+                            ]
+                          },
+                          "fecha_tratamiento_prestacion": {
+                            "description": "Fecha de tratamiento de la prestación pagada",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_banco": {
+                            "description": "Id del banco del abono",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "nombre_banco": {
+                            "description": "Nombre del banco del abono",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_tratante": {
+                            "description": "Id clínica del tratante",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "nombre_tratante": {
+                            "description": "Nombre del tratante",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_paterno_tratante": {
+                            "description": "Apellido paterno del tratante",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "apellido_materno_tratante": {
+                            "description": "Apellido materno del tratante",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id_forma_pago": {
+                            "description": "Id de la forma de pago",
+                            "type": [
+                              "integer"
+                            ]
+                          },
+                          "nombre_forma_pago": {
+                            "description": "Nombre de la forma de pago",
+                            "type": [
+                              "string"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/pagination-cursor"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/pago/informes/ingresos/por/zona": {
+      "get": {
+        "summary": "Informe Ingresos Por Zona",
+        "description": "Informe en el cual se ve estadística de venta agrupada por zona de sucursal.",
+        "tags": [
+          "Pago"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "zona",
+            "description": "Zona para la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_desde",
+            "description": "Fecha desde la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fecha_hasta",
+            "description": "Fecha hasta la cual se obtendrán los datos",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-mm-dd",
+              "example": "2023-11-16"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "description": "Datos del reporte",
+                  "items": {
+                    "type": [
+                      "object"
+                    ],
+                    "properties": {
+                      "id_sucursal": {
+                        "description": "Id de la sucursal",
+                        "type": [
+                          "integer"
+                        ]
+                      },
+                      "nombre_sucursal": {
+                        "description": "Nombre de la sucursal",
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "zona": {
+                        "description": "Zona de la sucursal",
+                        "type": [
+                          "string"
+                        ]
+                      },
+                      "total": {
+                        "description": "Total de abonos de la sucursal",
+                        "type": [
+                          "integer"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/sala/listado": {
+      "get": {
+        "summary": "Listado de salas",
+        "description": "Listado de todas las salas actuales",
+        "tags": [
+          "Sala"
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "object"
+                    ],
+                    "properties": {
+                      "id": {
+                        "description": "Id de la sala",
+                        "type": "integer"
+                      },
+                      "nombre": {
+                        "description": "Nombre de la sala",
+                        "type": "string"
+                      },
+                      "activo": {
+                        "description": "Si la sala se encuentra activa",
+                        "type": "boolean"
+                      },
+                      "es_libre": {
+                        "description": "Si la sala es libre o asignada a un profesional",
+                        "type": "boolean"
+                      },
+                      "id_tipo_sala": {
+                        "description": "Id de tipo de sala",
+                        "type": "integer"
+                      },
+                      "nombre_tipo_sala": {
+                        "description": "Nombre del tipo de sala",
+                        "type": "integer"
+                      },
+                      "id_sucursal": {
+                        "description": "Id de la sucursal a la que pertenece la sala",
+                        "type": "integer"
+                      },
+                      "nombre_sucursal": {
+                        "description": "Nombre de la sucursal a la que pertenece la sala",
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/sala/tipo": {
+      "get": {
+        "summary": "Listado de tipos de sala",
+        "description": "Listado de los tipos de sala disponibles en el sistema",
+        "tags": [
+          "Sala"
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "description": "Id del tipo de sala",
+                        "type": "integer"
+                      },
+                      "nombre": {
+                        "description": "Nombre o descripción del tipo de sala",
+                        "type": "string"
+                      },
+                      "estado": {
+                        "description": "Estado del tipo de sala",
+                        "type": "integer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/sucursal/listado": {
+      "get": {
+        "summary": "Obtención de listado de sucursales",
+        "description": "Listado detallado de sucursales disponibles para el cliente",
+        "tags": [
+          "Sucursal"
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado de sucursales",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Sucursal"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/horario/profesionales": {
+      "get": {
+        "summary": "Obtención de listado de horarios",
+        "description": "Listado detallado de horarios disponibles para el cliente",
+        "tags": [
+          "Horario"
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "description": "Datos del horario",
+                    "properties": {
+                      "id_horario": {
+                        "description": "Id del horario",
+                        "type": "integer"
+                      },
+                      "tipo": {
+                        "description": "Tipo de horario, horarios libres son sin profesional asignado",
+                        "type": "string",
+                        "enum": [
+                          "libre",
+                          "profesional"
+                        ]
+                      },
+                      "nombre_profesional": {
+                        "description": "Nombre del profesional",
+                        "type": "string"
+                      },
+                      "apellido_paterno_profesional": {
+                        "description": "Apellido paterno del profesional",
+                        "type": "string"
+                      },
+                      "apellido_materno_profesional": {
+                        "description": "Apellido materno del profesional",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "identificador_profesional": {
+                        "description": "Cédula del profesional",
+                        "type": "string"
+                      },
+                      "id_sala": {
+                        "description": "Id de la sala",
+                        "type": "integer"
+                      },
+                      "nombre_sala": {
+                        "description": "Nombre de la sala",
+                        "type": "string"
+                      },
+                      "id_sucursal": {
+                        "description": "Id de la sucursal",
+                        "type": "integer"
+                      },
+                      "nombre_sucursal": {
+                        "description": "Nombre de la sucursal",
+                        "type": "string"
+                      },
+                      "id_especialidad": {
+                        "description": "Id de la especialidad del horario",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "nombre_especialidad": {
+                        "description": "Nombre de la especialidad del horario",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "dia_semana": {
+                        "description": "Día de la semana del horario",
+                        "type": "string",
+                        "enum": [
+                          "Lunes",
+                          "Martes",
+                          "Miércoles",
+                          "Jueves",
+                          "Viernes",
+                          "Sábado",
+                          "Domingo"
+                        ]
+                      },
+                      "fecha_inicio": {
+                        "description": "Fecha de inicio del horario",
+                        "type": "string",
+                        "format": "yyyy-mm-dd"
+                      },
+                      "fecha_fin": {
+                        "description": "Fecha de término del horario",
+                        "type": "string",
+                        "format": "yyyy-mm-dd"
+                      },
+                      "hora_inicio": {
+                        "description": "Hora de inicio del horario",
+                        "type": "string",
+                        "format": "hh:mm"
+                      },
+                      "hora_fin": {
+                        "description": "Hora de término del horario",
+                        "type": "string",
+                        "format": "hh:mm"
+                      },
+                      "bloques_agendamiento": {
+                        "description": "Número de bloques de cada cita para el horario",
+                        "type": "integer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/usuario/listado": {
+      "get": {
+        "summary": "Obtención de listado de usuarios",
+        "description": "Listado de usuarios del sistema con información de sucursales, especialidades y estado de firma electrónica",
+        "tags": [
+          "Usuario"
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "description": "Datos del usuario",
+                    "properties": {
+                      "id_usuario": {
+                        "description": "Id interno usuario",
+                        "type": "int"
+                      },
+                      "rut": {
+                        "description": "RUT completo del usuario",
+                        "type": "string",
+                        "example": "12345678-9"
+                      },
+                      "tipo_identificador": {
+                        "description": "Tipo de cédula del usuario",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "identificador": {
+                        "description": "Cédula del usuario",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "usuario": {
+                        "description": "Nombre de usuario en el sistema",
+                        "type": "string"
+                      },
+                      "nombre": {
+                        "description": "Nombre completo del usuario",
+                        "type": "string"
+                      },
+                      "tipo_profesional": {
+                        "description": "Indica si el usuario posee agenda",
+                        "type": "string",
+                        "enum": [
+                          "Usuario con agenda",
+                          "Usuario sin agenda"
+                        ]
+                      },
+                      "id_tipo_usuario": {
+                        "description": "Id del tipo de usuario",
+                        "type": "integer"
+                      },
+                      "nombre_tipo_usuario": {
+                        "description": "Nombre del tipo de usuario",
+                        "type": "string"
+                      },
+                      "codigo_categoria_usuario": {
+                        "description": "Código de la categoría del usuario",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "nombre_categoria_usuario": {
+                        "description": "Nombre de la categoría del usuario",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "codigo_categoria_contable": {
+                        "description": "Código de la categoría contable del usuario",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "nombre_categoria_contable": {
+                        "description": "Nombre de la categoría contable del usuario",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "activo": {
+                        "description": "Estado del usuario",
+                        "type": "boolean"
+                      },
+                      "fono": {
+                        "description": "Teléfono de contacto",
+                        "type": "string"
+                      },
+                      "mail": {
+                        "description": "Correo electrónico del usuario",
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "sucursales": {
+                        "description": "Sucursales asociadas al usuario",
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "integer",
+                              "description": "Código de la sucursal"
+                            },
+                            "nombre": {
+                              "type": "string",
+                              "description": "Nombre de la sucursal"
+                            }
+                          }
+                        }
+                      },
+                      "especialidades": {
+                        "description": "Especialidades asociadas al usuario",
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "integer",
+                              "description": "Código de la especialidad"
+                            },
+                            "nombre": {
+                              "type": "string",
+                              "description": "Nombre de la especialidad"
+                            }
+                          }
+                        }
+                      },
+                      "estado_firma_electronica": {
+                        "description": "Estado de la firma electrónica del usuario de poseer módulo de firma electrónica activo",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/lista-espera/listado": {
+      "get": {
+        "summary": "Detalle de ingresos en lista de espera",
+        "description": "Obtiene ingresos de lista de espera. Requiere módulo Docencia habilitado.",
+        "tags": [
+          "Lista espera"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "Id de lista de espera.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "paciente_id",
+            "in": "query",
+            "required": false,
+            "description": "Id del paciente.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "description": "Id de estado del ingreso en lista de espera.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "desde_ingreso",
+            "in": "query",
+            "required": false,
+            "description": "Fecha mínima de ingreso (formato YYYY-MM-DD).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-03-01"
+            }
+          },
+          {
+            "name": "hasta_ingreso",
+            "in": "query",
+            "required": false,
+            "description": "Fecha máxima de ingreso (formato YYYY-MM-DD).",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-03-31"
+            }
+          },
+          {
+            "name": "c",
+            "in": "query",
+            "required": false,
+            "description": "Cursor de paginación.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id_ingreso": {
+                            "description": "Id del ingreso",
+                            "type": "integer"
+                          },
+                          "paciente_id": {
+                            "description": "Id del paciente",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "posicion": {
+                            "description": "Posición en la lista",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "prioridad_paciente": {
+                            "description": "Prioridad del paciente",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "paciente_cedula": {
+                            "description": "Cédula del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "paciente_nombre": {
+                            "description": "Nombre del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "paciente_apellido_paterno": {
+                            "description": "Apellido paterno del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "paciente_apellido_materno": {
+                            "description": "Apellido materno del paciente",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "fecha_ingreso": {
+                            "description": "Fecha de ingreso",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "fecha_postergacion": {
+                            "description": "Fecha de postergación",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "paciente_edad": {
+                            "description": "Edad del paciente",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "lista_espera_id": {
+                            "description": "Id de la lista de espera",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "lista_espera_nombre": {
+                            "description": "Nombre de la lista de espera",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "estado": {
+                            "description": "Estado del ingreso",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "motivo_ingreso": {
+                            "description": "Motivo de ingreso",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "observacion": {
+                            "description": "Última observación registrada",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/pagination-cursor"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/prestacion/listado": {
+      "get": {
+        "summary": "Listado de prestaciones",
+        "description": "Listado de todas las prestaciones disponibles en el sistema",
+        "tags": [
+          "Prestación"
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "description": "Datos de la prestación",
+                    "properties": {
+                      "nombre": {
+                        "description": "Nombre de la prestación",
+                        "type": "string"
+                      },
+                      "codigo": {
+                        "description": "Código interno de la prestación",
+                        "type": "integer"
+                      },
+                      "costo": {
+                        "description": "Costo base de la prestación",
+                        "type": "integer"
+                      },
+                      "afecto_descuento": {
+                        "description": "Indica si la prestación es afecta a descuento",
+                        "type": "boolean"
+                      },
+                      "grupo": {
+                        "description": "Grupo de la prestación",
+                        "type": "string"
+                      },
+                      "subgrupo": {
+                        "description": "Subgrupo de la prestación",
+                        "type": "string"
+                      },
+                      "solo_plantillas": {
+                        "description": "Indica si la prestación solo se utiliza en plantillas",
+                        "type": "boolean"
+                      },
+                      "categoria": {
+                        "description": "Categoría de la prestación",
+                        "type": "string"
+                      },
+                      "id_especialidad": {
+                        "description": "Código de especialidad asociada",
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "especialidad": {
+                        "description": "Nombre de especialidad asociada",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "id_categoria_contable": {
+                        "description": "Id de la categoría contable",
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "codigo_categoria_contable": {
+                        "description": "Código configurado de la categoría contable",
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "categoria_contable": {
+                        "description": "Nombre de la categoría contable",
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "tiene_evaluacion": {
+                        "description": "Indica si la prestación posee evaluación",
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/prestacion/listado/arancel/{arancel}": {
+      "get": {
+        "summary": "Listado de prestaciones por arancel",
+        "description": "Listado de prestaciones asociadas a un arancel específico",
+        "tags": [
+          "Prestación"
+        ],
+        "parameters": [
+          {
+            "name": "convenio",
+            "in": "path",
+            "required": false,
+            "description": "Id del convenio",
+            "schema": {
+              "type": "integer",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "description": "Datos de la prestación por convenio",
+                    "properties": {
+                      "id_arancel": {
+                        "description": "Código del arancel",
+                        "type": "integer"
+                      },
+                      "arancel": {
+                        "description": "Nombre del arancel",
+                        "type": "string"
+                      },
+                      "id_prestacion": {
+                        "description": "Código de la prestación",
+                        "type": "integer"
+                      },
+                      "prestacion": {
+                        "description": "Nombre de la prestación",
+                        "type": "string"
+                      },
+                      "grupo": {
+                        "description": "Grupo de la prestación",
+                        "type": "string"
+                      },
+                      "subgrupo": {
+                        "description": "Subgrupo de la prestación",
+                        "type": "string"
+                      },
+                      "codigo_clinico": {
+                        "description": "Código clínico de la prestación",
+                        "type": "string"
+                      },
+                      "afecto_descuento": {
+                        "description": "Indica si la prestación es afecta a descuento",
+                        "type": "boolean"
+                      },
+                      "costo_prestacion": {
+                        "description": "Costo base de la prestación",
+                        "type": "integer"
+                      },
+                      "valor_referencial": {
+                        "description": "Valor referencial de la prestación",
+                        "type": "integer"
+                      },
+                      "valor_convenio": {
+                        "description": "Valor del convenio",
+                        "type": "integer"
+                      },
+                      "descuento": {
+                        "description": "Monto de descuento aplicado",
+                        "type": "string"
+                      },
+                      "tipo": {
+                        "description": "Tipo de prestación",
+                        "type": "string"
+                      },
+                      "monto_no_afecto": {
+                        "description": "El monto no afecto configurado para la prestación",
+                        "type": "integer"
+                      },
+                      "valor_cobrar": {
+                        "description": "Valor final a cobrar el cual incluye el monto no afecto + el valor a cobro",
+                        "type": "integer"
+                      },
+                      "habilitado": {
+                        "description": "Indica si la prestación se encuentra habilitada",
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/convenio/listado": {
+      "get": {
+        "summary": "Listado de convenios",
+        "description": "Listado de todas los convenios actuales",
+        "tags": [
+          "Convenio"
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "object"
+                    ],
+                    "properties": {
+                      "id": {
+                        "description": "Id del convenio",
+                        "type": "integer"
+                      },
+                      "nombre": {
+                        "description": "Nombre del convenio",
+                        "type": "string"
+                      },
+                      "activo": {
+                        "description": "Si el convenio esta activo",
+                        "type": "boolean"
+                      },
+                      "factor": {
+                        "description": "Factor del convenio",
+                        "type": "integer"
+                      },
+                      "predeterminado": {
+                        "description": "Si es el convenio predeterminado",
+                        "type": "boolean"
+                      },
+                      "id_arancel": {
+                        "description": "El id del arancel asociado",
+                        "type": "integer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/prestacion/plantilla/listado": {
+      "get": {
+        "summary": "Listado de plantillas",
+        "description": "Listado de plantillas con sus prestaciones asociadas.",
+        "tags": [
+          "Prestación"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "Id de plantilla para filtrar un registro específico.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "description": "Id de la plantilla",
+                        "type": "integer"
+                      },
+                      "nombre": {
+                        "description": "Nombre de la plantilla",
+                        "type": "string"
+                      },
+                      "habilitada": {
+                        "description": "Indica si la plantilla se encuentra habilitada",
+                        "type": "boolean"
+                      },
+                      "especialidad_id": {
+                        "description": "Id de especialidad asociada",
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "especialidad_nombre": {
+                        "description": "Nombre de la especialidad asociada",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "con_orden_termino": {
+                        "description": "Indica si la plantilla usa orden de término",
+                        "type": "boolean"
+                      },
+                      "area_independiente": {
+                        "description": "Indica si la plantilla es de área independiente",
+                        "type": "boolean"
+                      },
+                      "prestaciones": {
+                        "description": "Prestaciones asociadas a la plantilla",
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "description": "Id del servicio/prestación",
+                              "type": "integer"
+                            },
+                            "orden": {
+                              "description": "Orden de la prestación en la plantilla",
+                              "type": "integer"
+                            },
+                            "eliminable": {
+                              "description": "Indica si la prestación es eliminable",
+                              "type": "boolean"
+                            },
+                            "excluida_orden_termino": {
+                              "description": "Indica si se excluye del orden de término",
+                              "type": "boolean"
+                            },
+                            "nombre": {
+                              "description": "Nombre de la prestación",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "costo": {
+                              "description": "Costo de la prestación",
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    },
+    "/prestacion/plantilla/{id}": {
+      "get": {
+        "summary": "Detalle de plantilla",
+        "description": "Obtención de una plantilla por id con sus prestaciones asociadas.",
+        "tags": [
+          "Prestación"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Id de la plantilla.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "description": "Id de la plantilla",
+                      "type": "integer"
+                    },
+                    "nombre": {
+                      "description": "Nombre de la plantilla",
+                      "type": "string"
+                    },
+                    "habilitada": {
+                      "description": "Indica si la plantilla se encuentra habilitada",
+                      "type": "boolean"
+                    },
+                    "especialidad_id": {
+                      "description": "Id de especialidad asociada",
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "especialidad_nombre": {
+                      "description": "Nombre de la especialidad asociada",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "con_orden_termino": {
+                      "description": "Indica si la plantilla usa orden de término",
+                      "type": "boolean"
+                    },
+                    "area_independiente": {
+                      "description": "Indica si la plantilla es de área independiente",
+                      "type": "boolean"
+                    },
+                    "prestaciones": {
+                      "description": "Prestaciones asociadas a la plantilla",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "description": "Id del servicio/prestación",
+                            "type": "integer"
+                          },
+                          "orden": {
+                            "description": "Orden de la prestación en la plantilla",
+                            "type": "integer"
+                          },
+                          "eliminable": {
+                            "description": "Indica si la prestación es eliminable",
+                            "type": "boolean"
+                          },
+                          "excluida_orden_termino": {
+                            "description": "Indica si se excluye del orden de término",
+                            "type": "boolean"
+                          },
+                          "nombre": {
+                            "description": "Nombre de la prestación",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "costo": {
+                            "description": "Costo de la prestación",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/api-bad-request"
+          },
+          "401": {
+            "$ref": "#/components/responses/api-unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/api-not-found"
+          },
+          "500": {
+            "$ref": "#/components/responses/api-internal-error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiOperationResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Código de error"
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensaje de éxito de la operación"
+          }
+        }
+      },
+      "Paciente": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id interno del paciente"
+          },
+          "cedula": {
+            "type": "string",
+            "description": "Rut/Dni/Cedula nacional del paciente"
+          },
+          "tipo_cedula": {
+            "type": "integer",
+            "description": "Tipo de la cedula del paciente, para determinar las validaciones de este",
+            "enum": [
+              1,
+              2
+            ]
+          },
+          "celular": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Teléfono celular del paciente"
+          },
+          "sexo": {
+            "description": "Texto para el sexo del paciente",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fecha_registro": {
+            "type": "string",
+            "description": "Fecha de registro del paciente, en formato yyyy-mm-dd hh:mm:ss.ms",
+            "format": "yyyy-mm-dd hh:mm:ss.ms",
+            "example": "2021-11-11 12:30:00.700000"
+          },
+          "fecha_nacimiento": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Fecha de nacimiento del paciente, en formato yyyy-mm-dd",
+            "format": "yyyy-mm-dd",
+            "example": "2021-11-11"
+          },
+          "estado": {
+            "type": "integer",
+            "description": "Estado del paciente para determinar si esta activo o no",
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "nombre": {
+            "type": "string",
+            "description": "Nombres y apellidos del paciente"
+          },
+          "email": {
+            "type": "string",
+            "description": "El email del paciente"
+          }
+        }
+      },
+      "Cita": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Id de la cita"
+          },
+          "fecha": {
+            "type": "string",
+            "description": "Fecha de la cita",
+            "format": "yyyy-mm-dd",
+            "example": "2021-11-11"
+          },
+          "id_paciente": {
+            "type": "integer",
+            "description": "Id interno aplicación del paciente de la cita"
+          },
+          "id_sucursal": {
+            "type": "integer",
+            "description": "Id de la sucursal de la cita"
+          },
+          "inicio": {
+            "type": "string",
+            "description": "Hora de inicio de la cita en formato 24 Horas",
+            "example": "10:30,"
+          },
+          "bloques": {
+            "type": "integer",
+            "description": "Cantidad de bloques que ocupa la cita"
+          },
+          "estado": {
+            "type": "integer",
+            "description": "Estado de la cita"
+          },
+          "estado_texto": {
+            "type": "string",
+            "description": "Texto para el campo estado"
+          },
+          "id_sala": {
+            "type": "integer",
+            "description": "Id de la sala en la que se llevara acabo atención"
+          },
+          "paciente": {
+            "oneOf": [
+              {
+                "type": [
+                  "null"
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/Paciente"
+              }
+            ]
+          },
+          "sala": {
+            "type": "object",
+            "title": "Sala",
+            "description": "Datos de la sala para la cita",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Id de la sala"
+              },
+              "nombre": {
+                "type": "string",
+                "description": "Nombre de la sala"
+              }
+            }
+          },
+          "notificable": {
+            "type": "boolean",
+            "description": "Indica si la cita puede ser notificada"
+          },
+          "confirmable": {
+            "type": "boolean",
+            "description": "Indica si la cita puede ser confirmada"
+          },
+          "ingresable_a_en_espera": {
+            "type": "boolean",
+            "description": "Indica si la cita puede ingresarse a en espera (lista de espera)"
+          },
+          "cancelable": {
+            "type": "boolean",
+            "description": "Indica si la cita puede ser cancelada"
+          },
+          "observacion": {
+            "type": "string",
+            "description": "La observación de la cita"
+          }
+        }
+      },
+      "Profesional": {
+        "type": "object",
+        "properties": {
+          "id_profesional": {
+            "type": "integer",
+            "description": "Identificador del profesional"
+          },
+          "nombre_completo": {
+            "type": "string",
+            "description": "Nombre y apellidos del profesional"
+          }
+        }
+      },
+      "Sucursal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Identificador de la sucursal"
+          },
+          "nombre": {
+            "type": "string",
+            "description": "Nombre de la sucursal"
+          },
+          "telefono": {
+            "type": "string",
+            "description": "Teléfono de la sucursal"
+          },
+          "direccion": {
+            "type": "string",
+            "description": "Dirección de la sucursal"
+          },
+          "estado": {
+            "type": "integer",
+            "description": "Estado de la sucursal",
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "estado_texto": {
+            "type": "string",
+            "description": "Estado en formato texto"
+          }
+        }
+      },
+      "pagination-cursor": {
+        "type": "object",
+        "description": "Metadata de paginación",
+        "properties": {
+          "siguiente": {
+            "description": "Link para obtención de la próxima página, si este viene vacío es por que no hay más páginas.",
+            "type": "string"
+          },
+          "por_pagina": {
+            "description": "Cantidad de registros por página, por defecto 100 registros.",
+            "type": "integer"
+          },
+          "total_pagina": {
+            "description": "Cantidad de registros en la página actual, si el total_pagina es menor al por_pagina es por que no hay más páginas.",
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "OAuth": {
+        "description": "Autenticación basada en token generado para el usuario, considera tiempos de expiración",
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "responses": {
+      "api-unauthorized": {
+        "description": "No autorizado para consumir el recurso o token expirado."
+      },
+      "api-bad-request": {
+        "description": "Request inválida",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiOperationResponse"
+            }
+          }
+        }
+      },
+      "api-internal-error": {
+        "description": "Error interno",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "string",
+              "description": "Mensaje de referencia"
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "OAuth": []
+    }
+  ]
+}

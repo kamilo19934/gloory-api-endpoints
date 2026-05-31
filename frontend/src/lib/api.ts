@@ -18,6 +18,8 @@ export enum IntegrationType {
   MEDILINK = 'medilink',
   DENTALINK_MEDILINK = 'dentalink_medilink',
   RESERVO = 'reservo',
+  DENTALSOFT = 'dentalsoft',
+  SACMED = 'sacmed',
   GOHIGHLEVEL = 'gohighlevel',
 }
 
@@ -595,6 +597,222 @@ export const ghlApi = {
 };
 
 // ============================================
+// DENTALSOFT API
+// ============================================
+
+export interface DentalsoftPaciente {
+  id: number;
+  cedula: string;
+  tipo_cedula: number;
+  celular?: string | null;
+  sexo?: string | null;
+  fecha_registro: string;
+  fecha_nacimiento?: string | null;
+  estado: number;
+  nombre: string;
+  email?: string;
+}
+
+export interface DentalsoftCita {
+  id: number;
+  fecha: string;
+  id_paciente: number;
+  id_sucursal: number;
+  inicio: string;
+  bloques: number;
+  estado: number;
+  estado_texto: string;
+  id_sala: number;
+  paciente?: DentalsoftPaciente | null;
+  sala?: { id: number; nombre: string };
+  notificable: boolean;
+  confirmable: boolean;
+  ingresable_a_en_espera: boolean;
+  cancelable: boolean;
+  observacion: string;
+}
+
+export interface DentalsoftSucursal {
+  id: number;
+  nombre: string;
+  telefono?: string;
+  direccion?: string;
+  estado: number;
+  estado_texto?: string;
+}
+
+export interface DentalsoftProfesional {
+  id_profesional: number;
+  nombre_completo: string;
+}
+
+export interface DentalsoftEspecialidad {
+  id: number;
+  nombre: string;
+  abreviacion?: string | boolean;
+  activo: boolean;
+}
+
+export const dentalsoftApi = {
+  testConnection: async (
+    clientId: string,
+  ): Promise<{ connected: boolean; message: string; branches?: number; professionals?: number }> => {
+    const response = await api.post(`/clients/${clientId}/dentalsoft/test-connection`);
+    return response.data;
+  },
+
+  // Pacientes
+  searchPatient: async (
+    clientId: string,
+    data: { cedula: string; tipo_cedula_texto: 'rut' | 'dni' },
+  ): Promise<DentalsoftPaciente> => {
+    const response = await api.post(`/clients/${clientId}/dentalsoft/patients/search`, data);
+    return response.data;
+  },
+
+  createPatient: async (
+    clientId: string,
+    data: {
+      cedula: string;
+      tipo_cedula_texto: 'rut' | 'dni';
+      nombre: string;
+      apellido_paterno: string;
+      apellido_materno?: string;
+      email: string;
+      celular: string;
+      id_referencia?: number;
+    },
+  ): Promise<{ mensaje: string; paciente: number }> => {
+    const response = await api.post(`/clients/${clientId}/dentalsoft/patients`, data);
+    return response.data;
+  },
+
+  // Profesionales / especialidades / sucursales
+  getProfessionals: async (clientId: string): Promise<DentalsoftProfesional[]> => {
+    const response = await api.get(`/clients/${clientId}/dentalsoft/professionals`);
+    return response.data;
+  },
+
+  getProfessionalsBySpecialty: async (clientId: string) => {
+    const response = await api.get(
+      `/clients/${clientId}/dentalsoft/professionals/by-specialty`,
+    );
+    return response.data;
+  },
+
+  getSpecialties: async (clientId: string): Promise<DentalsoftEspecialidad[]> => {
+    const response = await api.get(`/clients/${clientId}/dentalsoft/specialties`);
+    return response.data;
+  },
+
+  getBranches: async (clientId: string): Promise<DentalsoftSucursal[]> => {
+    const response = await api.get(`/clients/${clientId}/dentalsoft/branches`);
+    return response.data;
+  },
+
+  // Disponibilidad
+  searchAvailability: async (
+    clientId: string,
+    data: {
+      id_profesional: number | number[];
+      id_sucursal: number;
+      fecha_inicio: string;
+      duracion_minutos: number;
+    },
+  ) => {
+    const response = await api.post(`/clients/${clientId}/dentalsoft/availability/search`, data);
+    return response.data;
+  },
+
+  getMonthlyAvailability: async (
+    clientId: string,
+    data: {
+      id_profesional: number;
+      year: number;
+      month: number;
+      id_sucursal: number;
+      duracion_minutos: number;
+    },
+  ) => {
+    const response = await api.post(`/clients/${clientId}/dentalsoft/availability/monthly`, data);
+    return response.data;
+  },
+
+  getDailyAvailability: async (
+    clientId: string,
+    data: {
+      id_profesional: number;
+      fecha: string;
+      id_sucursal: number;
+      duracion_minutos: number;
+    },
+  ) => {
+    const response = await api.post(`/clients/${clientId}/dentalsoft/availability/daily`, data);
+    return response.data;
+  },
+
+  // Citas
+  getAppointment: async (clientId: string, citaId: number): Promise<DentalsoftCita> => {
+    const response = await api.get(`/clients/${clientId}/dentalsoft/appointments/${citaId}`);
+    return response.data;
+  },
+
+  getAppointmentsByBranchAndDate: async (
+    clientId: string,
+    data: { fecha: string; id_sucursal: number },
+  ): Promise<DentalsoftCita[]> => {
+    const response = await api.post(
+      `/clients/${clientId}/dentalsoft/appointments/day-branch`,
+      data,
+    );
+    return response.data;
+  },
+
+  createAppointment: async (
+    clientId: string,
+    data: {
+      id_sucursal: number;
+      id_profesional: number;
+      id_sala: number;
+      id_paciente: number;
+      fecha: string;
+      inicio: string;
+      duracion_minutos: number;
+      comentario?: string;
+      user_id?: string;
+    },
+  ) => {
+    const response = await api.post(`/clients/${clientId}/dentalsoft/appointments`, data);
+    return response.data;
+  },
+
+  getPatientAppointments: async (clientId: string, data: { id_paciente: number }) => {
+    const response = await api.post(
+      `/clients/${clientId}/dentalsoft/appointments/patient`,
+      data,
+    );
+    return response.data;
+  },
+
+  confirmAppointment: async (clientId: string, data: { id: number }) => {
+    const response = await api.post(
+      `/clients/${clientId}/dentalsoft/appointments/confirm`,
+      data,
+    );
+    return response.data;
+  },
+
+  cancelAppointment: async (clientId: string, data: { id: number }) => {
+    const response = await api.post(
+      `/clients/${clientId}/dentalsoft/appointments/cancel`,
+      data,
+    );
+    return response.data;
+  },
+
+};
+
+// ============================================
 // HELPER FUNCTIONS
 // ============================================
 
@@ -607,6 +825,8 @@ export function getIntegrationDisplayName(type: IntegrationType): string {
     [IntegrationType.MEDILINK]: 'MediLink',
     [IntegrationType.DENTALINK_MEDILINK]: 'Dentalink + MediLink',
     [IntegrationType.RESERVO]: 'Reservo',
+    [IntegrationType.DENTALSOFT]: 'Dentalsoft',
+    [IntegrationType.SACMED]: 'Sacmed',
     [IntegrationType.GOHIGHLEVEL]: 'GoHighLevel',
   };
   return names[type] || type;
@@ -621,6 +841,8 @@ export function getIntegrationColor(type: IntegrationType): string {
     [IntegrationType.MEDILINK]: 'bg-green-500',
     [IntegrationType.DENTALINK_MEDILINK]: 'bg-gradient-to-r from-blue-500 to-green-500',
     [IntegrationType.RESERVO]: 'bg-purple-500',
+    [IntegrationType.DENTALSOFT]: 'bg-pink-500',
+    [IntegrationType.SACMED]: 'bg-teal-500',
     [IntegrationType.GOHIGHLEVEL]: 'bg-orange-500',
   };
   return colors[type] || 'bg-gray-500';
@@ -1153,6 +1375,282 @@ export const reservoConfirmationsApi = {
   ): Promise<ReservoPendingConfirmation[]> => {
     const response = await api.get(
       `/clients/${clientId}/reservo-confirmations/pending/status/${status}`,
+    );
+    return response.data;
+  },
+};
+
+// ============================================
+// SACMED API (proxy de catálogo, pacientes y citas)
+// ============================================
+
+export const sacmedApi = {
+  getServices: async (clientId: string) => {
+    const response = await api.get(`/clients/${clientId}/sacmed/services`);
+    return response.data;
+  },
+
+  getSpecialties: async (clientId: string, idServicio: number) => {
+    const response = await api.post(`/clients/${clientId}/sacmed/specialties`, {
+      id_servicio: idServicio,
+    });
+    return response.data;
+  },
+
+  getPractitioners: async (clientId: string) => {
+    const response = await api.get(`/clients/${clientId}/sacmed/practitioners`);
+    return response.data;
+  },
+
+  getPractitionersByService: async (clientId: string, idServicio: number) => {
+    const response = await api.post(`/clients/${clientId}/sacmed/practitioners/by-service`, {
+      id_servicio: idServicio,
+    });
+    return response.data;
+  },
+
+  getPractitionersBySpecialty: async (clientId: string, idEspecialidad: number) => {
+    const response = await api.post(`/clients/${clientId}/sacmed/practitioners/by-specialty`, {
+      id_especialidad: idEspecialidad,
+    });
+    return response.data;
+  },
+
+  getDistricts: async (clientId: string) => {
+    const response = await api.get(`/clients/${clientId}/sacmed/districts`);
+    return response.data;
+  },
+
+  searchAvailability: async (
+    clientId: string,
+    data: {
+      fecha: string;
+      id_especialidad: number;
+      id_profesionales: string[];
+      id_servicio?: number;
+      duracion_minutos?: number;
+    },
+  ) => {
+    const response = await api.post(`/clients/${clientId}/sacmed/availability`, data);
+    return response.data;
+  },
+
+  searchPatient: async (clientId: string, rut: string) => {
+    const response = await api.post(`/clients/${clientId}/sacmed/patients/search`, { rut });
+    return response.data;
+  },
+
+  createPatient: async (clientId: string, data: Record<string, unknown>) => {
+    const response = await api.post(`/clients/${clientId}/sacmed/patients`, data);
+    return response.data;
+  },
+
+  getPatientAppointments: async (clientId: string, rut: string) => {
+    const response = await api.post(`/clients/${clientId}/sacmed/patients/appointments`, { rut });
+    return response.data;
+  },
+
+  createAppointment: async (clientId: string, data: Record<string, unknown>) => {
+    const response = await api.post(`/clients/${clientId}/sacmed/appointments`, data);
+    return response.data;
+  },
+
+  confirmAppointment: async (clientId: string, idCita: number) => {
+    const response = await api.post(`/clients/${clientId}/sacmed/appointments/confirm`, {
+      id_cita: idCita,
+    });
+    return response.data;
+  },
+
+  cancelAppointment: async (clientId: string, idCita: number) => {
+    const response = await api.post(`/clients/${clientId}/sacmed/appointments/cancel`, {
+      id_cita: idCita,
+    });
+    return response.data;
+  },
+
+  testConnection: async (clientId: string): Promise<{ connected: boolean; message: string }> => {
+    const response = await api.post(`/clients/${clientId}/sacmed/test-connection`);
+    return response.data;
+  },
+};
+
+// ============================================
+// SACMED CONFIRMATIONS TYPES & API
+// ============================================
+
+export interface SacmedConfirmationConfig {
+  id: string;
+  clientId: string;
+  name: string;
+  daysBeforeAppointment: number;
+  timeToSend: string; // HH:mm format
+  ghlCalendarId: string;
+  isEnabled: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SacmedNormalizedAppointment {
+  id_paciente: string;
+  nombre_paciente: string;
+  rut_paciente?: string;
+  email_paciente?: string;
+  telefono_paciente?: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  duracion: number;
+  id_profesional: string;
+  nombre_profesional: string;
+  estado_codigo: string;
+  estado_descripcion: string;
+  modalidad?: string;
+}
+
+export enum SacmedConfirmationStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
+
+export interface SacmedPendingConfirmation {
+  id: string;
+  clientId: string;
+  configId: string;
+  sacmedEventId: string;
+  appointmentData: SacmedNormalizedAppointment;
+  status: SacmedConfirmationStatus;
+  scheduledFor: string;
+  ghlContactId?: string;
+  errorMessage?: string;
+  attempts: number;
+  executionLog?: ExecutionStepEntry[] | null;
+  processedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  config?: SacmedConfirmationConfig;
+}
+
+export interface CreateSacmedConfirmationConfigDto {
+  name: string;
+  daysBeforeAppointment: number;
+  timeToSend: string;
+  ghlCalendarId: string;
+  isEnabled?: boolean;
+  order: number;
+}
+
+export interface UpdateSacmedConfirmationConfigDto {
+  name?: string;
+  daysBeforeAppointment?: number;
+  timeToSend?: string;
+  ghlCalendarId?: string;
+  isEnabled?: boolean;
+  order?: number;
+}
+
+export const sacmedConfirmationsApi = {
+  // Configuraciones
+  getConfigs: async (clientId: string): Promise<SacmedConfirmationConfig[]> => {
+    const response = await api.get(`/clients/${clientId}/sacmed-confirmations/configs`);
+    return response.data;
+  },
+
+  getConfig: async (clientId: string, configId: string): Promise<SacmedConfirmationConfig> => {
+    const response = await api.get(`/clients/${clientId}/sacmed-confirmations/configs/${configId}`);
+    return response.data;
+  },
+
+  createConfig: async (
+    clientId: string,
+    data: CreateSacmedConfirmationConfigDto,
+  ): Promise<SacmedConfirmationConfig> => {
+    const response = await api.post(`/clients/${clientId}/sacmed-confirmations/configs`, data);
+    return response.data;
+  },
+
+  updateConfig: async (
+    clientId: string,
+    configId: string,
+    data: UpdateSacmedConfirmationConfigDto,
+  ): Promise<SacmedConfirmationConfig> => {
+    const response = await api.put(
+      `/clients/${clientId}/sacmed-confirmations/configs/${configId}`,
+      data,
+    );
+    return response.data;
+  },
+
+  deleteConfig: async (clientId: string, configId: string): Promise<void> => {
+    await api.delete(`/clients/${clientId}/sacmed-confirmations/configs/${configId}`);
+  },
+
+  // Procesamiento
+  trigger: async (
+    clientId: string,
+    params?: { configId?: string; targetDate?: string },
+  ): Promise<{ message: string; stored: number; totalAppointments: number }> => {
+    const response = await api.post(
+      `/clients/${clientId}/sacmed-confirmations/trigger`,
+      params || {},
+    );
+    return response.data;
+  },
+
+  process: async (
+    clientId: string,
+  ): Promise<{ message: string; processed: number; completed: number; failed: number }> => {
+    const response = await api.post(`/clients/${clientId}/sacmed-confirmations/process`);
+    return response.data;
+  },
+
+  processSelected: async (
+    clientId: string,
+    confirmationIds: string[],
+  ): Promise<{ message: string; processed: number; completed: number; failed: number }> => {
+    const response = await api.post(`/clients/${clientId}/sacmed-confirmations/process-selected`, {
+      confirmationIds,
+    });
+    return response.data;
+  },
+
+  processAll: async (
+    clientId: string,
+  ): Promise<{ message: string; processed: number; completed: number; failed: number }> => {
+    const response = await api.post(`/clients/${clientId}/sacmed-confirmations/process-all`);
+    return response.data;
+  },
+
+  // Setup de GHL
+  setupGHL: async (
+    clientId: string,
+  ): Promise<{ success: boolean; message: string; created: string[]; existing: string[]; errors: string[] }> => {
+    const response = await api.post(`/clients/${clientId}/sacmed-confirmations/setup-ghl`);
+    return response.data;
+  },
+
+  validateGHL: async (
+    clientId: string,
+  ): Promise<{ valid: boolean; message: string; missing?: string[]; required?: string[] }> => {
+    const response = await api.get(`/clients/${clientId}/sacmed-confirmations/validate-ghl`);
+    return response.data;
+  },
+
+  // Consultas
+  getPending: async (clientId: string): Promise<SacmedPendingConfirmation[]> => {
+    const response = await api.get(`/clients/${clientId}/sacmed-confirmations/pending`);
+    return response.data;
+  },
+
+  getPendingByStatus: async (
+    clientId: string,
+    status: SacmedConfirmationStatus,
+  ): Promise<SacmedPendingConfirmation[]> => {
+    const response = await api.get(
+      `/clients/${clientId}/sacmed-confirmations/pending/status/${status}`,
     );
     return response.data;
   },
