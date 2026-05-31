@@ -1,11 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import { AVAILABLE_ENDPOINTS, EndpointDefinition } from './endpoint-config';
 
-/** Categorías de endpoints que pertenecen exclusivamente a una integración */
-const RESERVO_CATEGORIES = new Set(['reservo']);
-const GHL_CATEGORIES = new Set(['gohighlevel']);
-/** Categorías que pertenecen exclusivamente a Dentalink/MediLink */
-const DENTALINK_CATEGORIES = new Set(['clinic']);
+/**
+ * Mapeo de cada categoría de endpoint a las integraciones que la usan.
+ * Un endpoint se muestra a un cliente solo si su categoría pertenece a alguna
+ * de las integraciones que el cliente tiene habilitadas.
+ *
+ * IMPORTANTE: al agregar una categoría nueva (nueva plataforma), mapearla aquí.
+ * Una categoría sin mapear se muestra a TODOS los clientes (fail-open) para no
+ * ocultar endpoints por olvido.
+ */
+const HEALTHATOM = ['dentalink', 'medilink', 'dentalink_medilink'];
+const CATEGORY_INTEGRATIONS: Record<string, string[]> = {
+  // Endpoints legacy de Dentalink/MediLink (rutas sin prefijo de plataforma)
+  availability: HEALTHATOM,
+  patients: HEALTHATOM,
+  appointments: HEALTHATOM,
+  clinic: HEALTHATOM,
+  testing: HEALTHATOM,
+  // Exclusivas por plataforma
+  reservo: ['reservo'],
+  dentalsoft: ['dentalsoft'],
+  sacmed: ['sacmed'],
+  gohighlevel: ['gohighlevel'],
+};
 
 @Injectable()
 export class EndpointsService {
@@ -62,45 +80,14 @@ export class EndpointsService {
    * con URLs completas.
    */
   getEndpointsForClient(clientId: string, integrationTypes: string[]): EndpointDefinition[] {
-    const hasReservo = integrationTypes.includes('reservo');
-    const hasDentalink =
-      integrationTypes.includes('dentalink') ||
-      integrationTypes.includes('dentalink_medilink') ||
-      integrationTypes.includes('medilink');
-    const hasGHL = integrationTypes.includes('gohighlevel');
+    const active = new Set(integrationTypes);
 
     const filtered = AVAILABLE_ENDPOINTS.filter((endpoint) => {
-      const isReservoEndpoint = RESERVO_CATEGORIES.has(endpoint.category);
-      const isGHLEndpoint = GHL_CATEGORIES.has(endpoint.category);
-      const isDentalinkEndpoint = DENTALINK_CATEGORIES.has(endpoint.category);
-
-      // GHL-only clients: show only GHL endpoints
-      if (hasGHL && !hasDentalink && !hasReservo) {
-        return isGHLEndpoint;
-      }
-
-      // Reservo-only clients: show only Reservo endpoints
-      if (hasReservo && !hasDentalink && !hasGHL) {
-        return isReservoEndpoint;
-      }
-
-      // Dentalink-only clients: show everything except Reservo and GHL
-      if (hasDentalink && !hasReservo && !hasGHL) {
-        return !isReservoEndpoint && !isGHLEndpoint;
-      }
-
-      // Mixed: show all applicable
-      if (hasReservo) {
-        if (isGHLEndpoint && !hasGHL) return false;
-        return true;
-      }
-      if (hasGHL) {
-        if (isReservoEndpoint && !hasReservo) return false;
-        return true;
-      }
-
-      // Default: show non-exclusive endpoints
-      return !isReservoEndpoint && !isGHLEndpoint && !isDentalinkEndpoint;
+      const owners = CATEGORY_INTEGRATIONS[endpoint.category];
+      // Categoría sin mapear → fail-open (visible) para no ocultar endpoints nuevos.
+      if (!owners) return true;
+      // Mostrar solo si el cliente tiene habilitada alguna integración dueña de la categoría.
+      return owners.some((type) => active.has(type));
     });
 
     return filtered.map((endpoint) => ({
