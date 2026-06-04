@@ -34,8 +34,26 @@ export class SacmedService {
     };
   }
 
+  /**
+   * Resuelve la base URL de la API de Sacmed de forma defensiva.
+   * Acepta que el cliente pegue por error la URL de Swagger (`.../swagger/index.html`)
+   * o el dominio pelado: en esos casos deriva `${origin}/api/v1`. Si ya viene una
+   * base válida `.../api/vN`, la usa tal cual (sin trailing slash).
+   */
   private baseUrl(config: SacmedConfig): string {
-    return config.baseUrl || SACMED_API.prodBaseUrl;
+    const raw = (config.baseUrl || '').trim();
+    if (!raw) return SACMED_API.prodBaseUrl;
+
+    // Ya apunta a /api/vN → usar tal cual (recortando lo que venga después)
+    const apiMatch = raw.match(/^(https?:\/\/[^/]+\/api\/v\d+)/i);
+    if (apiMatch) return apiMatch[1];
+
+    // Cualquier otra ruta (swagger, dominio pelado, etc.) → origin + /api/v1
+    try {
+      return `${new URL(raw).origin}/api/v1`;
+    } catch {
+      return SACMED_API.prodBaseUrl;
+    }
   }
 
   private extractError(error: any): string {

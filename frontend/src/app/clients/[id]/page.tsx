@@ -197,6 +197,22 @@ export default function ClientDetailPage() {
                       if (!token) return 'No configurada';
                       return showApiKey ? token : `${token.substring(0, 30)}...`;
                     }
+                    const sacmedIntegration = client.integrations?.find(
+                      (i) => i.integrationType === IntegrationType.SACMED
+                    );
+                    if (sacmedIntegration) {
+                      const token = sacmedIntegration.config?.apiKey;
+                      if (!token) return 'No configurada';
+                      return showApiKey ? token : `${token.substring(0, 30)}...`;
+                    }
+                    const dentalsoftIntegration = client.integrations?.find(
+                      (i) => i.integrationType === IntegrationType.DENTALSOFT
+                    );
+                    if (dentalsoftIntegration) {
+                      const token = dentalsoftIntegration.config?.clientSecret;
+                      if (!token) return 'No configurada';
+                      return showApiKey ? token : `${token.substring(0, 30)}...`;
+                    }
                     const dentalinkIntegration = client.integrations?.find(
                       (i) => i.integrationType === IntegrationType.DENTALINK ||
                              i.integrationType === IntegrationType.MEDILINK ||
