@@ -244,7 +244,10 @@ export class SacmedService {
     try {
       const response = await axios.post(`${this.baseUrl(config)}/events`, payload, {
         headers: { ...this.createHeaders(config), 'Content-Type': 'application/json' },
-        timeout: 30000,
+        // Sacmed prod tarda >30s en crear el evento (valida slot + sincroniza). Con
+        // 30s el proxy cortaba ANTES de recibir el eventId aunque la cita SÍ se creaba
+        // → falso negativo y riesgo de duplicados si el agente reintenta. 90s da margen.
+        timeout: 90000,
         validateStatus: () => true,
       });
 
