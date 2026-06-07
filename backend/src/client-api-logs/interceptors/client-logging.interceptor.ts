@@ -45,6 +45,9 @@ export class ClientLoggingInterceptor implements NestInterceptor {
     const startTime = Date.now();
     const userAgent = headers['user-agent'] || null;
 
+    // Trazabilidad del agente Gloory AI (headers X-Gloory-*)
+    const tracking = this.extractGlooryTracking(headers);
+
     return next.handle().pipe(
       tap((responseBody) => {
         // Éxito: capturar respuesta 2xx
@@ -65,6 +68,7 @@ export class ClientLoggingInterceptor implements NestInterceptor {
             duration,
             ipAddress: this.getClientIp(request),
             userAgent,
+            ...tracking,
           });
         }
       }),
@@ -86,6 +90,7 @@ export class ClientLoggingInterceptor implements NestInterceptor {
           duration,
           ipAddress: this.getClientIp(request),
           userAgent,
+          ...tracking,
         });
 
         // Re-lanzar el error para que lo maneje el filter de excepciones
@@ -109,6 +114,9 @@ export class ClientLoggingInterceptor implements NestInterceptor {
     duration: number;
     ipAddress: string | null;
     userAgent: string | null;
+    threadId?: string | null;
+    turn?: number | null;
+    agentUserId?: string | null;
   }): void {
     // Ejecutar de forma asíncrona sin bloquear
     setImmediate(async () => {
@@ -132,6 +140,33 @@ export class ClientLoggingInterceptor implements NestInterceptor {
         }
       }
     });
+  }
+
+  /**
+   * Extrae la trazabilidad del agente Gloory AI desde los headers X-Gloory-*.
+   * Estos headers los envía el swarm en cada tool call para poder correlacionar
+   * la ejecución con el thread/turno de la conversación que la originó.
+   */
+  private extractGlooryTracking(headers: Request['headers']): {
+    threadId: string | null;
+    turn: number | null;
+    agentUserId: string | null;
+  } {
+    const first = (value: string | string[] | undefined): string | null => {
+      if (!value) return null;
+      const raw = Array.isArray(value) ? value[0] : value;
+      const trimmed = raw?.trim();
+      return trimmed && trimmed !== 'unknown' ? trimmed : null;
+    };
+
+    const turnRaw = first(headers['x-gloory-turn']);
+    const turnParsed = turnRaw !== null ? parseInt(turnRaw, 10) : NaN;
+
+    return {
+      threadId: first(headers['x-gloory-thread-id']),
+      turn: Number.isInteger(turnParsed) ? turnParsed : null,
+      agentUserId: first(headers['x-gloory-user-id']),
+    };
   }
 
   /**

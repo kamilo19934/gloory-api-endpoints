@@ -19,6 +19,9 @@ export interface CreateLogDto {
   duration: number;
   ipAddress?: string | null;
   userAgent?: string | null;
+  threadId?: string | null;
+  turn?: number | null;
+  agentUserId?: string | null;
 }
 
 @Injectable()
@@ -115,6 +118,12 @@ export class ClientApiLogsService {
       qb.andWhere('log.endpoint LIKE :endpoint', {
         endpoint: `%${query.endpoint}%`,
       });
+    }
+
+    // Filtro por thread (conversación del agente) — permite ver toda la
+    // secuencia de tool calls de un mismo hilo
+    if (query.threadId) {
+      qb.andWhere('log.threadId = :threadId', { threadId: query.threadId });
     }
 
     const [logs, total] = await qb
