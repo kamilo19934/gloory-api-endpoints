@@ -49,6 +49,7 @@ export default function ClientLogsPage() {
   const [searchDebounced, setSearchDebounced] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusCategory | ''>('');
   const [endpointFilter, setEndpointFilter] = useState('');
+  const [threadFilter, setThreadFilter] = useState('');
   const [page, setPage] = useState(1);
 
   // Modal de detalle
@@ -104,6 +105,9 @@ export default function ClientLogsPage() {
       if (endpointFilter) {
         queryParams.endpoint = endpointFilter;
       }
+      if (threadFilter) {
+        queryParams.threadId = threadFilter;
+      }
 
       const response = await clientApiLogsApi.getLogs(clientId, queryParams);
       setLogs(response.data);
@@ -114,7 +118,7 @@ export default function ClientLogsPage() {
     } finally {
       setLoadingLogs(false);
     }
-  }, [clientId, page, searchDebounced, statusFilter, endpointFilter]);
+  }, [clientId, page, searchDebounced, statusFilter, endpointFilter, threadFilter]);
 
   useEffect(() => {
     if (clientId) {
@@ -147,7 +151,15 @@ export default function ClientLogsPage() {
     setSearchDebounced('');
     setStatusFilter('');
     setEndpointFilter('');
+    setThreadFilter('');
     setPage(1);
+  };
+
+  // Filtra la tabla por un thread concreto (toda la secuencia de tool calls de esa conversación)
+  const handleFilterByThread = (threadId: string) => {
+    setThreadFilter(threadId);
+    setPage(1);
+    setShowDetail(false);
   };
 
   const handleDeleteLogs = async () => {
@@ -182,6 +194,9 @@ export default function ClientLogsPage() {
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(2)}s`;
   };
+
+  const shortThread = (threadId: string) =>
+    threadId.length > 14 ? `${threadId.slice(0, 6)}…${threadId.slice(-4)}` : threadId;
 
   if (loading) {
     return (
@@ -321,7 +336,7 @@ export default function ClientLogsPage() {
             </div>
 
             {/* Limpiar filtros */}
-            {(search || statusFilter || endpointFilter) && (
+            {(search || statusFilter || endpointFilter || threadFilter) && (
               <button
                 onClick={handleClearFilters}
                 className="inline-flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900"
@@ -331,6 +346,20 @@ export default function ClientLogsPage() {
               </button>
             )}
           </div>
+
+          {threadFilter && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-md bg-indigo-50 border border-indigo-200 px-3 py-1.5 text-sm text-indigo-800">
+              <span>Mostrando solo el thread</span>
+              <code className="font-mono font-semibold">{threadFilter}</code>
+              <button
+                onClick={() => { setThreadFilter(''); setPage(1); }}
+                className="ml-1 text-indigo-500 hover:text-indigo-700"
+                title="Quitar filtro de thread"
+              >
+                <FiX />
+              </button>
+            </div>
+          )}
 
           {searchDebounced && searchDebounced.length >= 2 && (
             <p className="text-sm text-gray-500 mt-2">
@@ -349,7 +378,7 @@ export default function ClientLogsPage() {
             <div className="text-center py-12">
               <FiInfo className="mx-auto text-4xl text-gray-400 mb-4" />
               <p className="text-gray-500">No hay logs que mostrar</p>
-              {(search || statusFilter || endpointFilter) && (
+              {(search || statusFilter || endpointFilter || threadFilter) && (
                 <button
                   onClick={handleClearFilters}
                   className="mt-2 text-primary-600 hover:text-primary-700"
@@ -372,6 +401,9 @@ export default function ClientLogsPage() {
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Endpoint
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Thread / Turno
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
@@ -411,6 +443,29 @@ export default function ClientLogsPage() {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-medium">
                           {log.endpoint}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
+                          {log.threadId ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleFilterByThread(log.threadId as string);
+                                }}
+                                title={`Ver todo el thread ${log.threadId}`}
+                                className="font-mono text-xs text-indigo-600 hover:text-indigo-800 hover:underline"
+                              >
+                                {shortThread(log.threadId)}
+                              </button>
+                              {log.turn != null && (
+                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gray-100 text-gray-600">
+                                  t{log.turn}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-semibold rounded ${getStatusCategoryColor(log.statusCategory)}`}>
@@ -521,6 +576,37 @@ export default function ClientLogsPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Trazabilidad del agente (Gloory AI) */}
+              {(selectedLog.threadId || selectedLog.turn != null || selectedLog.agentUserId) && (
+                <div className="mb-6">
+                  <p className="text-sm text-gray-500 mb-2">Trazabilidad del agente</p>
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-md p-3 grid grid-cols-2 gap-3 text-sm">
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Thread ID: </span>
+                      {selectedLog.threadId ? (
+                        <button
+                          onClick={() => handleFilterByThread(selectedLog.threadId as string)}
+                          className="font-mono text-indigo-700 hover:underline"
+                          title="Ver todo el thread"
+                        >
+                          {selectedLog.threadId}
+                        </button>
+                      ) : (
+                        <span className="font-mono text-gray-400">N/A</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Turno: </span>
+                      <span className="font-mono">{selectedLog.turn != null ? selectedLog.turn : 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Contact ID: </span>
+                      <span className="font-mono">{selectedLog.agentUserId || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Error Message */}
               {selectedLog.errorMessage && (

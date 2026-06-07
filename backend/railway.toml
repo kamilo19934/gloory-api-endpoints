@@ -3,6 +3,11 @@ builder = "nixpacks"
 buildCommand = "npm run build"
 
 [deploy]
+# Corre las migraciones pendientes ANTES de levantar la nueva versión.
+# Se ejecuta dentro de la red de Railway (alcanza postgres.railway.internal) y,
+# si falla, el deploy aborta y la versión anterior sigue viva (fail-safe).
+# synchronize está OFF en prod (DB_SYNC=false): el esquema lo gobiernan las migraciones.
+preDeployCommand = "npm run migration:run"
 startCommand = "npm run start:prod"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10

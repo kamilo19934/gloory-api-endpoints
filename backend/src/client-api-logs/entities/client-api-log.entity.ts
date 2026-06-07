@@ -14,6 +14,7 @@ export type StatusCategory = '2xx' | '4xx' | '5xx';
 @Entity('client_api_logs')
 @Index(['clientId', 'createdAt'])
 @Index(['clientId', 'statusCategory'])
+@Index(['clientId', 'threadId'])
 export class ClientApiLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -61,6 +62,17 @@ export class ClientApiLog {
 
   @Column({ length: 500, nullable: true })
   userAgent: string | null;
+
+  // Trazabilidad del agente (Gloory AI) — llega vía headers X-Gloory-*
+  // Permite correlacionar cada tool call con el thread/conversación que la originó.
+  @Column({ length: 255, nullable: true })
+  threadId: string | null; // X-Gloory-Thread-Id
+
+  @Column({ type: 'int', nullable: true })
+  turn: number | null; // X-Gloory-Turn (turno del usuario o paso de LangGraph)
+
+  @Column({ length: 255, nullable: true })
+  agentUserId: string | null; // X-Gloory-User-Id (contact_id del CRM)
 
   @CreateDateColumn()
   @Index()

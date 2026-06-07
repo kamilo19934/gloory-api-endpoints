@@ -24,6 +24,14 @@ export class QueryLogsDto {
   endpoint?: string;
 
   /**
+   * Filtro por thread del agente (X-Gloory-Thread-Id): muestra toda la
+   * secuencia de tool calls de una misma conversación.
+   */
+  @IsOptional()
+  @IsString()
+  threadId?: string;
+
+  /**
    * Número de página (1-based)
    */
   @IsOptional()

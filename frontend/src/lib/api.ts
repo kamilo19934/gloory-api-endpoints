@@ -1096,6 +1096,10 @@ export interface ClientApiLog {
   duration: number;
   ipAddress: string | null;
   userAgent: string | null;
+  // Trazabilidad del agente Gloory AI (headers X-Gloory-*)
+  threadId: string | null;
+  turn: number | null;
+  agentUserId: string | null;
   createdAt: string;
 }
 
@@ -1103,6 +1107,7 @@ export interface LogsQueryParams {
   search?: string;
   status?: StatusCategory;
   endpoint?: string;
+  threadId?: string;
   page?: number;
   limit?: number;
 }
