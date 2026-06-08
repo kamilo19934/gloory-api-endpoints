@@ -474,7 +474,14 @@ export class HealthAtomService {
         errors.push(msg);
         this.logger.warn(`⚠️ Error en ${api}: ${msg}`);
         if (error.response?.status === 404) {
-          return { success: false, error: 'Error. Revisa IDs.' };
+          return {
+            success: false,
+            error:
+              'Error: alguno de los IDs (profesional o sucursal) no existe. ' +
+              'Para obtener los IDs correctos usa: "listar_sucursales" para ver las sucursales, ' +
+              '"listar_profesionales" para ver los profesionales, o ' +
+              '"listar_profesionales_por_sucursal" para ver los profesionales de una sucursal específica.',
+          };
         }
       }
     }
