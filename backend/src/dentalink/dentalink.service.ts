@@ -358,7 +358,13 @@ export class DentalinkService {
               this.logger.warn(`📄 Respuesta del servidor: ${JSON.stringify(errorMsg)}`);
             }
             if (statusCode === 404) {
-              throw new HttpException('Error. Revisa IDs.', HttpStatus.NOT_FOUND);
+              throw new HttpException(
+                'Error: alguno de los IDs (profesional o sucursal) no existe. ' +
+                  'Para obtener los IDs correctos usa: "listar_sucursales" para ver las sucursales, ' +
+                  '"listar_profesionales" para ver los profesionales, o ' +
+                  '"listar_profesionales_por_sucursal" para ver los profesionales de una sucursal específica.',
+                HttpStatus.NOT_FOUND,
+              );
             }
           }
         }
