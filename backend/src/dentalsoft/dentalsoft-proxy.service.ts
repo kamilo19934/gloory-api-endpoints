@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import * as moment from 'moment-timezone';
 import { ClientsService } from '../clients/clients.service';
 import { DentalsoftService } from '../integrations/dentalsoft/dentalsoft.service';
 import {
@@ -79,6 +80,13 @@ export class DentalsoftProxyService {
   }
 
   private async getDentalsoftConfig(clientId: string): Promise<DentalsoftConfig> {
+    const { config } = await this.getClientAndConfig(clientId);
+    return config;
+  }
+
+  private async getClientAndConfig(
+    clientId: string,
+  ): Promise<{ client: any; config: DentalsoftConfig }> {
     const client = await this.clientsService.findOne(clientId);
     const integration = client.getIntegration('dentalsoft');
     if (!integration) {
@@ -87,7 +95,52 @@ export class DentalsoftProxyService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    return integration.config as DentalsoftConfig;
+    return { client, config: integration.config as DentalsoftConfig };
+  }
+
+  /**
+   * Resuelve el timezone de la clínica priorizando la config de Dentalsoft, luego el
+   * del cliente. Cae a `America/Santiago` solo como último recurso (clientes chilenos)
+   * para garantizar un tz válido para moment.
+   */
+  private resolveTz(config: DentalsoftConfig, client?: any): string {
+    const tz = config.timezone || client?.timezone || 'America/Santiago';
+    return moment.tz.zone(tz) ? tz : 'America/Santiago';
+  }
+
+  private readonly DIAS_SEMANA = [
+    'Domingo',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+  ];
+  private readonly MESES = [
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
+  ];
+
+  /**
+   * Formatea una fecha `YYYY-MM-DD` a un texto legible en español, ej:
+   * `2026-06-09` → "Martes 9 de Junio 2026". Si la fecha no es válida, devuelve
+   * el valor original.
+   */
+  private formatFechaLegible(fecha: string): string {
+    const m = moment(fecha, 'YYYY-MM-DD', true);
+    if (!m.isValid()) return fecha;
+    return `${this.DIAS_SEMANA[m.day()]} ${m.date()} de ${this.MESES[m.month()]} ${m.year()}`;
   }
 
   /**
@@ -298,7 +351,7 @@ export class DentalsoftProxyService {
   // ============================
 
   async getMonthlyAvailability(clientId: string, dto: DentalsoftMonthlyAvailabilityDto) {
-    const config = await this.getDentalsoftConfig(clientId);
+    const { client, config } = await this.getClientAndConfig(clientId);
     const dur = await this.resolverDuracion(dto.duracion_minutos, config);
     const result = await this.dentalsoftService.getMonthlyAvailability(
       {
@@ -316,6 +369,15 @@ export class DentalsoftProxyService {
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    // Descartar días que ya pasaron (anteriores a hoy en la zona de la clínica) y
+    // agregar la fecha legible. Dentalsoft no filtra el presente.
+    const tz = this.resolveTz(config, client);
+    const hoy = moment.tz(tz).format('YYYY-MM-DD');
+    const dias = (result.data || [])
+      .filter((dia) => dia.fecha >= hoy)
+      .map((dia) => ({ ...dia, fecha: this.formatFechaLegible(dia.fecha) }));
+
     return {
       duracion_bloque_minutos: dur.duracion_bloque_minutos,
       duracion_solicitada_minutos: dur.duracion_solicitada_minutos,
@@ -324,7 +386,7 @@ export class DentalsoftProxyService {
       mensaje_ajuste: dur.mensaje_ajuste,
       default_aplicado: dur.default_aplicado,
       mensaje_default: dur.mensaje_default,
-      dias: result.data || [],
+      dias,
     };
   }
 
@@ -343,7 +405,7 @@ export class DentalsoftProxyService {
    * que el agente pueda agendar directamente con `crear_cita`.
    */
   async searchAvailability(clientId: string, dto: DentalsoftSearchAvailabilityDto) {
-    const config = await this.getDentalsoftConfig(clientId);
+    const { client, config } = await this.getClientAndConfig(clientId);
     // Resolver duración (bloques + ajuste) y listado de profesionales en paralelo.
     // El listado se usa para mapear id_profesional → nombre_completo en la respuesta.
     const [dur, profesionalesResult] = await Promise.all([
@@ -351,6 +413,11 @@ export class DentalsoftProxyService {
       this.dentalsoftService.getProfesionales(config),
     ]);
     const bloques = dur.bloques;
+
+    // "Ahora" en la zona de la clínica — para descartar horarios que ya pasaron.
+    // La API de Dentalsoft no filtra el presente, así que lo hacemos acá.
+    const tz = this.resolveTz(config, client);
+    const now = moment.tz(tz);
     const profMap = new Map<number, string>();
     for (const p of profesionalesResult.data || []) {
       profMap.set(p.id_profesional, p.nombre_completo);
@@ -407,11 +474,15 @@ export class DentalsoftProxyService {
         const { fecha, id_profesional } = calls[i];
         const slots = results[i].data || [];
         if (slots.length === 0) continue;
-        if (!byDate.has(fecha)) byDate.set(fecha, new Map());
-        const profMap2 = byDate.get(fecha)!;
-        if (!profMap2.has(id_profesional)) profMap2.set(id_profesional, new Map());
-        const salaMap = profMap2.get(id_profesional)!;
         for (const slot of slots) {
+          // Descartar horarios que ya pasaron (presente y pasado).
+          const slotInicio = moment.tz(`${fecha}T${slot.inicio}`, tz);
+          if (slotInicio.isValid() && slotInicio.isBefore(now)) continue;
+
+          if (!byDate.has(fecha)) byDate.set(fecha, new Map());
+          const profMap2 = byDate.get(fecha)!;
+          if (!profMap2.has(id_profesional)) profMap2.set(id_profesional, new Map());
+          const salaMap = profMap2.get(id_profesional)!;
           if (!salaMap.has(slot.id_sala)) {
             salaMap.set(slot.id_sala, { nombre_sala: slot.nombre_sala, slots: new Set() });
           }
@@ -443,9 +514,13 @@ export class DentalsoftProxyService {
               };
             },
           );
+          // `fecha` se mantiene en ISO (YYYY-MM-DD) para la lógica interna; se
+          // convierte a texto legible recién en la respuesta.
           return { fecha, total_slots: totalDia, profesionales };
         })
-        .filter((d): d is { fecha: string; total_slots: number; profesionales: any[] } => d !== null);
+        .filter(
+          (d): d is { fecha: string; total_slots: number; profesionales: any[] } => d !== null,
+        );
 
       if (weekDays.length === 0) continue; // sin disponibilidad, siguiente semana
 
@@ -470,13 +545,13 @@ export class DentalsoftProxyService {
         semana_buscada: {
           // `desde` = primer día de la semana buscada.
           // `hasta` = último día efectivamente entregado (puede ser < día 7 si se aplicó el cap).
-          desde: days[0],
-          hasta: capped[capped.length - 1].fecha,
+          desde: this.formatFechaLegible(days[0]),
+          hasta: this.formatFechaLegible(capped[capped.length - 1].fecha),
           numero: week + 1, // 1-indexed para la UI/agente
         },
         cap_alcanzado: capAlcanzado,
         total_slots: total,
-        dias: capped,
+        dias: capped.map((d) => ({ ...d, fecha: this.formatFechaLegible(d.fecha) })),
       };
     }
 
@@ -497,7 +572,7 @@ export class DentalsoftProxyService {
   }
 
   async getDailyAvailability(clientId: string, dto: DentalsoftDailyAvailabilityDto) {
-    const config = await this.getDentalsoftConfig(clientId);
+    const { client, config } = await this.getClientAndConfig(clientId);
     const dur = await this.resolverDuracion(dto.duracion_minutos, config);
     const result = await this.dentalsoftService.getDailyAvailability(
       {
@@ -514,6 +589,15 @@ export class DentalsoftProxyService {
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    // Descartar horarios que ya pasaron (Dentalsoft no filtra el presente).
+    const tz = this.resolveTz(config, client);
+    const now = moment.tz(tz);
+    const slots = (result.data || []).filter((slot) => {
+      const slotInicio = moment.tz(`${dto.fecha}T${slot.inicio}`, tz);
+      return !slotInicio.isValid() || !slotInicio.isBefore(now);
+    });
+
     return {
       duracion_bloque_minutos: dur.duracion_bloque_minutos,
       duracion_solicitada_minutos: dur.duracion_solicitada_minutos,
@@ -522,7 +606,8 @@ export class DentalsoftProxyService {
       mensaje_ajuste: dur.mensaje_ajuste,
       default_aplicado: dur.default_aplicado,
       mensaje_default: dur.mensaje_default,
-      slots: result.data || [],
+      fecha: this.formatFechaLegible(dto.fecha),
+      slots,
     };
   }
 

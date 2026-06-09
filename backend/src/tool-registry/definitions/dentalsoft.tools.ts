@@ -50,7 +50,7 @@ export const DENTALSOFT_TOOLS: ToolSchema[] = [
   {
     name: 'buscar_disponibilidad',
     description:
-      'Busca horarios disponibles para uno o varios profesionales desde una fecha. Si no hay horarios en la semana de la fecha entregada, automáticamente busca en la siguiente, hasta 4 semanas. Retorna los horarios agrupados por día (máximo ~50 horarios).',
+      'Busca horarios disponibles para uno o varios profesionales desde una fecha. Si no hay horarios en la semana de la fecha entregada, automáticamente busca en la siguiente, hasta 4 semanas. Retorna los horarios agrupados por día (máximo ~50 horarios). Solo devuelve horarios futuros: descarta los que ya pasaron respecto al momento actual. El campo `fecha` de cada día viene en texto legible (ej: "Martes 9 de Junio 2026").',
     target: 'external',
     endpoint: '/api/clients/{clientId}/dentalsoft/availability/search',
     method: 'POST',
@@ -85,7 +85,7 @@ export const DENTALSOFT_TOOLS: ToolSchema[] = [
   {
     name: 'disponibilidad_mensual',
     description:
-      'Obtiene la disponibilidad mensual de un profesional en una sucursal de Dentalsoft.',
+      'Obtiene la disponibilidad mensual de un profesional en una sucursal de Dentalsoft. Omite los días anteriores a hoy. El campo `fecha` de cada día viene en texto legible (ej: "Martes 9 de Junio 2026").',
     target: 'external',
     endpoint: '/api/clients/{clientId}/dentalsoft/availability/monthly',
     method: 'POST',
@@ -122,7 +122,8 @@ export const DENTALSOFT_TOOLS: ToolSchema[] = [
   },
   {
     name: 'disponibilidad_diaria',
-    description: 'Obtiene horarios disponibles para un día específico en Dentalsoft.',
+    description:
+      'Obtiene horarios disponibles para un día específico en Dentalsoft. Solo devuelve horarios futuros: descarta los que ya pasaron respecto al momento actual. El campo `fecha` viene en texto legible (ej: "Martes 9 de Junio 2026").',
     target: 'external',
     endpoint: '/api/clients/{clientId}/dentalsoft/availability/daily',
     method: 'POST',
