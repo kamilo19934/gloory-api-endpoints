@@ -110,12 +110,9 @@ export class SacmedGhlSetupService {
       });
 
       const existingFields = data?.customFields || [];
-      const existingFieldNames = existingFields.map((f: any) => f.name.toLowerCase());
 
       for (const fieldDef of this.REQUIRED_CUSTOM_FIELDS) {
-        const fieldNameLower = fieldDef.name.toLowerCase();
-
-        if (existingFieldNames.includes(fieldNameLower)) {
+        if (this.fieldExists(existingFields, fieldDef)) {
           existing.push(fieldDef.name);
         } else {
           try {
@@ -138,6 +135,25 @@ export class SacmedGhlSetupService {
       this.logger.error(`Error general verificando custom fields: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Determina si un custom field requerido ya existe en GHL.
+   *
+   * GHL deriva un `fieldKey` inmutable (ej. `contact.rut`) a partir del nombre
+   * al crear el campo. Comparar solo por nombre visible falla cuando el cliente
+   * ya tiene el campo con otro nombre (ej. "RUT:") pero el mismo fieldKey: el
+   * matching por nombre no lo reconoce e intenta recrearlo → GHL responde 400
+   * (fieldKey duplicado). Por eso matcheamos por nombre O por fieldKey.
+   */
+  private fieldExists(existingFields: any[], fieldDef: CustomFieldDefinition): boolean {
+    const nameLower = fieldDef.name.toLowerCase();
+    const expectedKey = `${fieldDef.model}.${nameLower}`;
+    return existingFields.some(
+      (f) =>
+        (f?.name || '').toLowerCase() === nameLower ||
+        (f?.fieldKey || '').toLowerCase() === expectedKey,
+    );
   }
 
   /**
@@ -174,12 +190,11 @@ export class SacmedGhlSetupService {
       });
 
       const existingFields = data?.customFields || [];
-      const existingFieldNames = existingFields.map((f: any) => f.name.toLowerCase());
 
       const missing: string[] = [];
 
       for (const fieldDef of this.REQUIRED_CUSTOM_FIELDS) {
-        if (!existingFieldNames.includes(fieldDef.name.toLowerCase())) {
+        if (!this.fieldExists(existingFields, fieldDef)) {
           missing.push(fieldDef.name);
         }
       }

@@ -255,7 +255,14 @@ export default function SacmedConfirmationsPage() {
     try {
       const result = await sacmedConfirmationsApi.setupGHL(clientId);
       if (result.success) {
-        toast.success(`Setup GHL completado. Creados: ${result.created.length}`);
+        if (result.errors && result.errors.length > 0) {
+          toast.error(
+            `Setup parcial. Creados: ${result.created.length}. Fallaron ${result.errors.length}: ${result.errors.join(' | ')}`,
+            { duration: 10000 },
+          );
+        } else {
+          toast.success(`Setup GHL completado. Creados: ${result.created.length}`);
+        }
       } else {
         toast.error(result.message);
       }
