@@ -92,7 +92,7 @@ export const SACMED_TOOLS: ToolSchema[] = [
   {
     name: 'obtener_disponibilidad',
     description:
-      'Busca horarios disponibles por especialista desde una fecha. Si no hay horarios en la semana de la fecha entregada, busca automáticamente en las siguientes, hasta 4 semanas. Retorna los slots agrupados por profesional y día (horas "HH:MM"), con la duración del bloque en la raíz.',
+      'Busca horarios disponibles por especialista desde una fecha. Si no hay horarios en la semana de la fecha entregada, busca automáticamente en las siguientes, hasta 4 semanas. Retorna los slots agrupados por profesional y día (horas "HH:MM"), con la duración del bloque en la raíz. La `fecha` de cada día viene en formato legible en español (ej: "10 de Junio 2026"); pásala tal cual a crear_cita.',
     target: 'external',
     endpoint: '/api/clients/{clientId}/sacmed/availability',
     method: 'POST',
@@ -101,7 +101,7 @@ export const SACMED_TOOLS: ToolSchema[] = [
       fecha: {
         type: 'string',
         required: true,
-        description: 'Fecha desde la cual buscar (ISO8601 o YYYY-MM-DD)',
+        description: 'Fecha desde la cual buscar (acepta "10 de Junio 2026", ISO8601 o YYYY-MM-DD)',
       },
       id_especialidad: {
         type: 'integer',
@@ -212,13 +212,14 @@ export const SACMED_TOOLS: ToolSchema[] = [
     category: 'write',
     requires_validation: true,
     validation_rules:
-      'VALIDACIONES: 1. Validar disponibilidad con obtener_disponibilidad. 2. fecha, hora_inicio y duracion_minutos provienen de obtener_disponibilidad (fecha del día, hora del slot "HH:MM", duracion_minutos de la raíz). 3. El paciente debe existir (usa obtener_paciente o crear_paciente).',
+      'VALIDACIONES: 1. Validar disponibilidad con obtener_disponibilidad. 2. fecha, hora_inicio y duracion_minutos provienen de obtener_disponibilidad (fecha del día tal cual viene —ej: "10 de Junio 2026"—, hora del slot "HH:MM", duracion_minutos de la raíz). 3. El paciente debe existir (usa obtener_paciente o crear_paciente).',
     fields: {
       id_profesional: { type: 'string', required: true, description: 'UUID del profesional' },
       fecha: {
         type: 'string',
         required: true,
-        description: 'Fecha de la cita (YYYY-MM-DD, el día del slot elegido en disponibilidad)',
+        description:
+          'Fecha de la cita: el día del slot elegido en disponibilidad, tal cual viene (ej: "10 de Junio 2026"). También acepta YYYY-MM-DD.',
       },
       hora_inicio: {
         type: 'string',

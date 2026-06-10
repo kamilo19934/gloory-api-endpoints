@@ -24,6 +24,21 @@ const MODALIDAD_MAP: Record<number, string> = {
   3: 'Domiciliaria',
 };
 
+const MESES_ES = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
+
 @Injectable()
 export class SacmedProxyService {
   private readonly logger = new Logger(SacmedProxyService.name);
@@ -34,7 +49,9 @@ export class SacmedProxyService {
     private readonly ghlService: GHLService,
   ) {}
 
-  private async getSacmedConfig(clientId: string): Promise<SacmedConfig> {
+  private async resolveClientConfig(
+    clientId: string,
+  ): Promise<{ client: any; config: SacmedConfig }> {
     const client = await this.clientsService.findOne(clientId);
     const integration = client.getIntegration('sacmed');
 
@@ -45,7 +62,11 @@ export class SacmedProxyService {
       );
     }
 
-    return integration.config as SacmedConfig;
+    return { client, config: integration.config as SacmedConfig };
+  }
+
+  private async getSacmedConfig(clientId: string): Promise<SacmedConfig> {
+    return (await this.resolveClientConfig(clientId)).config;
   }
 
   /**
@@ -75,9 +96,14 @@ export class SacmedProxyService {
     return undefined;
   }
 
-  private resolveTz(config: SacmedConfig): string {
-    const tz = config.timezone || 'America/Santiago';
-    return moment.tz.zone(tz) ? tz : 'America/Santiago';
+  /**
+   * Timezone de la clínica, tomado SIEMPRE de la configuración (sin defaults
+   * hardcodeados): `timezone` de la integración Sacmed → `client.timezone`
+   * (que la plataforma siempre persiste al crear el cliente). Se usa solo para
+   * el offset del espejo en GHL; el lado Sacmed opera en hora local naive.
+   */
+  private resolveTz(config: SacmedConfig, client?: any): string {
+    return config?.timezone || client?.timezone;
   }
 
   // ============================
@@ -229,16 +255,10 @@ export class SacmedProxyService {
   async searchAvailability(clientId: string, dto: SacmedSearchAvailabilityDto) {
     const config = await this.getSacmedConfig(clientId);
 
-    const baseDate = moment(dto.fecha, moment.ISO_8601, true).isValid()
-      ? moment(dto.fecha)
-      : moment(dto.fecha, 'YYYY-MM-DD');
-
-    if (!baseDate.isValid()) {
-      throw new HttpException(
-        'El formato del campo fecha es inválido, debe ser ISO8601',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    // Sacmed consulta y entrega la disponibilidad en hora LOCAL naive (sin tz):
+    // el rango from/to se envía tal cual, sin convertir a UTC. La fecha de entrada
+    // se normaliza (acepta "10 de Junio 2026" o YYYY-MM-DD).
+    const baseDate = moment(this.normalizeFecha(dto.fecha), 'YYYY-MM-DD');
 
     const MAX_WEEKS = 4;
     let current = baseDate.clone();
@@ -270,8 +290,8 @@ export class SacmedProxyService {
             0,
           );
           return {
-            semana_desde: from.format('YYYY-MM-DD'),
-            semana_hasta: to.format('YYYY-MM-DD'),
+            semana_desde: this.formatFechaLegible(from.format('YYYY-MM-DD')),
+            semana_hasta: this.formatFechaLegible(to.format('YYYY-MM-DD')),
             // Eco de los IDs de la búsqueda para que crear_cita se arme solo desde
             // esta respuesta (el agente no tiene que recordarlos de pasos previos).
             id_especialidad: dto.id_especialidad,
@@ -306,6 +326,9 @@ export class SacmedProxyService {
    * Deduplica fecha y metadatos del profesional (no se repiten por slot) y
    * descarta `termino`/`duration` (la duración va en la raíz; el `termino` lo
    * reconstruye `crear_cita` con `duracion_minutos`).
+   *
+   * Sacmed entrega los slots en hora LOCAL naive (sin tz, p.ej.
+   * "2026-06-08T08:30:00"); se muestran tal cual, sin conversión de zona horaria.
    */
   private transformAvailability(items: SacmedAvailabilityItem[]) {
     return items.map((item) => {
@@ -325,7 +348,10 @@ export class SacmedProxyService {
         id_profesional: item.userId,
         nombre_profesional: item.fullName,
         ...(direccion ? { direccion } : {}),
-        dias: Array.from(byDay.entries()).map(([fecha, horas]) => ({ fecha, slots: horas })),
+        dias: Array.from(byDay.entries()).map(([fecha, horas]) => ({
+          fecha: this.formatFechaLegible(fecha),
+          slots: horas,
+        })),
       };
     });
   }
@@ -403,8 +429,8 @@ export class SacmedProxyService {
   // ============================
 
   async getPatientAppointments(clientId: string, identification: string) {
-    const config = await this.getSacmedConfig(clientId);
-    const tz = this.resolveTz(config);
+    const { client, config } = await this.resolveClientConfig(clientId);
+    const tz = this.resolveTz(config, client);
     const result = await this.sacmedService.getEventsByPatient(identification, config);
 
     if (!result.success) {
@@ -450,8 +476,12 @@ export class SacmedProxyService {
 
     const result: any = {
       id_cita: appt.eventId,
-      fecha_inicio: start ? start.format('YYYY-MM-DDTHH:mm:ss') : null,
-      fecha_termino: end ? end.format('YYYY-MM-DDTHH:mm:ss') : null,
+      fecha_inicio: start
+        ? `${this.formatFechaLegible(start.format('YYYY-MM-DD'))} ${start.format('HH:mm')}`
+        : null,
+      fecha_termino: end
+        ? `${this.formatFechaLegible(end.format('YYYY-MM-DD'))} ${end.format('HH:mm')}`
+        : null,
       estado_cita: appt.statusEvent,
       estado_pago: appt.statusPaid,
       modalidad: appt.tipoServicio,
@@ -488,9 +518,20 @@ export class SacmedProxyService {
     }
     const config = integration.config as SacmedConfig;
 
-    // El agente entrega fecha + hora_inicio + duracion_minutos; el proxy arma el
-    // rango ISO (hora local naive, como espera Sacmed). `end = inicio + duración`.
-    const { start, end } = this.buildEventRange(dto.fecha, dto.hora_inicio, dto.duracion_minutos);
+    // Normalizamos la fecha que llega del agente: acepta el formato legible que
+    // mostramos en disponibilidad ("10 de Junio 2026") o YYYY-MM-DD. Se reasigna en
+    // el dto para que tanto el payload Sacmed como el espejo GHL usen el ISO.
+    dto.fecha = this.normalizeFecha(dto.fecha);
+
+    // El agente entrega fecha + hora_inicio + duracion_minutos en hora LOCAL de la
+    // clínica. Sacmed opera en hora local NAIVE (sin tz): almacena y devuelve el
+    // wall-clock tal cual se envía (verificado contra la API real). `end = inicio +
+    // duración`. NO convertir a UTC: haría que la cita quedara desfasada en Sacmed.
+    const { start, end } = this.buildEventRange(
+      dto.fecha,
+      dto.hora_inicio,
+      dto.duracion_minutos,
+    );
 
     const payload: SacmedCreateEventPayload = {
       userId: dto.id_profesional,
@@ -523,16 +564,64 @@ export class SacmedProxyService {
     };
   }
 
+  /** Normaliza la hora de inicio a HH:MM:SS (Sacmed/GHL esperan segundos). */
+  private normalizeHora(horaInicio: string): string {
+    return horaInicio.length === 5 ? `${horaInicio}:00` : horaInicio;
+  }
+
   /**
-   * Construye el rango ISO (hora local naive) de una cita a partir de
-   * fecha (YYYY-MM-DD) + hora_inicio (HH:MM o HH:MM:SS) + duración en minutos.
+   * Formatea una fecha ISO (YYYY-MM-DD) a texto legible en español para el agente:
+   * "2026-06-10" → "10 de Junio 2026". Si no parsea, devuelve el valor original.
+   */
+  private formatFechaLegible(fechaIso: string): string {
+    const m = moment(fechaIso, 'YYYY-MM-DD', true);
+    if (!m.isValid()) return fechaIso;
+    return `${m.date()} de ${MESES_ES[m.month()]} ${m.year()}`;
+  }
+
+  /**
+   * Normaliza una fecha a YYYY-MM-DD aceptando tanto el formato legible que
+   * mostramos en disponibilidad ("10 de Junio 2026", con o sin "de" antes del año)
+   * como ISO8601 / YYYY-MM-DD. Así crear_cita puede recibir la misma `fecha` legible
+   * que devolvió obtener_disponibilidad sin romperse. Lanza 400 si no se reconoce.
+   */
+  private normalizeFecha(input: string): string {
+    const s = (input || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+    const legible = s.match(/^(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:de\s+)?(\d{4})$/i);
+    if (legible) {
+      const dia = Number(legible[1]);
+      const mesIdx = MESES_ES.findIndex((mes) => mes.toLowerCase() === legible[2].toLowerCase());
+      if (mesIdx >= 0 && dia >= 1 && dia <= 31) {
+        const iso = `${legible[3]}-${String(mesIdx + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+        if (moment(iso, 'YYYY-MM-DD', true).isValid()) return iso;
+      }
+    }
+
+    const iso = moment(s, moment.ISO_8601, true);
+    if (iso.isValid()) return iso.format('YYYY-MM-DD');
+
+    throw new HttpException(
+      `La fecha "${input}" no es válida. Usa el formato "10 de Junio 2026" o YYYY-MM-DD.`,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
+  /**
+   * Construye el rango ISO en hora LOCAL NAIVE (sin tz) que espera Sacmed a partir
+   * de fecha (YYYY-MM-DD) + hora_inicio (HH:MM[:SS]) + duración en minutos.
+   *
+   * Sacmed NO usa UTC: guarda/devuelve el wall-clock exactamente como se envía
+   * (verificado contra la API real — un slot "2026-06-08T08:30:00" enviado tal cual
+   * vuelve idéntico). Por eso aquí no se aplica ninguna conversión de zona horaria.
    */
   private buildEventRange(
     fecha: string,
     horaInicio: string,
     duracionMinutos: number,
   ): { start: string; end: string; horaInicioNorm: string } {
-    const horaInicioNorm = horaInicio.length === 5 ? `${horaInicio}:00` : horaInicio;
+    const horaInicioNorm = this.normalizeHora(horaInicio);
     const start = `${fecha}T${horaInicioNorm}`;
     const end = moment(start, 'YYYY-MM-DDTHH:mm:ss')
       .add(duracionMinutos, 'minutes')
@@ -556,21 +645,22 @@ export class SacmedProxyService {
       );
       return;
     }
-    if (!ghlCfg.timezone) {
-      ghlCfg.timezone = sacmedConfig.timezone || client.timezone;
-    }
+    // GHL recibe la hora LOCAL de la clínica e integrarCita le aplica el offset del
+    // timezone al crear el appointment. El timezone se toma SIEMPRE del seleccionado
+    // por el cliente en la plataforma (config Sacmed → client.timezone); nunca se
+    // hardcodea. integrarCita valida que sea una zona IANA válida.
+    const ghlCfgConTz: GoHighLevelConfig = {
+      ...ghlCfg,
+      timezone: this.resolveTz(sacmedConfig, client),
+    };
 
-    const { horaInicioNorm } = this.buildEventRange(
-      dto.fecha,
-      dto.hora_inicio,
-      dto.duracion_minutos,
-    );
+    const horaInicioNorm = this.normalizeHora(dto.hora_inicio);
 
     const customFields = dto.comentario
       ? [{ key: 'comentario', field_value: dto.comentario }]
       : undefined;
 
-    await this.ghlService.integrarCita(ghlCfg, {
+    await this.ghlService.integrarCita(ghlCfgConTz, {
       userId: dto.user_id!,
       fecha: dto.fecha,
       hora_inicio: horaInicioNorm,

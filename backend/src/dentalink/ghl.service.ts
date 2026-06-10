@@ -53,7 +53,17 @@ export class GHLService {
       return;
     }
 
-    const timezone = config.timezone || 'America/Santiago';
+    // El timezone viene SIEMPRE de la configuración del cliente (sin default
+    // hardcodeado). Si falta o no es una zona IANA válida, moment.tz() la trataría
+    // como UTC y el appointment quedaría desfasado por el offset de la clínica:
+    // mejor fallar explícito (lo captura el caller en background) que adivinar.
+    const timezone = config.timezone;
+    if (!timezone || !moment.tz.zone(timezone)) {
+      throw new Error(
+        `Timezone ausente o inválido ("${timezone}") en la config GHL (location ${config.ghlLocationId}). ` +
+          `Configura la zona horaria del cliente para espejar la cita con la hora correcta.`,
+      );
+    }
 
     try {
       // 1. Actualizar contacto con custom fields (opcional)
