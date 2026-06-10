@@ -5,9 +5,10 @@ export class SacmedCreateAppointmentDto {
   @IsNotEmpty({ message: 'El id_profesional (UUID) es requerido' })
   id_profesional: string;
 
+  // Acepta el formato legible que devuelve obtener_disponibilidad ("10 de Junio
+  // 2026") o YYYY-MM-DD; el proxy lo normaliza a ISO antes de usarlo.
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'fecha debe ser YYYY-MM-DD' })
   fecha: string;
 
   @IsString()
