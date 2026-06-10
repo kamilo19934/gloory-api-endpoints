@@ -73,6 +73,8 @@ Catálogo de tools que el agente puede invocar para gestionar pacientes, agenda 
 | --- | --- | --- | --- |
 | `especialidad` | string | ✅ | Nombre de la especialidad a buscar. Se acepta coincidencia parcial e ignora mayúsculas/minúsculas. |
 
+**Respuesta sin coincidencias:** en vez de `[]` devuelve `{ "profesionales": [], "mensaje": "..." }`, donde el mensaje lista las especialidades que sí tienen profesionales activos. Esto permite al agente corregir el filtro en una sola llamada cuando el nombre registrado difiere del que usa el paciente (ej: "TTM" vs el nombre real en el sistema) en vez de reintentar con el mismo término.
+
 ---
 
 ### GET /dentalsoft/specialties

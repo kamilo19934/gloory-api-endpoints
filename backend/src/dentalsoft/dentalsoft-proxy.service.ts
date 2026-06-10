@@ -268,7 +268,7 @@ export class DentalsoftProxyService {
       (u) => u.tipo_profesional === 'Usuario con agenda' && u.activo,
     );
 
-    return conAgenda
+    const matched = conAgenda
       .filter((u) =>
         (u.especialidades || []).some((e) => (e.nombre || '').toLowerCase().includes(needle)),
       )
@@ -283,6 +283,31 @@ export class DentalsoftProxyService {
           sucursales: u.sucursales || [],
         };
       });
+
+    // Sin match: un [] pelado no le da al agente ninguna pista para cambiar de
+    // estrategia (se observaron loops de reintentos idénticos con "TTM", que en
+    // la clínica está registrada con otro nombre). Devolver las especialidades
+    // que sí tienen profesionales le permite autocorregir el filtro en una
+    // sola llamada.
+    if (matched.length === 0) {
+      const disponibles = Array.from(
+        new Set(
+          conAgenda.flatMap((u) =>
+            (u.especialidades || []).map((e) => e.nombre).filter(Boolean),
+          ),
+        ),
+      ).sort((a, b) => a.localeCompare(b, 'es'));
+      return {
+        profesionales: [],
+        mensaje:
+          `Ninguna especialidad registrada coincide con "${dto.especialidad}". ` +
+          `Especialidades con profesionales disponibles: ${disponibles.join(', ')}. ` +
+          'Vuelve a filtrar usando uno de esos nombres exactos, o pide el listado completo de profesionales. ' +
+          'No repitas esta búsqueda con el mismo término.',
+      };
+    }
+
+    return matched;
   }
 
   /**
