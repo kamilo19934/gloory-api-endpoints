@@ -350,9 +350,54 @@ export class DentalsoftProxyService {
   // DISPONIBILIDAD
   // ============================
 
+  /**
+   * Trae el listado real de profesionales como `Map<id_profesional, nombre_completo>`.
+   * Best-effort: si la llamada falla devuelve un mapa vacío (no bloquea el flujo).
+   */
+  private async buildProfMap(config: DentalsoftConfig): Promise<Map<number, string>> {
+    const profMap = new Map<number, string>();
+    const result = await this.dentalsoftService.getProfesionales(config);
+    for (const p of result.data || []) {
+      profMap.set(p.id_profesional, p.nombre_completo);
+    }
+    return profMap;
+  }
+
+  /**
+   * Valida que los `id_profesional` pedidos existan realmente en Dentalsoft.
+   *
+   * Dentalsoft NO devuelve 404 ante un id inexistente: simplemente entrega
+   * disponibilidad vacía, indistinguible de una agenda llena. Eso hacía que el
+   * agente reportara "sin horas en 4 semanas" cuando en realidad el id estaba
+   * inventado (los id reales se derivan del cuerpo del RUT, 7-8 dígitos). Acá
+   * lo cortamos con un error accionable que nombra la tool correcta, en vez de
+   * un silencioso 0 slots.
+   *
+   * Best-effort: si no se pudo traer el listado (mapa vacío) no bloquea.
+   */
+  private assertProfesionalesValidos(profMap: Map<number, string>, ids: number[]): void {
+    if (profMap.size === 0) return; // no se pudo validar; no empeorar el flujo
+    const invalidos = ids.filter((id) => !profMap.has(id));
+    if (invalidos.length === 0) return;
+
+    const disponibles = Array.from(profMap.entries())
+      .map(([id, nombre]) => `${id} (${nombre})`)
+      .join(', ');
+    throw new HttpException(
+      `Error: el/los id_profesional [${invalidos.join(', ')}] no existe(n) en Dentalsoft. ` +
+        'Usa la tool "listar_profesionales" para obtener los IDs correctos — nunca los inventes. ' +
+        `Profesionales disponibles: ${disponibles}.`,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
   async getMonthlyAvailability(clientId: string, dto: DentalsoftMonthlyAvailabilityDto) {
     const { client, config } = await this.getClientAndConfig(clientId);
-    const dur = await this.resolverDuracion(dto.duracion_minutos, config);
+    const [dur, profMap] = await Promise.all([
+      this.resolverDuracion(dto.duracion_minutos, config),
+      this.buildProfMap(config),
+    ]);
+    this.assertProfesionalesValidos(profMap, [dto.id_profesional]);
     const result = await this.dentalsoftService.getMonthlyAvailability(
       {
         id_profesional: dto.id_profesional,
@@ -422,6 +467,9 @@ export class DentalsoftProxyService {
     for (const p of profesionalesResult.data || []) {
       profMap.set(p.id_profesional, p.nombre_completo);
     }
+    // Validar los IDs pedidos contra el listado real: un id inexistente da 0
+    // slots silenciosos (Dentalsoft no 404ea), indistinguible de agenda llena.
+    this.assertProfesionalesValidos(profMap, dto.id_profesional);
 
     const MAX_WEEKS = 4;
     const MAX_SLOTS = 50;
@@ -573,7 +621,11 @@ export class DentalsoftProxyService {
 
   async getDailyAvailability(clientId: string, dto: DentalsoftDailyAvailabilityDto) {
     const { client, config } = await this.getClientAndConfig(clientId);
-    const dur = await this.resolverDuracion(dto.duracion_minutos, config);
+    const [dur, profMap] = await Promise.all([
+      this.resolverDuracion(dto.duracion_minutos, config),
+      this.buildProfMap(config),
+    ]);
+    this.assertProfesionalesValidos(profMap, [dto.id_profesional]);
     const result = await this.dentalsoftService.getDailyAvailability(
       {
         id_profesional: dto.id_profesional,
@@ -646,7 +698,11 @@ export class DentalsoftProxyService {
       );
     }
     const config = integration.config as DentalsoftConfig;
-    const dur = await this.resolverDuracion(dto.duracion_minutos, config);
+    const [dur, profMap] = await Promise.all([
+      this.resolverDuracion(dto.duracion_minutos, config),
+      this.buildProfMap(config),
+    ]);
+    this.assertProfesionalesValidos(profMap, [dto.id_profesional]);
 
     const payload: DentalsoftCreateAppointmentPayload = {
       sucursal: dto.id_sucursal,
