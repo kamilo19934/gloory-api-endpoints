@@ -54,6 +54,7 @@ export interface ReservoNormalizedAppointment {
 
   // Metadata
   comentarios?: string;
+  url_videoconferencia?: string; // Link de reunión (Meet) cuando la cita es por videoconferencia
 }
 
 /**

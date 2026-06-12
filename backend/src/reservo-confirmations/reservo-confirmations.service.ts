@@ -549,6 +549,7 @@ export class ReservoConfirmationsService {
       estado_codigo: apt.estado?.codigo || 'NC',
       estado_descripcion: apt.estado?.descripcion || 'No Confirmado',
       comentarios: apt.comentario || '',
+      url_videoconferencia: apt.url_videoconferencia || '',
     };
   }
 
@@ -801,6 +802,7 @@ export class ReservoConfirmationsService {
         { key: 'id_sucursal', field_value: appointmentData.id_sucursal },
         { key: 'nombre_sucursal', field_value: appointmentData.nombre_sucursal },
         { key: 'rut', field_value: appointmentData.rut_paciente || '' },
+        { key: 'url_videoconferencia', field_value: appointmentData.url_videoconferencia || '' },
         { key: 'for_confirmation', field_value: 'true' },
       ],
     };
