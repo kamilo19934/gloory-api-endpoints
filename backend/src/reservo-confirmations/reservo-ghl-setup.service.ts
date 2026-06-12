@@ -85,6 +85,12 @@ export class ReservoGhlSetupService {
       placeholder: 'Marcado para confirmación (true/false)',
       model: 'contact',
     },
+    {
+      name: 'url_videoconferencia',
+      dataType: 'TEXT',
+      placeholder: 'Link de videoconferencia (Meet) de la cita',
+      model: 'contact',
+    },
   ];
 
   private async callGHL<T = any>(
