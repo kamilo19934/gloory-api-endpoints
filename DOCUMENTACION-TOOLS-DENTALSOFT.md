@@ -47,7 +47,8 @@ Catálogo de tools que el agente puede invocar para gestionar pacientes, agenda 
 | `apellido_materno` | string | ❌ | Apellido materno (opcional). |
 | `email` | string | ✅ | Correo electrónico de contacto. |
 | `celular` | string | ✅ | Celular en formato numérico con código de país, sin signos (ej: `56977889900`). |
-| `id_referencia` | integer | ❌ | ID de referencia opcional. |
+
+> **Nota:** No se acepta `id_referencia`. Dentalsoft exige `minimum 1` en ese campo y enviar un valor vacío/0 provocaba un 500; como nunca se dispone de un id de referencia real, se omite por completo.
 
 ---
 
