@@ -206,7 +206,9 @@ export class DentalsoftProxyService {
       apellido_materno: dto.apellido_materno,
       email: dto.email,
       celular: dto.celular,
-      id_referencia: dto.id_referencia,
+      // id_referencia se omite a propósito: el agente nunca dispone de un id de
+      // referencia real, y Dentalsoft exige minimum 1 (OpenAPI /paciente/nuevo),
+      // por lo que enviar 0 (o cualquier vacío) hacía que su API respondiera 500.
     };
 
     const result = await this.dentalsoftService.createPatient(payload, config);
